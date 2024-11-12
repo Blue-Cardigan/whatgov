@@ -154,7 +154,7 @@ export default function SignUp() {
   };
 
   const handlePostcodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
+    const value = e.target.value;
     const formatted = formatPostcode(value);
     
     // Only format with space if we have 7 characters
@@ -196,7 +196,7 @@ export default function SignUp() {
         } else {
           setPostcodeError("Postcode not found");
         }
-      } catch (err) {
+      } catch (_) {
         setPostcodeError("Could not find MP for this postcode");
       } finally {
         setIsLookingUpPostcode(false);
@@ -299,7 +299,7 @@ export default function SignUp() {
             <div>
               <h2 className="text-3xl font-semibold mb-3">What's your email?</h2>
               <p className="text-muted-foreground mb-6 text-lg">
-                We'll use this to sign you in
+                We&apos;ll use this to sign you in
               </p>
               <Input
                 id="email"
@@ -384,7 +384,7 @@ export default function SignUp() {
             <div>
               <h2 className="text-3xl font-semibold mb-3">Where are you based?</h2>
               <p className="text-muted-foreground mb-6 text-lg">
-                We'll use this to find your local MP
+                We&apos;ll use this to find your local MP
               </p>
               <div className="relative">
                 <Input
@@ -465,7 +465,7 @@ export default function SignUp() {
             <div>
               <h2 className="text-3xl font-semibold mb-3">Choose your interests</h2>
               <p className="text-muted-foreground mb-6 text-lg">
-                Tell us what you're interested in
+                You&apos;re interested in
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {TOPICS.map((topic) => {
