@@ -5,7 +5,7 @@ import { Calendar } from "lucide-react";
 import { Users } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 
-export default function DebateDetail({ params }: { params: { id: string } }) {
+export default function DebateDetail() {
     return (
       <div className="container py-6">
         <DebateHeader />

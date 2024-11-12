@@ -1,4 +1,4 @@
-import { getRedisValue, setRedisValue } from '@/app/actions/redis';
+import { setRedisValue } from '@/app/actions/redis';
 import { CACHE_KEYS } from '@/lib/redis/config';
 import { HansardAPI } from '@/lib/hansard-api';
 import { NextResponse } from 'next/server';
@@ -6,7 +6,6 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date');
-  const limit = parseInt(searchParams.get('limit') || '10');
 
   try {
     const debates = await HansardAPI.getDebatesList(date || undefined);

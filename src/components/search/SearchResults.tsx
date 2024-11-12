@@ -18,8 +18,10 @@ interface SearchResult {
 }
 
 export function SearchResults() {
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   return (
     <div className="space-y-4">

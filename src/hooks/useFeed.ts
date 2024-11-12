@@ -1,6 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getFeedItems } from '@/lib/supabase';
-import { useVotes } from './useVotes';
 
 interface UseFeedOptions {
   votedOnly?: boolean;

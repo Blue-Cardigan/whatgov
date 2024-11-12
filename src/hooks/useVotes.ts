@@ -3,6 +3,13 @@ import { getUserVotes, submitVote } from '@/lib/supabase';
 import { useCallback, useState } from 'react';
 import { FeedItem } from '@/types';
 
+// Add type for the optimistic update
+interface QueryData {
+  pages: Array<{
+    items: FeedItem[];
+  }>;
+}
+
 export function useVotes() {
   const queryClient = useQueryClient();
   const [visibleDebateIds, setVisibleDebateIds] = useState<string[]>([]);
@@ -41,14 +48,14 @@ export function useVotes() {
       // Update feed counts optimistically
       queryClient.setQueriesData({ 
         queryKey: ['feed', { votedOnly: false }] 
-      }, (old: any) => {
+      }, (old: QueryData | undefined) => {
         if (!old) return old;
         
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            items: page.items.map((item: FeedItem) => {
+            items: page.items.map((item) => {
               if (item.id !== debateId) return item;
               
               const ayesKey = `ai_question_${questionNumber}_ayes` as keyof FeedItem;

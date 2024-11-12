@@ -8,7 +8,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
 } from "@/components/ui/command"
 import { SearchResults } from "@/components/search/SearchResults";
 

@@ -20,6 +20,7 @@ interface DebateCardProps {
 export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCardProps) {
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const [expandedPoint, setExpandedPoint] = useState<number | null>(null);
+  const queryClient = useQueryClient();
   const partyCount = debate.party_count as PartyCount;
   const keyPoints = debate.ai_key_points as KeyPoint[];
   
@@ -33,7 +34,6 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
     const total = ayes + noes;
     const ayePercentage = total > 0 ? (ayes / total) * 100 : 50;
     
-    const queryClient = useQueryClient();
     const isVoting = queryClient.isMutating({ mutationKey: ['votes'] }) > 0;
     
     if (!question) return null;
@@ -145,7 +145,7 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
           <div>
             <h4 className="text-sm font-medium mb-2">Party Participation</h4>
             <div className="h-4 flex rounded-full overflow-hidden">
-              {Object.entries(partyCount).map(([party, count], index) => {
+              {Object.entries(partyCount).map(([party, count]) => {
                 const proportion = (count / totalSpeakers) * 100;
                 const colors: { [key: string]: string } = {
                   'Labour': 'bg-red-500',

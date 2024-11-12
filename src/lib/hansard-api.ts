@@ -1,3 +1,7 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
 const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
 
 export interface HansardApiConfig {
@@ -5,6 +9,17 @@ export interface HansardApiConfig {
   house: 'Commons' | 'Lords';
   date?: string;
   section?: string;
+}
+
+interface SectionTreeItem {
+  Id: number;
+  Title: string;
+  ParentId: number | null;
+  SortOrder: number;
+  ExternalId: string;
+  HRSTag: string | null;
+  HansardSection: string | null;
+  Timecode: string | null;
 }
 
 export class HansardAPI {
@@ -81,7 +96,7 @@ export class HansardAPI {
 
       const sectionTreeItems = data[0]?.SectionTreeItems || [];
       
-      return sectionTreeItems.filter((item: any) => 
+      return sectionTreeItems.filter((item: SectionTreeItem) => 
         item.HRSTag?.includes('Question') || 
         item.HRSTag?.includes('Debate') ||
         item.HRSTag?.includes('Motion') ||
@@ -93,12 +108,12 @@ export class HansardAPI {
     }
   }
 
-  static async getDebateDetails(debateSectionExtId: string, supabaseClient: any) {
+  static async getDebateDetails(debateSectionExtId: string) {
     try {
       const [debate, speakers, { data: generated, error: dbError }] = await Promise.all([
         this.fetchDebate(debateSectionExtId),
         this.fetchSpeakers(debateSectionExtId),
-        supabaseClient
+        supabase
           .from('debate_generated_content')
           .select('*')
           .eq('debate_section_ext_id', debateSectionExtId)
