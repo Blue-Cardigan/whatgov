@@ -1,6 +1,8 @@
 YourVotes as 'Voting record & analysis' with dedicated UI
 - Change votes made in last 24h
 
+Proper redis implementation
+
 Profile creation
 
 Premium Features
