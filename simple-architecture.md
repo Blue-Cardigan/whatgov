@@ -2,20 +2,19 @@
 
 ## Architecture Overview
 
-The application uses a hybrid data approach, combining live Hansard API data with supplementary AI-generated content stored in Supabase.
+The application uses a serverless architecture optimized for Vercel's edge network, combining Hansard API data with AI-generated content stored in Supabase and cached through Upstash Redis.
 
 ### Data Flow
 ```mermaid
 graph TD
-    A[User Access] --> B[Load Initial Debate List]
-    B --> C[Hansard API: Section Trees]
-    B --> D[Display Debate List]
-    D --> E[User Selects Debate]
-    E --> F[Parallel Data Fetching]
-    F --> G[Hansard: Debate Content]
-    F --> H[Hansard: Speakers List]
-    F --> I[Supabase: Generated Content]
-    G & H & I --> J[Render Complete Debate]
+    A[Client] --> B[Vercel Edge Network]
+    B --> C[Next.js Edge Runtime]
+    C --> D[Route Handlers]
+    D --> E[Redis Server Actions]
+    E --> F[Upstash Redis]
+    D --> G[Hansard API]
+    D --> H[Supabase]
+    I[Vercel Monitoring] --> B & C & D
 ```
 
 ## Directory Structure
@@ -45,8 +44,12 @@ parliamentary-debates/
 │   │   └── useAuth.ts              # Authentication
 │   ├── lib/
 │   │   ├── hansard-api.ts          # Hansard API client
+│   │   ├── rate-limit.ts         # Rate limiting utility
 │   │   ├── supabase.ts             # Supabase client
 │   │   └── utils.ts
+│   ├── app/
+│   │   └── actions/
+│   │       └── redis.ts          # Server actions for Redis
 │   └── types/
 │       ├── hansard.ts              # Hansard API types
 │       └── database.ts             # Supabase types
@@ -56,21 +59,24 @@ parliamentary-debates/
 
 ### API Integration
 - Hansard API for official parliamentary data
-- tRPC for type-safe API routes
+- Upstash Redis for caching and rate limiting
+- Server Actions for Redis operations
 - Supabase for AI-generated content storage
 
 ### Frontend
-- Next.js 14
-- React 18
+- Next.js 14 (App Router)
+- React Server Components
 - TypeScript
 - Tailwind CSS
 - shadcn/ui components
+- React Query for client-side data management
 
 ### State Management
-- Jotai for global state
-- React Context for auth state
+- Server Components for initial state
+- React Query for client-side cache
+- Server Actions for Redis operations
 
-## Data Sources
+## Data Flow
 
 ### Hansard API Endpoints
 ```typescript
@@ -103,16 +109,16 @@ CREATE INDEX idx_debate_generated_contribution
 
 ## Key Features Implementation
 
-### 1. Debate List Loading
+### 1. Server-side Caching
 ```typescript
-// Initial data load using tRPC
-export function useDebatesList() {
-  const [filters] = useAtom(filterAtom);
-  return trpc.debates.list.useQuery({ 
-    filters,
-    skip: 0,
-    take: 20
-  });
+// Redis server actions
+export async function getRedisValue<T>(key: string): Promise<T | null> {
+  try {
+    return await redis.get<T>(key);
+  } catch (error) {
+    console.error('Redis server error:', error);
+    return null;
+  }
 }
 ```
 
@@ -142,10 +148,14 @@ export function useDebateDetails(debateSectionExtId: string) {
 ## Performance Optimizations
 
 ### 1. Data Fetching
+- Edge-cached responses
+- Incremental Static Regeneration (ISR)
 - Parallel API requests
-- Query caching with React Query
 - Selective loading of debate content
-- Debounced search operations
+- Server-side Redis caching
+- Client-side React Query caching
+- Parallel data loading
+- Rate limiting with Upstash
 
 ### 2. Rendering
 - Virtualized list for long debates
@@ -154,6 +164,10 @@ export function useDebateDetails(debateSectionExtId: string) {
 - Optimized re-renders
 
 ### 3. Caching Strategy
+- Server-side Redis caching through server actions
+- Client-side React Query for state management
+- API route caching with TTL
+- Fallback to direct API calls on cache miss
 ```typescript
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -167,6 +181,38 @@ const queryClient = new QueryClient({
 });
 ```
 
+### Caching Implementation
+```typescript
+// Server-side Redis actions
+export async function getRedisValue<T>(key: string): Promise<T | null> {
+  try {
+    return await redis.get<T>(key);
+  } catch (error) {
+    console.error('Redis server error:', error);
+    return null;
+  }
+}
+
+// API route caching pattern
+export async function GET() {
+  const cacheKey = `debates:${today}`;
+  try {
+    const cachedData = await getRedisValue(cacheKey);
+    if (cachedData) return NextResponse.json(cachedData);
+    
+    // Fetch and cache fresh data
+    const debates = await HansardAPI.getDebatesList(today);
+    await setRedisValue(cacheKey, debates, 3600);
+    return NextResponse.json(debates);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Service unavailable' }, 
+      { status: 503 }
+    );
+  }
+}
+```
+
 ## Setup Instructions
 
 1. Environment Configuration
@@ -175,11 +221,13 @@ const queryClient = new QueryClient({
 NEXT_PUBLIC_HANSARD_API_URL=https://hansard-api.parliament.uk
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+UPSTASH_REDIS_REST_URL=your_upstash_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token
 ```
 
 2. Install Dependencies
 ```bash
-npm install @tanstack/react-query @supabase/supabase-js
+npm install @vercel/analytics @upstash/redis @upstash/ratelimit
 ```
 
 3. Initialize Supabase Tables
@@ -246,6 +294,5 @@ npm run build
 ### Infrastructure
 - Vercel for frontend hosting
 - Supabase for database
-- Redis for caching (optional)
 
 For detailed API documentation and test coverage information, refer to the inline documentation in the codebase.
