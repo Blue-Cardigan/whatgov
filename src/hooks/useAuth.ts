@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, signInWithEmail, signUpWithEmail } from '@/lib/supabase';
 
+interface SignUpData {
+  name: string;
+  gender: string;
+  postcode: string;
+  topics: string[];
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +35,19 @@ export function useAuth() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
+  };
+
+  const signUp = async (email: string, password: string, userData: SignUpData) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: userData
+      }
+    });
+
+    if (error) throw error;
+    return data;
   };
 
   return {

@@ -29,7 +29,7 @@ export function Navbar() {
       <div className="container h-14 flex items-center justify-between">
         {/* Logo and Main Nav */}
         <div className="flex items-center space-x-4">
-          <Link href="/" className="font-bold text-xl">
+          <Link href="/" className="font-bold text-xl ml-2">
             WhatGov
           </Link>
 

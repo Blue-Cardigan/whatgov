@@ -19,11 +19,28 @@ export async function signInWithEmail(email: string, password: string) {
   return data;
 }
 
-export async function signUpWithEmail(email: string, password: string) {
+interface SignUpMetadata {
+  name: string;
+  gender: string;
+  postcode: string;
+  constituency: string;
+  mp: string;
+  topics: string[];
+}
+
+export async function signUpWithEmail(
+  email: string, 
+  password: string, 
+  metadata?: SignUpMetadata
+) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: metadata
+    }
   });
+  
   if (error) throw error;
   return data;
 }
@@ -255,4 +272,25 @@ function calculateDebateScore(debate: FeedItem): DebateScore {
     score,
     factors
   };
+}
+
+// Add this new function
+export async function lookupPostcode(postcode: string) {
+  // Clean the postcode - remove spaces and convert to uppercase
+  const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
+  
+  const { data, error } = await supabase
+    .from('postcode_lookup')
+    .select('mp, constituency')
+    .eq('postcode', cleanPostcode) // Use exact match instead of ilike
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows returned
+      return null;
+    }
+    throw error;
+  }
+  
+  return data;
 }
