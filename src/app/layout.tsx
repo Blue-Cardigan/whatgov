@@ -1,20 +1,28 @@
-import { Analytics } from '@vercel/analytics/react'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
+import { Navbar } from "@/components/nav/Navbar";
+import { Sidebar } from "@/components/nav/Sidebar";
+import { QueryProvider } from "@/components/providers/QueryProvider";
+import "./globals.css";
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        {children}
-        <Analytics />
+      <body>
+        <QueryProvider>
+          <div className="min-h-screen bg-background">
+            <Navbar />
+            <div className="flex">
+              <Sidebar className="hidden md:block w-64 shrink-0" />
+              <main className="flex-1 min-w-0">
+                {children}
+              </main>
+            </div>
+          </div>
+        </QueryProvider>
       </body>
     </html>
-  )
+  );
 }

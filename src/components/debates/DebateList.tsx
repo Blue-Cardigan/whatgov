@@ -1,50 +1,59 @@
-'use client';
-
-import { useDebatesList } from '@/hooks/useDebateData';
-import { DebateListItem } from './DebateListItem';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { FeedItem } from '@/types';
+import { DebateCard } from './DebateCard';
+import { useVotes } from '@/hooks/useVotes';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DebateListProps {
-  initialData: any[];
+  items: FeedItem[];
+  isLoading: boolean;
+  loadMoreRef?: React.RefObject<HTMLDivElement>;
+  isFetchingNextPage?: boolean;
 }
 
-interface Debate {
-  ExternalId: string;
-  Title: string;
-  ItemDate: string;
-  HRSTag?: string;
-}
+export function DebateList({ 
+  items, 
+  isLoading, 
+  loadMoreRef, 
+  isFetchingNextPage 
+}: DebateListProps) {
+  const { votes, submitVote } = useVotes();
+  const { user } = useAuth();
 
-export function DebateList({ initialData }: DebateListProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedId = searchParams.get('id');
-  
-  const { data: debates = initialData, isLoading } = useDebatesList();
-
-  const handleSelectDebate = (id: string) => {
-    router.push(`/debates?id=${id}`, { scroll: false });
+  const handleVote = async (debateId: string, questionNumber: number, vote: boolean) => {
+    if (!user) return;
+    try {
+      await submitVote({ debateId, questionNumber, vote });
+    } catch (error) {
+      console.error('Failed to submit vote:', error);
+    }
   };
 
-  if (isLoading && !debates.length) {
-    return <div className="p-4">Loading debates...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4 p-4">
-      {debates?.map((debate: Debate) => (
-        <DebateListItem
-          key={debate.ExternalId}
-          debate={{
-            ExternalId: debate.ExternalId,
-            Title: debate.Title,
-            ItemDate: debate.ItemDate || new Date().toISOString(),
-            Description: debate.HRSTag
-          }}
-          isSelected={debate.ExternalId === selectedId}
-          onClick={() => handleSelectDebate(debate.ExternalId)}
+    <div className="space-y-4">
+      {items.map((debate: FeedItem) => (
+        <DebateCard
+          key={debate.ext_id}
+          debate={debate}
+          onVote={handleVote}
+          votes={votes}
         />
       ))}
+      
+      {loadMoreRef && (
+        <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+          {isFetchingNextPage && (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          )}
+        </div>
+      )}
     </div>
   );
-}
+} 

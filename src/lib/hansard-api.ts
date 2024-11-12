@@ -29,7 +29,7 @@ export class HansardAPI {
         house: config.house,
         date: config.date!,
         section: config.section!,
-        groupByOwner: 'true'
+        // groupByOwner: 'true'
       });
 
     return this.fetchWithErrorHandling(url);
@@ -45,12 +45,32 @@ export class HansardAPI {
     return this.fetchWithErrorHandling(url);
   }
 
-  static async getDebatesList(date: string) {
+  static async getLastSittingDate(house?: 'Commons' | 'Lords'): Promise<string> {
+    if (house) {
+      const url = `${HANSARD_API_BASE}/overview/lastsittingdate.json?` +
+        new URLSearchParams({ house });
+      const response = await this.fetchWithErrorHandling(url);
+      return response as string;
+    }
+
+    // Fetch both houses in parallel
+    const [commonsDate, lordsDate] = await Promise.all([
+      this.getLastSittingDate('Commons'),
+      this.getLastSittingDate('Lords')
+    ]);
+
+    // Return the most recent date
+    return new Date(commonsDate) > new Date(lordsDate) ? commonsDate : lordsDate;
+  }
+
+  static async getDebatesList(date?: string, house: 'Commons' | 'Lords' = 'Commons') {
     try {
+      const targetDate = date || await this.getLastSittingDate();
+
       const data = await this.fetchSectionTrees({
         format: 'json',
-        house: 'Commons',
-        date,
+        house,
+        date: targetDate,
         section: 'Debate'
       });
 

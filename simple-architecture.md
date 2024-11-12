@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-The application uses a serverless architecture optimized for Vercel's edge network, combining Hansard API data with AI-generated content stored in Supabase and cached through Upstash Redis.
+The application uses a serverless architecture optimized for Vercel's edge network, combining Hansard API data with AI-generated content stored in Supabase and cached through Upstash Redis. The system supports tiered access and sophisticated AI analysis capabilities.
 
 ### Data Flow
 ```mermaid
@@ -14,45 +14,85 @@ graph TD
     E --> F[Upstash Redis]
     D --> G[Hansard API]
     D --> H[Supabase]
-    I[Vercel Monitoring] --> B & C & D
+    D --> I[AI Processing Queue]
+    I --> J[LLM Service]
+    K[Analytics Service] --> B & C & D
+    L[User Preferences] --> H
 ```
 
 ## Directory Structure
 ```
-parliamentary-debates/
-├── src/
-│   ├── components/
-│   │   ├── ai/
-│   │   │   ├── AIChat.tsx
-│   │   │   └── MessageForm.tsx
-│   │   ├── auth/
-│   │   │   └── LoginForm.tsx
-│   │   ├── debates/
-│   │   │   ├── DebateList.tsx      # Shows overview of debates
-│   │   │   ├── DebateView.tsx      # Main debate viewing component
-│   │   │   ├── DebateContent.tsx   # Renders debate contributions
-│   │   │   ├── DebateItem.tsx      # Individual contribution component
-│   │   │   ├── DebateHeader.tsx    # Debate metadata and controls
-│   │   │   └── DebateSkeleton.tsx  # Loading states
-│   │   └── layout/
-│   │       ├── Header.tsx
-│   │       ├── Layout.tsx
-│   │       └── Sidebar.tsx
-│   ├── hooks/
-│   │   ├── useDebateData.ts        # Hansard API integration
-│   │   ├── useAIChat.ts            # AI chat functionality
-│   │   └── useAuth.ts              # Authentication
-│   ├── lib/
-│   │   ├── hansard-api.ts          # Hansard API client
-│   │   ├── rate-limit.ts         # Rate limiting utility
-│   │   ├── supabase.ts             # Supabase client
-│   │   └── utils.ts
-│   ├── app/
-│   │   └── actions/
-│   │       └── redis.ts          # Server actions for Redis
-│   └── types/
-│       ├── hansard.ts              # Hansard API types
-│       └── database.ts             # Supabase types
+src/
+├── app/
+│   ├── api/
+│   │   └── debates/
+│   │       └── route.ts
+│   ├── debates/
+│   │   └── [id]/
+│   │       └── page.tsx
+│   ├── search/
+│   │   └── page.tsx
+│   ├── actions/
+│   │   └── redis.ts
+│   ├── fonts/
+│   │   ├── GeistMonoVF.woff
+│   │   └── GeistVF.woff
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── components/
+│   ├── ai/
+│   │   ├── AIChat.tsx
+│   │   └── MessageForm.tsx
+│   ├── auth/
+│   │   └── LoginForm.tsx
+│   ├── debates/
+│   │   ├── DebateFeed.tsx
+│   │   └── TopicOverview.tsx
+│   ├── nav/
+│   │   ├── Navbar.tsx
+│   │   └── Sidebar.tsx
+│   ├── providers/
+│   │   └── QueryProvider.tsx
+│   ├── search/
+│   │   └── SearchResults.tsx
+│   └── ui/
+│       ├── avatar.tsx
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── calendar.tsx
+│       ├── card.tsx
+│       ├── command.tsx
+│       ├── dialog.tsx
+│       ├── dropdown-menu.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── select.tsx
+│       └── skeleton.tsx
+│
+├── hooks/
+│   ├── useAIChat.ts
+│   ├── useAuth.ts
+│   ├── useCache.ts
+│   ├── useDebateData.ts
+│   ├── useDebateSearch.ts
+│   └── useDebounce.ts
+│
+├── lib/
+│   ├── redis/
+│   │   └── config.ts
+│   ├── error.ts
+│   ├── hansard-api.ts
+│   ├── rate-limit.ts
+│   ├── supabase.ts
+│   └── utils.ts
+│
+└── types/
+    ├── database.ts
+    ├── hansard.ts
+    └── index.ts
 ```
 
 ## Core Technologies
@@ -88,27 +128,85 @@ const ENDPOINTS = {
 };
 ```
 
-### Database Schema
+## Database Schema
 ```sql
--- Supabase Schema
-CREATE TABLE debate_generated_content (
+-- Core debates table with minimal required data
+CREATE TABLE debates (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  debate_section_ext_id TEXT NOT NULL,
-  original_contribution_id TEXT NOT NULL,
-  content TEXT NOT NULL,
-  metadata JSONB DEFAULT '{}',
+  ext_id TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  date DATE NOT NULL,
+  
+  -- Basic metadata
+  type TEXT NOT NULL,
+  house TEXT NOT NULL,
+  location TEXT NOT NULL,
+  
+  -- AI-generated content
+  ai_title TEXT NOT NULL DEFAULT '',
+  ai_summary TEXT NOT NULL DEFAULT '',  
+  ai_tone TEXT NOT NULL DEFAULT '' CHECK (ai_tone IN ('neutral', 'contentious', 'collaborative')),
+  ai_topics JSONB NOT NULL DEFAULT '[]',
+  ai_tags JSONB NOT NULL DEFAULT '[]',
+  ai_key_points JSONB NOT NULL DEFAULT '[]',
+  
+  -- Quick stats
+  speaker_count INT NOT NULL DEFAULT 0,
+  contribution_count INT NOT NULL DEFAULT 0,
+  party_count JSONB NOT NULL DEFAULT '{}',
+    
+  -- Navigation
+  parent_ext_id TEXT NOT NULL,
+  parent_title TEXT NOT NULL,
+  prev_ext_id TEXT,
+  next_ext_id TEXT,
+  
+  -- Search Text
+  search_text TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_updated TIMESTAMPTZ DEFAULT NOW(),
+  
+  search_vector tsvector GENERATED ALWAYS AS (
+    to_tsvector('english', 
+      title || ' ' || 
+      COALESCE(ai_summary, '') || ' ' || 
+      COALESCE(search_text, '')
+    )
+  ) STORED
+);
+
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
+  followed_topics TEXT[],
+  followed_mps TEXT[],
+  notification_settings JSONB,
+  feed_preferences JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id),
+  tier TEXT NOT NULL,
+  status TEXT NOT NULL,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Indexes
-CREATE INDEX idx_debate_generated_debate_section 
-  ON debate_generated_content(debate_section_ext_id);
-CREATE INDEX idx_debate_generated_contribution 
-  ON debate_generated_content(original_contribution_id);
+CREATE INDEX idx_debates_ext_id ON debates(ext_id);
+CREATE INDEX idx_debates_date ON debates(date DESC);
+CREATE INDEX idx_debates_parent ON debates(parent_ext_id);
+CREATE INDEX idx_debates_search ON debates USING GIN(search_vector);
 ```
 
 ## Key Features Implementation
 
+## Backend
 ### 1. Server-side Caching
 ```typescript
 // Redis server actions
@@ -145,6 +243,74 @@ export function useDebateDetails(debateSectionExtId: string) {
 }
 ```
 
+##Frontend
+### 1. Tiered Access Control
+```typescript
+export const checkTierAccess = async (
+  userId: string,
+  feature: TieredFeature
+): Promise => {
+  const subscription = await getSubscription(userId);
+  return hasFeatureAccess(subscription.tier, feature);
+};
+
+// Usage in API routes
+export async function POST(req: Request) {
+  const { userId, feature } = await req.json();
+  const hasAccess = await checkTierAccess(userId, feature);
+  
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Upgrade required' },
+      { status: 403 }
+    );
+  }
+  // Process request...
+}
+```
+
+### 2. AI Processing Queue
+```typescript
+export class AIProcessingQueue {
+  async addToQueue(task: AITask): Promise {
+    const taskId = uuidv4();
+    await redis.set(`ai:task:${taskId}`, {
+      ...task,
+      status: 'pending',
+      created: Date.now()
+    });
+    await this.processQueue();
+    return taskId;
+  }
+
+  private async processQueue() {
+    // Process tasks based on user tier priority
+    const tasks = await this.getPendingTasks();
+    for (const task of tasks) {
+      if (await this.canProcess(task)) {
+        await this.processTask(task);
+      }
+    }
+  }
+}
+```
+
+### 3. Personalized Feed
+```typescript
+export async function getPersonalizedFeed(
+  userId: string,
+  page: number
+): Promise {
+  const preferences = await getUserPreferences(userId);
+  const debates = await getRecentDebates();
+  
+  return debates
+    .filter(debate => matchesPreferences(debate, preferences))
+    .slice((page - 1) * 20, page * 20);
+}
+```
+
+
 ## Performance Optimizations
 
 ### 1. Data Fetching
@@ -163,7 +329,7 @@ export function useDebateDetails(debateSectionExtId: string) {
 - Lazy loading of AI features
 - Optimized re-renders
 
-### 3. Caching Strategy
+### 3a. Caching Strategy
 - Server-side Redis caching through server actions
 - Client-side React Query for state management
 - API route caching with TTL
@@ -179,6 +345,26 @@ const queryClient = new QueryClient({
     },
   },
 });
+```
+
+### 3b. Tier-based Caching
+```typescript
+const CACHE_TIMES = {
+  free: 3600,        // 1 hour
+  premium: 1800,     // 30 minutes
+  professional: 300   // 5 minutes
+};
+
+export async function getCachedContent(
+  key: string,
+  tier: SubscriptionTier
+): Promise {
+  const cached = await redis.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TIMES[tier]) {
+    return cached.data;
+  }
+  return null;
+}
 ```
 
 ### Caching Implementation
@@ -218,7 +404,6 @@ export async function GET() {
 1. Environment Configuration
 ```bash
 # .env.local
-NEXT_PUBLIC_HANSARD_API_URL=https://hansard-api.parliament.uk
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 UPSTASH_REDIS_REST_URL=your_upstash_url
