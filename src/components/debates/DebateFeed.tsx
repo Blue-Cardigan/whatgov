@@ -7,24 +7,44 @@ import { DebateList } from './DebateList';
 
 export function DebateFeed() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed();
-  const { updateVisibleDebates } = useVotes();
+  const { 
+    data, 
+    isLoading, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useFeed({ pageSize: 8 });
+  const { updateVisibleDebates, votes } = useVotes();
 
   useEffect(() => {
+    // Create intersection observer
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
+        const target = entries[0];
+        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
-      { threshold: 0.1 }
+      { 
+        root: null, // Use viewport as root
+        threshold: 0, // Trigger as soon as even 1px is visible
+        rootMargin: '250px 0px', // Load more content 250px before reaching the end
+      }
     );
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
+    // Start observing
+    const element = loadMoreRef.current;
+    if (element) {
+      observer.observe(element);
     }
 
-    return () => observer.disconnect();
+    // Cleanup
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+      observer.disconnect();
+    };
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEffect(() => {
@@ -42,6 +62,7 @@ export function DebateFeed() {
       isLoading={isLoading}
       loadMoreRef={loadMoreRef}
       isFetchingNextPage={isFetchingNextPage}
+      votes={votes}
     />
   );
 } 

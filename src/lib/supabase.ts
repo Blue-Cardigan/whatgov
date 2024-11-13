@@ -38,7 +38,7 @@ export const signUpWithEmail = async (email: string, password: string) => {
 
 // Optimized feed query
 export async function getFeedItems(
-  pageSize: number = 5,
+  pageSize: number = 8,
   cursor?: string,
   votedOnly: boolean = false
 ): Promise<{ items: FeedItem[]; nextCursor?: string }> {
@@ -48,7 +48,72 @@ export async function getFeedItems(
     throw new Error('User not authenticated');
   }
 
-  // First, get the debate IDs that the user has voted on
+  // For voted debates, first get the voted debate IDs
+  if (votedOnly) {
+    // Get voted debate IDs first
+    const { data: votedIds, error: votesError } = await supabase
+      .from('debate_votes')
+      .select('debate_id')
+      .eq('user_id', userId);
+
+    if (votesError) throw votesError;
+    
+    if (!votedIds?.length) {
+      return { items: [], nextCursor: undefined };
+    }
+
+    // Then get the debates
+    let query = supabase
+      .from('debates')
+      .select(`
+        id,
+        ext_id,
+        title,
+        date,
+        type,
+        house,
+        location,
+        ai_title,
+        ai_summary,
+        ai_tone,
+        ai_topics,
+        ai_tags,
+        ai_key_points,
+        ai_question_1,
+        ai_question_1_topic,
+        ai_question_1_ayes,
+        ai_question_1_noes,
+        ai_question_2,
+        ai_question_2_topic,
+        ai_question_2_ayes,
+        ai_question_2_noes,
+        ai_question_3,
+        ai_question_3_topic,
+        ai_question_3_ayes,
+        ai_question_3_noes,
+        speaker_count,
+        contribution_count,
+        party_count
+      `)
+      .in('id', votedIds.map(v => v.debate_id))
+      .order('date', { ascending: false })
+      .limit(pageSize + 1);
+
+    if (cursor) {
+      query = query.lt('date', cursor);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const hasMore = data.length > pageSize;
+    const items = data.slice(0, pageSize);
+    const nextCursor = hasMore ? items[items.length - 1].date : undefined;
+
+    return { items, nextCursor };
+  }
+
+  // For non-voted debates, exclude voted ones
   const { data: votedDebates, error: votesError } = await supabase
     .from('debate_votes')
     .select('debate_id')
@@ -58,7 +123,6 @@ export async function getFeedItems(
 
   const votedDebateIds = votedDebates?.map(v => v.debate_id) || [];
 
-  // Then query the debates
   let query = supabase
     .from('debates')
     .select(`
@@ -92,18 +156,9 @@ export async function getFeedItems(
       party_count
     `);
 
-  // Modified filtering logic
-  if (votedOnly) {
-    // In "Your Votes", only show debates the user has voted on
-    if (votedDebateIds.length === 0) {
-      return { items: [], nextCursor: undefined };
-    }
-    query = query.in('id', votedDebateIds);
-  } else {
-    // In main feed, exclude debates the user has voted on
-    if (votedDebateIds.length > 0) {
-      query = query.not('id', 'in', `(${votedDebateIds.join(',')})`);
-    }
+  // Exclude voted debates
+  if (votedDebateIds.length > 0) {
+    query = query.not('id', 'in', `(${votedDebateIds.join(',')})`);
   }
 
   query = query
@@ -115,23 +170,20 @@ export async function getFeedItems(
   }
 
   const { data, error } = await query;
-
   if (error) throw error;
 
-  // Score and sort the debates
+  // Score and sort only for non-voted debates
   const scoredDebates = data.slice(0, pageSize).map(debate => ({
     debate,
     ...calculateDebateScore(debate)
   }));
 
-  // Sort by score but with some randomization to maintain variety
   const sortedDebates = scoredDebates.sort((a, b) => {
-    const randomFactor = 0.2; // 20% randomness
+    const randomFactor = 0.2;
     const random = (Math.random() * 2 - 1) * randomFactor;
     return (b.score + random) - (a.score + random);
   });
 
-  // Take the top items after scoring and extract just the debate objects
   const hasMore = data.length > pageSize;
   const items = sortedDebates.slice(0, pageSize).map(item => item.debate);
   const nextCursor = hasMore ? items[items.length - 1].date : undefined;

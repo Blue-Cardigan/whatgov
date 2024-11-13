@@ -2,12 +2,12 @@
 
 import { FeedItem, KeyPoint, PartyCount } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { CalendarIcon, Users2, MessageSquare, Building2, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarIcon, Users2, MessageSquare, Building2, ChevronDown, ChevronUp, CheckCircle2, XCircle, CircleDot, CircleSlash } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface DebateCardProps {
@@ -15,16 +15,59 @@ interface DebateCardProps {
   onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
   votes?: Map<string, Map<number, boolean>>;
   readOnly?: boolean;
+  onExpandChange?: (isExpanded: boolean) => void;
+  isExpanded?: boolean;
 }
 
-export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCardProps) {
+export function DebateCard({ 
+  debate, 
+  onVote, 
+  votes, 
+  readOnly = false,
+  onExpandChange 
+}: DebateCardProps) {
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const [expandedPoint, setExpandedPoint] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const partyCount = debate.party_count as PartyCount;
   const keyPoints = debate.ai_key_points as KeyPoint[];
+  const cardRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   
   const totalSpeakers = Object.values(partyCount || {}).reduce((sum, count) => sum + count, 0);
+
+  // Notify parent of expansion state changes
+  useEffect(() => {
+    onExpandChange?.(showKeyPoints);
+  }, [showKeyPoints, onExpandChange]);
+
+  // Handle height changes from animations
+  useEffect(() => {
+    if (!cardRef.current) return;
+    
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Let the animation complete before measuring
+      setTimeout(() => {
+        const entry = entries[0];
+        if (entry && entry.target === cardRef.current) {
+          // Force parent to remeasure
+          cardRef.current.dispatchEvent(new Event('resize'));
+        }
+      }, 300); // Adjust timing based on your animation duration
+    });
+    
+    resizeObserver.observe(cardRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Handle key point expansion
+  const handleKeyPointExpand = (index: number) => {
+    setExpandedPoint(expandedPoint === index ? null : index);
+    // Force remeasure after animation
+    setTimeout(() => {
+      cardRef.current?.dispatchEvent(new Event('resize'));
+    }, 300);
+  };
 
   // Helper function to render a question with parliamentary styling
   const renderQuestion = (num: number) => {
@@ -39,64 +82,102 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
     if (!question) return null;
     
     return (
-      <div className="space-y-2">
-        <p className="text-sm">{question}</p>
+      <div className={cn(
+        "space-y-3 p-4 rounded-lg transition-all duration-200",
+        "border-2 dark:border-1",
+        num === 1 ? "border-blue-200/50 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10" :
+        num === 2 ? "border-emerald-200/50 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-900/10" :
+        "border-amber-200/50 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10",
+        "hover:bg-background/80 dark:hover:bg-background/20"
+      )}>
+        {/* Question header */}
+        <div className="flex items-center justify-between">
+          <Badge variant="outline" className={cn(
+            "font-semibold text-xs",
+            num === 1 ? "border-blue-200 dark:border-blue-500 text-blue-700 dark:text-blue-400" :
+            num === 2 ? "border-emerald-200 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400" :
+            "border-amber-200 dark:border-amber-500 text-amber-700 dark:text-amber-400"
+          )}>
+            Question {num}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {total} votes
+          </span>
+        </div>
+        
+        <p className="text-sm font-medium">{question}</p>
         
         {/* Votes display */}
-        <div className="space-y-2">
-          {/* Proportion bar with transition */}
-          <div className="h-2 flex rounded-full overflow-hidden bg-muted">
+        <div className="space-y-3">
+          {/* Enhanced proportion bar */}
+          <div className="h-3 flex rounded-full overflow-hidden bg-muted/50 dark:bg-muted/20">
             <div 
-              className="bg-green-600 transition-all duration-300"
+              className={cn(
+                "transition-all duration-300",
+                "bg-gradient-to-r from-emerald-500/90 to-emerald-600/90",
+                "dark:from-emerald-600/90 dark:to-emerald-700/90"
+              )}
               style={{ width: `${ayePercentage}%` }}
             />
             <div 
-              className="bg-red-600 transition-all duration-300"
+              className={cn(
+                "transition-all duration-300",
+                "bg-gradient-to-r from-rose-500/90 to-rose-600/90",
+                "dark:from-rose-600/90 dark:to-rose-700/90"
+              )}
               style={{ width: `${100 - ayePercentage}%` }}
             />
           </div>
+
+          {/* Vote counts */}
+          <div className="flex justify-between text-xs">
+            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+              Ayes: {ayes}
+            </span>
+            <span className="text-rose-700 dark:text-rose-400 font-medium">
+              Noes: {noes}
+            </span>
+          </div>
           
           {/* Modified vote buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               size="sm"
               variant={votes?.get(debate.id)?.get(num) === true ? "default" : "outline"}
               disabled={readOnly || isVoting}
               className={cn(
-                "flex-1",
+                "flex-1 relative overflow-hidden",
                 votes?.get(debate.id)?.get(num) === true
-                  ? "bg-green-600 hover:bg-green-700 text-white border-0"
-                  : "border-green-600 hover:bg-green-50",
-                "font-semibold tracking-wide transition-all duration-200",
-                isVoting && "opacity-70"
+                  ? "bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-700 dark:hover:bg-emerald-800 text-white border-0"
+                  : "border-emerald-600 dark:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+                "font-semibold tracking-wide transition-all duration-200"
               )}
               onClick={() => onVote?.(debate.id, num, true)}
             >
-              <ThumbsUp className={cn(
-                "h-4 w-4 mr-2",
-                isVoting && "animate-pulse"
-              )} />
-              AYE ({ayes})
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              AYE
+              {votes?.get(debate.id)?.get(num) === true && (
+                <div className="absolute inset-0 bg-white/10 animate-pulse" />
+              )}
             </Button>
             <Button
               size="sm"
               variant={votes?.get(debate.id)?.get(num) === false ? "default" : "outline"}
               disabled={readOnly || isVoting}
               className={cn(
-                "flex-1",
+                "flex-1 relative overflow-hidden",
                 votes?.get(debate.id)?.get(num) === false
-                  ? "bg-red-600 hover:bg-red-700 text-white border-0"
-                  : "border-red-600 hover:bg-red-50",
-                "font-semibold tracking-wide transition-all duration-200",
-                isVoting && "opacity-70"
+                  ? "bg-rose-600 dark:bg-rose-700 hover:bg-rose-700 dark:hover:bg-rose-800 text-white border-0"
+                  : "border-rose-600 dark:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30",
+                "font-semibold tracking-wide transition-all duration-200"
               )}
               onClick={() => onVote?.(debate.id, num, false)}
             >
-              <ThumbsDown className={cn(
-                "h-4 w-4 mr-2",
-                isVoting && "animate-pulse"
-              )} />
-              NO ({noes})
+              <XCircle className="h-4 w-4 mr-2" />
+              NO
+              {votes?.get(debate.id)?.get(num) === false && (
+                <div className="absolute inset-0 bg-white/10 animate-pulse" />
+              )}
             </Button>
           </div>
         </div>
@@ -105,7 +186,14 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
   };
 
   return (
-    <Card className="mb-4 hover:shadow-lg transition-shadow">
+    <Card 
+      ref={cardRef} 
+      className={cn(
+        "border transition-colors duration-200",
+        "hover:bg-muted/30 dark:hover:bg-muted/5",
+        "border-border/50 dark:border-border/30"
+      )}
+    >
       <CardHeader>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <div className="flex items-center gap-1">
@@ -122,17 +210,19 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
           {debate.ai_title || debate.title}
         </CardTitle>
         
-        {/* First question right after title */}
-        <div className="mt-4">
+        {/* Move first question outside content for emphasis */}
+        <div className="mt-6">
           {renderQuestion(1)}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Split summary and add second question in between */}
-        <p className="text-muted-foreground">
-          {debate.ai_summary.split('.').slice(0, 1).join('.')}. {/* First two sentences */}
-        </p>
+      <CardContent className="space-y-6">
+        {/* Reorganize content for better flow */}
+        <div className="prose prose-sm max-w-none">
+          <p className="text-muted-foreground leading-relaxed">
+            {debate.ai_summary.split('.').slice(0, 1).join('.')}.
+          </p>
+        </div>
         
         {renderQuestion(2)}
         
@@ -214,7 +304,10 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
           </Button>
           
           {showKeyPoints && (
-            <div className="relative mt-4 animate-in slide-in-from-top-4 duration-200">
+            <div 
+              ref={contentRef}
+              className="relative mt-4 animate-in slide-in-from-top-4 duration-200"
+            >
               {/* Fade out effect at the bottom */}
               <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
               
@@ -245,19 +338,19 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
                             className="h-6 text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setExpandedPoint(expandedPoint === index ? null : index);
+                              handleKeyPointExpand(index);
                             }}
                           >
                             <div className="flex items-center gap-3">
                               {point.support.length > 0 && (
-                                <span className="flex items-center gap-1 text-green-600">
-                                  <ThumbsUp className="h-3 w-3" />
+                                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                  <CircleDot className="h-3 w-3" />
                                   {point.support.length}
                                 </span>
                               )}
                               {point.opposition.length > 0 && (
-                                <span className="flex items-center gap-1 text-red-600">
-                                  <ThumbsDown className="h-3 w-3" />
+                                <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                                  <CircleSlash className="h-3 w-3" />
                                   {point.opposition.length}
                                 </span>
                               )}
@@ -271,8 +364,8 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
                         <div className="pl-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
                           {point.support.length > 0 && (
                             <div className="text-xs">
-                              <span className="text-green-600 font-medium mb-1 flex items-center gap-1">
-                                <ThumbsUp className="h-3 w-3" /> Support
+                              <span className="text-emerald-600 font-medium mb-1 flex items-center gap-1">
+                                <CircleDot className="h-3 w-3" /> Support
                               </span>
                               <div className="pl-4 space-y-1 mt-1">
                                 {point.support.map((speaker, i) => (
@@ -285,8 +378,8 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
                           )}
                           {point.opposition.length > 0 && (
                             <div className="text-xs">
-                              <span className="text-red-600 font-medium mb-1 flex items-center gap-1">
-                                <ThumbsDown className="h-3 w-3" /> Opposition
+                              <span className="text-rose-600 font-medium mb-1 flex items-center gap-1">
+                                <CircleSlash className="h-3 w-3" /> Opposition
                               </span>
                               <div className="pl-4 space-y-1 mt-1">
                                 {point.opposition.map((speaker, i) => (

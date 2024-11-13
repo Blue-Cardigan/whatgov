@@ -13,5 +13,17 @@ export function useCache() {
     }
   };
 
-  return { getCache, CACHE_KEYS };
+  const setCache = async <T>(key: string, value: T, ttl?: number): Promise<void> => {
+    try {
+      await fetch('/api/cache', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value, ttl }),
+      });
+    } catch (error) {
+      console.error('Cache error:', error);
+    }
+  };
+
+  return { getCache, setCache, CACHE_KEYS };
 } 

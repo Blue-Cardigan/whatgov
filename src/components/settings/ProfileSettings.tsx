@@ -16,7 +16,6 @@ interface UserProfile {
   postcode: string;
   constituency: string;
   mp: string;
-  bio?: string;
 }
 
 export function ProfileSettings() {
@@ -50,7 +49,6 @@ export function ProfileSettings() {
         postcode: data.postcode || '',
         constituency: data.constituency || '',
         mp: data.mp || '',
-        bio: data.bio || ''
       });
     }
 
@@ -69,7 +67,6 @@ export function ProfileSettings() {
         .from('user_profiles')
         .update({
           name: profile.name,
-          bio: profile.bio,
           postcode: profile.postcode,
           constituency: profile.constituency,
           mp: profile.mp,
@@ -173,17 +170,6 @@ export function ProfileSettings() {
               value={profile.mp}
               onChange={(e) => setProfile({ ...profile, mp: e.target.value })}
               disabled
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Textarea
-              id="bio"
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              rows={4}
-              placeholder="Tell us a bit about yourself..."
             />
           </div>
           
