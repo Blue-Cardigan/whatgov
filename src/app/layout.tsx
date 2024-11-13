@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/nav/Sidebar";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
+import { Toaster } from "@/components/ui/toaster"
 
 export default function RootLayout({
   children,
@@ -25,6 +26,7 @@ export default function RootLayout({
             </div>
           </QueryProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

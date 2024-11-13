@@ -110,12 +110,12 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <div className="flex items-center gap-1">
             <CalendarIcon className="h-4 w-4" />
-            {format(new Date(debate.date), 'dd MMMM')}
+            {format(new Date(debate.date), 'dd MMM')}
           </div>
           <span>•</span>
           <div className="flex items-center gap-1">
             <Building2 className="h-4 w-4" />
-            {debate.location}
+            {debate.location.replace(' Chamber', '')}
           </div>
         </div>
         <CardTitle className="hover:text-primary cursor-pointer mb-4">
@@ -178,7 +178,7 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
         {renderQuestion(3)}
       </CardContent>
 
-      <CardFooter className="flex flex-col gap-4">
+      <CardFooter className="flex flex-col gap-4 px-2">
         <div className="w-full">
           <Button
             variant="ghost"

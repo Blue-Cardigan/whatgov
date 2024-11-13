@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -11,7 +10,6 @@ import {
   Users,
   Settings
 } from "lucide-react";
-import { useTopics } from '@/hooks/useTopics';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -19,7 +17,6 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
-  const { topics, isLoading, error } = useTopics();
 
   const navItems = [
     {

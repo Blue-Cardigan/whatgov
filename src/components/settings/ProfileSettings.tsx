@@ -20,7 +20,7 @@ interface UserProfile {
 }
 
 export function ProfileSettings() {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 

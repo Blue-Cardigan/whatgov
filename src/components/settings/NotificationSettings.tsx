@@ -28,7 +28,7 @@ export function NotificationSettings() {
         title: "Settings updated",
         description: "Your notification preferences have been saved.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update settings. Please try again.",
