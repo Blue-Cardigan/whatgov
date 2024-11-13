@@ -5,7 +5,7 @@ import { useFeed } from '@/hooks/useFeed';
 import { useVotes } from '@/hooks/useVotes';
 import { DebateList } from './DebateList';
 
-export function YourVotes() {
+export function DebateHistory() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed({ 
     votedOnly: true 

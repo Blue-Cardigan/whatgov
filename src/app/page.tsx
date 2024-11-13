@@ -1,5 +1,5 @@
-import { DebatesContainer } from '@/components/debates/DebatesContainer';
+import { DebateFeed } from '@/components/debates/DebateFeed';
 
 export default function DebatesPage() {
-  return <DebatesContainer />;
+  return <DebateFeed />;
 }

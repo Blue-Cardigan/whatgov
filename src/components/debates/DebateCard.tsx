@@ -110,7 +110,7 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <div className="flex items-center gap-1">
             <CalendarIcon className="h-4 w-4" />
-            {format(new Date(debate.date), 'PPP')}
+            {format(new Date(debate.date), 'dd MMMM')}
           </div>
           <span>•</span>
           <div className="flex items-center gap-1">
@@ -185,29 +185,31 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
             className="w-full flex justify-between items-center py-2 hover:bg-muted/50 transition-colors"
             onClick={() => setShowKeyPoints(!showKeyPoints)}
           >
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <Users2 className="h-4 w-4" />
-                {debate.speaker_count} speakers
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                <div className="flex items-center gap-1">
+                  <Users2 className="h-4 w-4" />
+                  {debate.speaker_count} speakers
+                </div>
+                <div className="flex items-center gap-1">
+                  <MessageSquare className="h-4 w-4" />
+                  {debate.contribution_count} contributions
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" />
-                {debate.contribution_count} contributions
+              <div className="flex items-center justify-end gap-2 ml-auto">
+                <Badge variant={
+                  debate.ai_tone === 'contentious' ? 'destructive' : 
+                  debate.ai_tone === 'collaborative' ? 'success' : 
+                  'secondary'
+                }>
+                  {debate.ai_tone}
+                </Badge>
+                {showKeyPoints ? (
+                  <ChevronUp className="h-4 w-4 transition-transform" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 transition-transform" />
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={
-                debate.ai_tone === 'contentious' ? 'destructive' : 
-                debate.ai_tone === 'collaborative' ? 'success' : 
-                'secondary'
-              }>
-                {debate.ai_tone}
-              </Badge>
-              {showKeyPoints ? (
-                <ChevronUp className="h-4 w-4 transition-transform" />
-              ) : (
-                <ChevronDown className="h-4 w-4 transition-transform" />
-              )}
             </div>
           </Button>
           
@@ -216,8 +218,8 @@ export function DebateCard({ debate, onVote, votes, readOnly = false }: DebateCa
               {/* Fade out effect at the bottom */}
               <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
               
-              {/* Scrollable container */}
-              <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent pr-4">
+              {/* Scrollable container - adjusted padding for mobile */}
+              <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-2 sm:pr-4">
                 <h4 className="text-sm font-bold mb-2">Key Points</h4>
                 {keyPoints.map((point, index) => (
                   <div 

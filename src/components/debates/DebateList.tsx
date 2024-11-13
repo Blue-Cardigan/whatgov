@@ -2,6 +2,7 @@ import { FeedItem } from '@/types';
 import { DebateCard } from './DebateCard';
 import { useVotes } from '@/hooks/useVotes';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
 
 interface DebateListProps {
   items: FeedItem[];
@@ -20,13 +21,34 @@ export function DebateList({
   const { user } = useAuth();
 
   const handleVote = async (debateId: string, questionNumber: number, vote: boolean) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to vote on debates",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       await submitVote({ debateId, questionNumber, vote });
     } catch (error) {
       console.error('Failed to submit vote:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit your vote. Please try again.",
+        variant: "destructive",
+      });
     }
   };
+
+  if (items.length === 0 && !isLoading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No debates found
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

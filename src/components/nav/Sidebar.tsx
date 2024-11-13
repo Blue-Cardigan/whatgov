@@ -9,10 +9,9 @@ import {
   Search,
   BookOpen,
   Users,
-  Tag,
-  Settings,
-  HelpCircle
+  Settings
 } from "lucide-react";
+import { useTopics } from '@/hooks/useTopics';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -20,6 +19,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
+  const { topics, isLoading, error } = useTopics();
 
   const navItems = [
     {
@@ -28,14 +28,14 @@ export function Sidebar({ className }: SidebarProps) {
       icon: Home
     },
     {
-      title: "Debates",
-      href: "/debates",
-      icon: BookOpen
-    },
-    {
       title: "Search",
       href: "/search",
       icon: Search
+    },
+    {
+      title: "History",
+      href: "/history",
+      icon: BookOpen
     },
     {
       title: "Members",
@@ -43,91 +43,52 @@ export function Sidebar({ className }: SidebarProps) {
       icon: Users
     },
     {
-      title: "Topics",
-      href: "/topics",
-      icon: Tag
-    }
-  ];
-
-  const bottomNavItems = [
-    {
       title: "Settings",
       href: "/settings",
       icon: Settings
-    },
-    {
-      title: "Help",
-      href: "/help",
-      icon: HelpCircle
     }
   ];
 
   return (
-    <div className={cn("pb-12 border-r", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-              >
-                <div
-                  className={cn(
-                    "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    pathname === item.href ? "bg-accent text-accent-foreground" : "transparent"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  {item.title}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-        
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-            Followed Topics
-          </h2>
-          <div className="space-y-1">
-            <Button variant="ghost" className="w-full justify-start">
-              <Tag className="h-4 w-4 mr-2" />
-              Healthcare
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <Tag className="h-4 w-4 mr-2" />
-              Education
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <Tag className="h-4 w-4 mr-2" />
-              Environment
-            </Button>
-          </div>
-        </div>
-
-        {/* Bottom Navigation */}
-        <div className="absolute bottom-0 left-0 right-0 border-t">
+    <>
+      {/* Desktop Sidebar */}
+      <div className={cn("border-r overflow-y-auto hidden md:block", className)}>
+        <div className="space-y-4 py-4">
           <div className="px-3 py-2">
-            {bottomNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-              >
-                <div
-                  className={cn(
+            <div className="space-y-1">
+              {navItems.map((item) => (
+                <Link key={item.href} href={item.href}>
+                  <div className={cn(
                     "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    pathname === item.href ? "bg-accent text-accent-foreground" : "transparent"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  {item.title}
-                </div>
-              </Link>
-            ))}
+                    pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
+                    "lg:w-full"
+                  )}>
+                    <item.icon className="h-5 w-5" />
+                    <span className="hidden lg:block ml-3">{item.title}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background">
+        <div className="flex justify-around py-2">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <div className={cn(
+                "flex flex-col items-center p-2",
+                pathname === item.href ? "text-primary" : "text-muted-foreground"
+              )}>
+                <item.icon className="h-5 w-5" />
+                <span className="text-xs mt-1">{item.title}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
