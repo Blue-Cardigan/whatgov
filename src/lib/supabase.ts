@@ -19,31 +19,22 @@ export async function signInWithEmail(email: string, password: string) {
   return data;
 }
 
-interface SignUpMetadata {
-  name: string;
-  gender: string;
-  postcode: string;
-  constituency: string;
-  mp: string;
-  topics: string[];
-}
-
-export async function signUpWithEmail(
-  email: string, 
-  password: string, 
-  metadata?: SignUpMetadata
-) {
+export const signUpWithEmail = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: metadata
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      // For development, automatically confirm users
+      data: {
+        email_confirmed: true
+      }
     }
   });
-  
+
   if (error) throw error;
   return data;
-}
+};
 
 // Optimized feed query
 export async function getFeedItems(

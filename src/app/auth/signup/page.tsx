@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -95,11 +94,11 @@ function insertPostcodeSpace(postcode: string): string {
 const UK_POSTCODE_REGEX = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+//   const [email, setEmail] = useState("");
+//   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+  const { signUp: signUpWithAuth } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState(1);
@@ -196,7 +195,7 @@ export default function SignUp() {
         } else {
           setPostcodeError("Postcode not found");
         }
-      } catch (_) {
+      } catch {
         setPostcodeError("Could not find MP for this postcode");
       } finally {
         setIsLookingUpPostcode(false);
@@ -241,16 +240,19 @@ export default function SignUp() {
         id => TOPICS.find(t => t.id === id)?.label ?? ""
       );
 
-      await signUp(formData.email, formData.password, {
+      await signUpWithAuth(formData.email, formData.password, {
         name: formData.name,
         gender: formData.gender,
         postcode: formData.postcode,
         constituency: mpDetails?.constituency || "",
         mp: mpDetails?.mp || "",
-        topics: topicLabels, // Send labels to the API
+        topics: topicLabels,
       });
-      router.push("/");
+
+      // Redirect after successful signup
+      router.push("/auth/verify");
     } catch (err) {
+      console.error('Signup error:', err);
       setError(err instanceof Error ? err.message : "Failed to sign up");
     } finally {
       setLoading(false);
@@ -268,7 +270,7 @@ export default function SignUp() {
             className="space-y-6"
           >
             <div>
-              <h2 className="text-3xl font-semibold mb-3">Welcome! Let's get started</h2>
+              <h2 className="text-3xl font-semibold mb-3">Welcome! Let&apos;s get started</h2>
               <p className="text-muted-foreground mb-6 text-lg">
                 First, what should we call you?
               </p>
@@ -297,7 +299,7 @@ export default function SignUp() {
             className="space-y-6"
           >
             <div>
-              <h2 className="text-3xl font-semibold mb-3">What's your email?</h2>
+              <h2 className="text-3xl font-semibold mb-3">What&apos;s your email?</h2>
               <p className="text-muted-foreground mb-6 text-lg">
                 We&apos;ll use this to sign you in
               </p>
