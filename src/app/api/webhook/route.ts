@@ -81,7 +81,6 @@ export async function POST(req: Request) {
         });
         
         const subscriptionData = {
-          id: session.subscription,
           user_id: session.client_reference_id,
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
