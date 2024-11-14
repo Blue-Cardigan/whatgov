@@ -4,8 +4,6 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from '@/lib/supabase-client';
 import { toast } from "@/hooks/use-toast";
 import {
   Search,

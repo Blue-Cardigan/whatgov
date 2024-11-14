@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from '@/lib/supabase-client';
+import type { Database } from '@/types/supabase'
 
 interface VotingStats {
   totalVotes: number;
@@ -38,7 +39,7 @@ interface VoteHistoryEntry {
   vote: boolean;
   created_at: string;
   debates: {
-    ai_topics: Record<string, any>;
+    ai_topics: string[];
   } | null;
 }
 
@@ -79,11 +80,11 @@ export function UserVoteHistory() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return (data as any[]).map(entry => ({
-        vote: entry.vote,
-        created_at: entry.created_at,
-        debates: entry.debates || null
-      })) as VoteHistoryEntry[];
+      return data as Array<{
+        vote: boolean;
+        created_at: string;
+        debates: Database['public']['Tables']['debates']['Row'] | null;
+      }>;
     },
     enabled: !!user,
   });
@@ -93,8 +94,8 @@ export function UserVoteHistory() {
     totalVotes: votingHistory.length,
     ayeVotes: votingHistory.filter(v => v.vote).length,
     noVotes: votingHistory.filter(v => !v.vote).length,
-    topicStats: calculateTopicStats(votingHistory, userProfile?.selected_topics || []),
-    weeklyStats: calculateWeeklyStats(votingHistory),
+    topicStats: calculateTopicStats(votingHistory as VoteHistoryEntry[], userProfile?.selected_topics || []),
+    weeklyStats: calculateWeeklyStats(votingHistory as VoteHistoryEntry[]),
   } : undefined;
 
   if (!user) {

@@ -1,8 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/supabase'
 
-async function checkSubscriptionStatus(supabase: any, userId: string) {
+async function checkSubscriptionStatus(
+  supabase: SupabaseClient<Database>,
+  userId: string
+) {
   try {
     const { data: subscription, error } = await supabase
       .from('subscriptions')

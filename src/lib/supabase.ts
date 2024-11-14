@@ -96,7 +96,7 @@ export const signInWithEmail = async (email: string, password: string): Promise<
       user: data.user,
       session: data.session
     };
-  } catch (error) {
+  } catch {
     return {
       user: null,
       session: null,

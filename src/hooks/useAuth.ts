@@ -107,7 +107,7 @@ export function useAuth() {
 
       setUser(response.user);
       return response;
-    } catch (error) {
+    } catch {
       setAuthError('An unexpected error occurred');
       setUser(null);
       return null;
@@ -140,7 +140,7 @@ export function useAuth() {
 
       setUser(response.user);
       return response;
-    } catch (error) {
+    } catch {
       setAuthError('An unexpected error occurred during sign up');
       setUser(null);
       return null;

@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { PLANS } from '@/lib/stripe-client';
 import Stripe from 'stripe';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase'
 
 type CheckoutResponse = {
   url: string | null;
@@ -11,7 +13,7 @@ type CheckoutResponse = {
   error?: string;
 };
 
-async function checkExistingSubscription(supabase: any, userId: string) {
+async function checkExistingSubscription(supabase: SupabaseClient<Database>, userId: string) {
   try {
     const { data: subscription, error } = await supabase
       .from('subscriptions')
