@@ -23,7 +23,7 @@ export function useVotes() {
 
   const { mutate: submitVoteMutation } = useMutation({
     mutationFn: submitVote,
-    onMutate: async ({ debateId, questionNumber, vote }) => {
+    onMutate: async ({ debate_id, question_number, vote }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['votes', visibleDebateIds] });
       await queryClient.cancelQueries({ 
@@ -36,12 +36,12 @@ export function useVotes() {
 
       // Update votes optimistically
       const newVotes = new Map(votes);
-      if (!newVotes.has(debateId)) {
-        newVotes.set(debateId, new Map());
+      if (!newVotes.has(debate_id)) {
+        newVotes.set(debate_id, new Map());
       }
-      const debateVotes = newVotes.get(debateId)!;
-      const previousVote = debateVotes.get(questionNumber);
-      debateVotes.set(questionNumber, vote);
+      const debateVotes = newVotes.get(debate_id)!;
+      const previousVote = debateVotes.get(question_number);
+      debateVotes.set(question_number, vote);
       
       queryClient.setQueryData(['votes', visibleDebateIds], newVotes);
 
@@ -56,10 +56,10 @@ export function useVotes() {
           pages: old.pages.map((page) => ({
             ...page,
             items: page.items.map((item) => {
-              if (item.id !== debateId) return item;
+              if (item.id !== debate_id) return item;
               
-              const ayesKey = `ai_question_${questionNumber}_ayes` as keyof FeedItem;
-              const noesKey = `ai_question_${questionNumber}_noes` as keyof FeedItem;
+              const ayesKey = `ai_question_${question_number}_ayes` as keyof FeedItem;
+              const noesKey = `ai_question_${question_number}_noes` as keyof FeedItem;
               
               return {
                 ...item,

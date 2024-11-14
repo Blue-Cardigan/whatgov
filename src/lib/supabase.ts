@@ -6,6 +6,7 @@ export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+
 export type AuthError = {
   message: string;
 }
@@ -36,25 +37,37 @@ export const signUpWithEmail = async (email: string, password: string) => {
   return data;
 };
 
+// Type for database response
+type DbResponse<T> = {
+  data: T | null;
+  error: any;
+}
+
+// Type for debate vote record
+interface DebateVote {
+  debate_id: string;
+  question_number: number;
+  vote: boolean;
+}
+
 // Optimized feed query
 export async function getFeedItems(
   pageSize: number = 8,
   cursor?: string,
-  votedOnly: boolean = false
+  votedOnly: boolean = false,
+  userTopics: string[] = []
 ): Promise<{ items: FeedItem[]; nextCursor?: string }> {
-  const userId = (await supabase.auth.getUser()).data.user?.id;
-  
-  if (!userId) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.id) {
     throw new Error('User not authenticated');
   }
 
-  // For voted debates, first get the voted debate IDs
   if (votedOnly) {
-    // Get voted debate IDs first
     const { data: votedIds, error: votesError } = await supabase
       .from('debate_votes')
       .select('debate_id')
-      .eq('user_id', userId);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }) as DbResponse<{ debate_id: string }[]>;
 
     if (votesError) throw votesError;
     
@@ -62,49 +75,15 @@ export async function getFeedItems(
       return { items: [], nextCursor: undefined };
     }
 
-    // Then get the debates
-    let query = supabase
-      .from('debates')
-      .select(`
-        id,
-        ext_id,
-        title,
-        date,
-        type,
-        house,
-        location,
-        ai_title,
-        ai_summary,
-        ai_tone,
-        ai_topics,
-        ai_tags,
-        ai_key_points,
-        ai_question_1,
-        ai_question_1_topic,
-        ai_question_1_ayes,
-        ai_question_1_noes,
-        ai_question_2,
-        ai_question_2_topic,
-        ai_question_2_ayes,
-        ai_question_2_noes,
-        ai_question_3,
-        ai_question_3_topic,
-        ai_question_3_ayes,
-        ai_question_3_noes,
-        speaker_count,
-        contribution_count,
-        party_count
-      `)
-      .in('id', votedIds.map(v => v.debate_id))
-      .order('date', { ascending: false })
-      .limit(pageSize + 1);
+    const { data, error } = await supabase
+      .rpc('get_debates_with_engagement', {
+        p_debate_ids: votedIds.map(v => v.debate_id),
+        p_limit: pageSize + 1,
+        p_cursor: cursor || null
+      }) as DbResponse<FeedItem[]>;
 
-    if (cursor) {
-      query = query.lt('date', cursor);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
+    if (!data) return { items: [], nextCursor: undefined };
 
     const hasMore = data.length > pageSize;
     const items = data.slice(0, pageSize);
@@ -113,99 +92,57 @@ export async function getFeedItems(
     return { items, nextCursor };
   }
 
-  // For non-voted debates, exclude voted ones
+  // For non-voted debates
   const { data: votedDebates, error: votesError } = await supabase
     .from('debate_votes')
     .select('debate_id')
-    .eq('user_id', userId);
+    .eq('user_id', user.id) as DbResponse<{ debate_id: string }[]>;
 
   if (votesError) throw votesError;
 
   const votedDebateIds = votedDebates?.map(v => v.debate_id) || [];
 
-  let query = supabase
-    .from('debates')
-    .select(`
-      id,
-      ext_id,
-      title,
-      date,
-      type,
-      house,
-      location,
-      ai_title,
-      ai_summary,
-      ai_tone,
-      ai_topics,
-      ai_tags,
-      ai_key_points,
-      ai_question_1,
-      ai_question_1_topic,
-      ai_question_1_ayes,
-      ai_question_1_noes,
-      ai_question_2,
-      ai_question_2_topic,
-      ai_question_2_ayes,
-      ai_question_2_noes,
-      ai_question_3,
-      ai_question_3_topic,
-      ai_question_3_ayes,
-      ai_question_3_noes,
-      speaker_count,
-      contribution_count,
-      party_count
-    `);
+  const { data, error } = await supabase
+    .rpc('get_unvoted_debates_with_engagement', {
+      p_user_id: user.id,
+      p_limit: pageSize * 2,
+      p_cursor: cursor || null
+    }) as DbResponse<FeedItem[]>;
 
-  // Exclude voted debates
-  if (votedDebateIds.length > 0) {
-    query = query.not('id', 'in', `(${votedDebateIds.join(',')})`);
-  }
-
-  query = query
-    .order('date', { ascending: false })
-    .limit(pageSize + 1);
-
-  if (cursor) {
-    query = query.lt('date', cursor);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
+  if (!data) return { items: [], nextCursor: undefined };
 
-  // Score and sort only for non-voted debates
-  const scoredDebates = data.slice(0, pageSize).map(debate => ({
+  // Calculate final scores and sort
+  const scoredDebates = data.map(debate => ({
     debate,
-    ...calculateDebateScore(debate)
+    finalScore: calculateFinalScore(
+      debate.interest_score,
+      userTopics,
+      Object.keys(debate.ai_topics),
+      debate.engagement_count
+    ) + ((Math.random() * 0.2) - 0.1) // Add random factor (-0.1 to 0.1)
   }));
 
-  const sortedDebates = scoredDebates.sort((a, b) => {
-    const randomFactor = 0.2;
-    const random = (Math.random() * 2 - 1) * randomFactor;
-    return (b.score + random) - (a.score + random);
-  });
+  // Sort by final score
+  const sortedDebates = scoredDebates
+    .sort((a, b) => b.finalScore - a.finalScore)
+    .slice(0, pageSize + 1);
 
-  const hasMore = data.length > pageSize;
+  const hasMore = sortedDebates.length > pageSize;
   const items = sortedDebates.slice(0, pageSize).map(item => item.debate);
   const nextCursor = hasMore ? items[items.length - 1].date : undefined;
 
   return { items, nextCursor };
 }
 
-interface VoteData {
-  debateId: string;
-  questionNumber: number;
-  vote: boolean; // true for aye, false for no
-}
-
 export async function getUserVotes(debateIds: string[]) {
   const { data: votes, error } = await supabase
     .from('debate_votes')
     .select('debate_id, question_number, vote')
-    .in('debate_id', debateIds);
+    .in('debate_id', debateIds) as DbResponse<DebateVote[]>;
 
   if (error) throw error;
   
-  // Transform into a more useful format
   const voteMap = new Map<string, Map<number, boolean>>();
   votes?.forEach(vote => {
     if (!voteMap.has(vote.debate_id)) {
@@ -217,11 +154,11 @@ export async function getUserVotes(debateIds: string[]) {
   return voteMap;
 }
 
-export async function submitVote({ debateId, questionNumber, vote }: VoteData) {
+export async function submitVote({ debate_id, question_number, vote }: DebateVote) {
   // Start a transaction to update both the vote record and the count
   const { data, error } = await supabase.rpc('submit_debate_vote', {
-    p_debate_id: debateId,
-    p_question_number: questionNumber,
+    p_debate_id: debate_id,
+    p_question_number: question_number,
     p_vote: vote
   });
 
@@ -239,81 +176,6 @@ interface DebateScore {
     participation: number; // Based on speakers and contributions
     diversity: number;    // Based on party count
     discussion: number;   // Based on key points support/opposition
-  };
-}
-
-// Add this function to calculate debate scores
-function calculateDebateScore(debate: FeedItem): DebateScore {
-  const factors = {
-    engagement: 0,
-    controversy: 0,
-    participation: 0,
-    diversity: 0,
-    discussion: 0
-  };
-
-  // Calculate engagement score from question responses
-  const questionVotes = [1, 2, 3].map(num => {
-    const ayes = debate[`ai_question_${num}_ayes` as keyof FeedItem] as number || 0;
-    const noes = debate[`ai_question_${num}_noes` as keyof FeedItem] as number || 0;
-    return { ayes, noes, total: ayes + noes };
-  });
-  
-  factors.engagement = questionVotes.reduce((sum, { total }) => sum + total, 0) / 3;
-
-  // Calculate controversy score
-  factors.controversy = (
-    (debate.ai_tone === 'contentious' ? 1 : 
-     debate.ai_tone === 'collaborative' ? 0.3 : 
-     0.6) +
-    questionVotes.reduce((sum, { ayes, noes, total }) => {
-      if (total === 0) return sum;
-      const split = Math.min(ayes, noes) / Math.max(ayes, noes);
-      return sum + split;
-    }, 0) / 3
-  ) / 2;
-
-  // Calculate participation score
-  factors.participation = (
-    Math.min(debate.speaker_count / 20, 1) * 0.4 +
-    Math.min(debate.contribution_count / 50, 1) * 0.6
-  );
-
-  // Calculate party diversity score
-  const partyCount = debate.party_count as Record<string, number>;
-  const parties = Object.keys(partyCount).length;
-  const partyDistribution = Object.values(partyCount).reduce((sum, count) => {
-    const proportion = count / debate.speaker_count;
-    return sum - (proportion * Math.log2(proportion)); // Shannon entropy
-  }, 0);
-  factors.diversity = Math.min(
-    (parties / 6) * 0.4 + (partyDistribution / 2) * 0.6,
-    1
-  );
-
-  // Calculate discussion quality score
-  const keyPoints = debate.ai_key_points as Array<{
-    support: string[];
-    opposition: string[];
-  }>;
-  const pointsWithInteraction = keyPoints?.filter(
-    point => point.support.length + point.opposition.length > 0
-  ).length || 0;
-  factors.discussion = Math.min(pointsWithInteraction / 5, 1);
-
-  // Calculate final score with weights
-  const score = (
-    factors.engagement * 0.25 +
-    factors.controversy * 0.2 +
-    factors.participation * 0.2 +
-    factors.diversity * 0.2 +
-    factors.discussion * 0.15
-  );
-
-  return {
-    id: debate.id,
-    score,
-    factors
   };
 }
 
@@ -336,4 +198,29 @@ export async function lookupPostcode(postcode: string) {
   }
   
   return data;
+}
+
+function calculateFinalScore(
+  baseScore: number, 
+  userTopics: string[],
+  debateTopics: string[],
+  engagement: number
+): number {
+  // Topic match bonus (0.1 per matching topic, max 0.3)
+  const matchingTopics = debateTopics.filter(topic => 
+    userTopics.includes(topic)
+  ).length;
+  const topicBonus = Math.min(matchingTopics * 0.1, 0.3);
+
+  // Engagement bonus (normalized to 0-0.2)
+  const engagementBonus = Math.min(engagement / 100, 0.2);
+
+  // Calculate weighted score
+  const finalScore = (
+    baseScore * 0.5 +          // Base interest score (50%)
+    topicBonus * 0.3 +         // Topic matching (30%)
+    engagementBonus * 0.2      // Engagement level (20%)
+  );
+
+  return finalScore;
 }

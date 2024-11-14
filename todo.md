@@ -1,25 +1,28 @@
-YourVotes as 'Voting record & analysis' with dedicated UI
-- Change votes made in last 24h
+My Parliament
+- 'Voting record & analysis'
+-- Can edit up to 24h of votes
+- My MP
 
-Proper redis implementation
-
-Profile creation
+Free Features
+- Feed and votes
+- Basic voting record view
+- Basic search
+- Parliamentary schedule
+- View debate key points
 
 Premium Features
-- View your voting record & analysis
-- Basic Hansard Search
-- Analysis with coverage
-- MP activity
-- Upcoming Schedule & Relevant Docs
+- View Your MP's activity
+- View your voting analytics
+- Read rewritten debates
 
 Researcher Features
 - AI Research Assistant
+- Analysis with coverage
 - Advanced Hansard search
-- Basic member analytics
-- Automated report writing
-- Subscribe to searches
+- Subscribe to Hansard searches
+- Access parliamentary documents
 
 Organization Features
-- View constituency trends
-- Suggestions for 
-- 
+- View constituency voting trends
+- Generate reports for your team
+- Share research

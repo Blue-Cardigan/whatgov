@@ -189,9 +189,12 @@ export function DebateCard({
     <Card 
       ref={cardRef} 
       className={cn(
-        "border transition-colors duration-200",
+        "transition-colors duration-200",
         "hover:bg-muted/30 dark:hover:bg-muted/5",
-        "border-border/50 dark:border-border/30"
+        "border-x-0",
+        "border-t-0",
+        "border-b border-border/50 dark:border-border/30",
+        "rounded-none"
       )}
     >
       <CardHeader>

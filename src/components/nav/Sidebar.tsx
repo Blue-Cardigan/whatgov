@@ -4,6 +4,9 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { toast } from "@/hooks/use-toast";
 import {
   Home,
   Search,
@@ -14,7 +17,9 @@ import {
   LogOut,
   LogIn,
   Menu,
-  UserPlus
+  UserPlus,
+  Crown,
+  ScrollText
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +37,48 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
+
+  // Fetch user's premium status
+  const { data: userProfile } = useQuery({
+    queryKey: ['userProfile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('is_premium')
+        .eq('id', user?.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const handlePremiumNavigation = (e: React.MouseEvent, href: string) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to access this feature",
+        variant: "destructive",
+      });
+      router.push('/auth/signin');
+      return;
+    }
+
+    if (!userProfile?.is_premium) {
+      toast({
+        title: "Premium feature",
+        description: "Upgrade to access research tools",
+        variant: "destructive",
+      });
+      router.push('/pricing');
+      return;
+    }
+
+    router.push(href);
+  };
 
   const handleSignOut = async () => {
     try {
@@ -88,9 +135,9 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     {
-      title: "Home",
+      title: "Feed",
       href: "/",
-      icon: Home
+      icon: ScrollText
     },
     {
       title: "Search",
@@ -98,14 +145,15 @@ export function Sidebar({ className }: SidebarProps) {
       icon: Search
     },
     {
-      title: "Your Votes",
-      href: "/votehistory",
+      title: "My Parliament",
+      href: "/myparliament",
       icon: BookOpen
     },
     {
-      title: "Members",
-      href: "/members",
-      icon: Users
+      title: "Research",
+      href: "/research",
+      icon: Users,
+      isPremium: true,
     }
   ];
 
@@ -132,14 +180,24 @@ export function Sidebar({ className }: SidebarProps) {
 
               {/* Nav Items */}
               {navItems.map((item) => (
-                <Link key={item.href} href={item.href}>
+                <Link 
+                  key={item.href} 
+                  href={item.href}
+                  onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
+                >
                   <div className={cn(
                     "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
                     pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-                    "lg:w-full"
+                    "lg:w-full",
+                    item.isPremium && !userProfile?.is_premium && "opacity-75"
                   )}>
                     <item.icon className="h-5 w-5" />
-                    <span className="hidden lg:block ml-3">{item.title}</span>
+                    <span className="hidden lg:block ml-3">
+                      {item.title}
+                      {item.isPremium && !userProfile?.is_premium && (
+                        <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+                      )}
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -168,13 +226,23 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-50">
         <div className="flex justify-around py-2">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link 
+              key={item.href} 
+              href={item.href}
+              onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
+            >
               <div className={cn(
                 "flex flex-col items-center p-2",
-                pathname === item.href ? "text-primary" : "text-muted-foreground"
+                pathname === item.href ? "text-primary" : "text-muted-foreground",
+                item.isPremium && !userProfile?.is_premium && "opacity-75"
               )}>
                 <item.icon className="h-5 w-5" />
-                <span className="text-xs mt-1">{item.title}</span>
+                <span className="text-xs mt-1">
+                  {item.title}
+                  {item.isPremium && !userProfile?.is_premium && (
+                    <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+                  )}
+                </span>
               </div>
             </Link>
           ))}

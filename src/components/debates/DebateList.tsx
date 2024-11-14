@@ -4,7 +4,7 @@ import { useVotes } from '@/hooks/useVotes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 
 interface DebateListProps {
   items: FeedItem[];
@@ -36,51 +36,107 @@ export function DebateList({
   // Track which cards have key points expanded
   const expandedStatesRef = useRef(new Map<string, boolean>());
 
-  // Setup ResizeObserver
-  useEffect(() => {
-    resizeObserverRef.current = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const element = entry.target;
-        const index = Number(element.getAttribute('data-index'));
-        if (!isNaN(index) && items[index]) {
-          const height = entry.borderBoxSize[0]?.blockSize || entry.contentRect.height;
-          heightsRef.current.set(items[index].id, height);
-          virtualizer.measure(); // Trigger a re-measure of all visible items
-        }
-      }
-    });
+  // 1. Add memoized measurement cache
+  const measurementCache = useRef<{
+    compact: Map<string, number>;
+    expanded: Map<string, number>;
+  }>({
+    compact: new Map(),
+    expanded: new Map()
+  });
 
-    return () => {
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect();
-      }
-    };
+  // 2. Improve size estimation logic
+  const estimateSize = useCallback((index: number) => {
+    const item = items[index];
+    const isExpanded = expandedStatesRef.current.get(item.id);
+    
+    // Return cached measurement based on expansion state
+    if (isExpanded && measurementCache.current.expanded.has(item.id)) {
+      return measurementCache.current.expanded.get(item.id)!;
+    } else if (!isExpanded && measurementCache.current.compact.has(item.id)) {
+      return measurementCache.current.compact.get(item.id)!;
+    }
+
+    // Estimate based on content
+    const baseHeight = 250; // Base card height
+    const questionsHeight = (item.ai_question_1 ? 150 : 0) + 
+                          (item.ai_question_2 ? 150 : 0) + 
+                          (item.ai_question_3 ? 150 : 0);
+    
+    return isExpanded ? baseHeight + questionsHeight + 300 : baseHeight + questionsHeight;
   }, [items]);
 
-  // Observe new elements as they're virtualized
-  const observeElement = useCallback((element: HTMLElement | null) => {
-    if (element && resizeObserverRef.current) {
-      resizeObserverRef.current.observe(element);
-      return () => {
-        if (resizeObserverRef.current) {
-          resizeObserverRef.current.unobserve(element);
-        }
-      };
-    }
+  // Add state for window height
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  // Set scroll margin after component mounts
+  useEffect(() => {
+    setScrollMargin(window.innerHeight * 0.1);
   }, []);
 
+  // 4. Optimized virtualizer configuration
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: useCallback((index) => {
-      const item = items[index];
-      // Return cached height or base estimate
-      return heightsRef.current.get(item.id) || 600;
-    }, [items]),
-    overscan: 5,
-    paddingStart: 16, // Account for top padding
-    paddingEnd: 16,   // Account for bottom padding
+    estimateSize,
+    overscan: 3,
+    paddingStart: 0,
+    paddingEnd: 0,
+    scrollMargin,
+    measureElement: useCallback((element: HTMLElement) => {
+      const height = element.getBoundingClientRect().height;
+      const debateId = element.getAttribute('data-debate-id');
+      const isExpanded = debateId ? expandedStatesRef.current.get(debateId) : false;
+      
+      if (debateId) {
+        if (isExpanded) {
+          measurementCache.current.expanded.set(debateId, height);
+        } else {
+          measurementCache.current.compact.set(debateId, height);
+        }
+      }
+      
+      return height;
+    }, [])
   });
+
+  // 3. Improved ResizeObserver setup
+  useEffect(() => {
+    const observer = new ResizeObserver((entries) => {
+      let needsRemeasure = false;
+
+      entries.forEach(entry => {
+        const element = entry.target as HTMLElement;
+        const index = Number(element.getAttribute('data-index'));
+        const debateId = element.getAttribute('data-debate-id');
+        
+        if (!isNaN(index) && debateId && items[index]) {
+          const height = entry.borderBoxSize[0]?.blockSize || entry.contentRect.height;
+          const isExpanded = expandedStatesRef.current.get(debateId);
+          
+          // Store in appropriate cache
+          if (isExpanded) {
+            if (measurementCache.current.expanded.get(debateId) !== height) {
+              measurementCache.current.expanded.set(debateId, height);
+              needsRemeasure = true;
+            }
+          } else {
+            if (measurementCache.current.compact.get(debateId) !== height) {
+              measurementCache.current.compact.set(debateId, height);
+              needsRemeasure = true;
+            }
+          }
+        }
+      });
+
+      if (needsRemeasure) {
+        virtualizer.measure();
+      }
+    });
+
+    resizeObserverRef.current = observer;
+    return () => observer.disconnect();
+  }, [items, virtualizer]);
 
   // Handle expanded state changes
   const handleExpandChange = useCallback((debateId: string, isExpanded: boolean) => {
@@ -105,7 +161,7 @@ export function DebateList({
       onVote(debateId, questionNumber, vote);
     } else {
       try {
-        await submitVote({ debateId, questionNumber, vote });
+        await submitVote({ debate_id: debateId, question_number: questionNumber, vote });
       } catch (error) {
         console.error('Failed to submit vote:', error);
         toast({
@@ -136,9 +192,9 @@ export function DebateList({
   return (
     <div 
       ref={parentRef} 
-      className="h-[800px] overflow-auto"
+      className="w-full"
       style={{
-        marginRight: 'calc(-1 * (100vw - 100%))'
+        minHeight: '100vh'
       }}
     >
       <div
@@ -155,17 +211,13 @@ export function DebateList({
               key={virtualRow.key}
               data-index={virtualRow.index}
               data-debate-id={debate.id}
-              ref={observeElement}
+              ref={virtualizer.measureElement}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: '100%',
                 transform: `translateY(${virtualRow.start}px)`,
-                paddingLeft: '1rem',
-                paddingRight: '1rem',
-                paddingTop: '0.5rem',
-                paddingBottom: '0.5rem',
               }}
             >
               <DebateCard

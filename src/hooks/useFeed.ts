@@ -6,13 +6,18 @@ import { toast } from 'react-hot-toast';
 interface UseFeedOptions {
   votedOnly?: boolean;
   pageSize?: number;
+  userTopics?: string[];
 }
 
-export function useFeed({ votedOnly = false, pageSize = 8 }: UseFeedOptions = {}) {
+export function useFeed({ 
+  votedOnly = false, 
+  pageSize = 8,
+  userTopics = [] 
+}: UseFeedOptions = {}) {
   const { getCache, setCache, CACHE_KEYS } = useCache();
 
   return useInfiniteQuery({
-    queryKey: ['feed', { votedOnly, pageSize }],
+    queryKey: ['feed', { votedOnly, pageSize, userTopics }],
     queryFn: async ({ pageParam = null }) => {
       const cacheKey = CACHE_KEYS.debates.key(`${votedOnly}:${pageSize}:${pageParam || 'initial'}`);
       
@@ -21,13 +26,13 @@ export function useFeed({ votedOnly = false, pageSize = 8 }: UseFeedOptions = {}
       
       const cached = await getCache<ReturnType<typeof getFeedItems>>(versionedKey);
       if (cached) {
-        getFeedItems(pageSize, pageParam, votedOnly)
+        getFeedItems(pageSize, pageParam, votedOnly, userTopics)
           .then(fresh => setCache(versionedKey, fresh, CACHE_KEYS.debates.ttl))
           .catch(console.error);
         return cached;
       }
 
-      const data = await getFeedItems(pageSize, pageParam, votedOnly);
+      const data = await getFeedItems(pageSize, pageParam, votedOnly, userTopics);
       await setCache(cacheKey, data, CACHE_KEYS.debates.ttl);
       
       return data;

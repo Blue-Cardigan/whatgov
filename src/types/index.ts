@@ -9,9 +9,14 @@ export interface FeedItem {
     ai_tone: 'neutral' | 'contentious' | 'collaborative';
     ai_tags: string[];
     ai_key_points: KeyPoint[];
+    ai_topics: AiTopics;
     speaker_count: number;
     contribution_count: number;
     party_count: PartyCount;
+
+    interest_score: number;
+    interest_factors: InterestFactors;
+    engagement_count: number;
 
     ai_question_1: string;
     ai_question_1_topic: string;
@@ -36,4 +41,19 @@ export interface KeyPoint {
   speaker: string;
   support: string[];
   opposition: string[];
+}
+
+export interface InterestFactors {
+  diversity: number;
+  discussion: number;
+  controversy: number;
+  participation: number;
+}
+
+export interface AiTopics {
+    [key: string]: {
+        speakers: string[];
+        frequency: number;
+        subtopics: string[];
+    }
 }
