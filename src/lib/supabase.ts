@@ -1,27 +1,34 @@
-import { createClient } from '@supabase/supabase-js'
-import { FeedItem } from '@/types'
-
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
+import { supabaseClient } from './supabase-client'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount } from '@/types'
 
 export type AuthError = {
   message: string;
 }
 
 export async function signInWithEmail(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) throw error;
+
+    // Verify user exists
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Failed to verify user');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Sign in error:', error);
+    throw error;
+  }
 }
 
 export const signUpWithEmail = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
@@ -37,19 +44,6 @@ export const signUpWithEmail = async (email: string, password: string) => {
   return data;
 };
 
-// Type for database response
-type DbResponse<T> = {
-  data: T | null;
-  error: any;
-}
-
-// Type for debate vote record
-interface DebateVote {
-  debate_id: string;
-  question_number: number;
-  vote: boolean;
-}
-
 // Optimized feed query
 export async function getFeedItems(
   pageSize: number = 8,
@@ -57,89 +51,115 @@ export async function getFeedItems(
   votedOnly: boolean = false,
   userTopics: string[] = []
 ): Promise<{ items: FeedItem[]; nextCursor?: string }> {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user?.id) {
-    throw new Error('User not authenticated');
-  }
-
-  if (votedOnly) {
-    const { data: votedIds, error: votesError } = await supabase
-      .from('debate_votes')
-      .select('debate_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }) as DbResponse<{ debate_id: string }[]>;
-
-    if (votesError) throw votesError;
+  try {
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
-    if (!votedIds?.length) {
-      return { items: [], nextCursor: undefined };
+    if (userError) throw userError;
+    if (votedOnly && !user) {
+      throw new Error('Authentication required for voted items');
     }
 
-    const { data, error } = await supabase
-      .rpc('get_debates_with_engagement', {
-        p_debate_ids: votedIds.map(v => v.debate_id),
-        p_limit: pageSize + 1,
-        p_cursor: cursor || null
-      }) as DbResponse<FeedItem[]>;
+    // Only include cursor parameter if it's a non-empty string
+    const params = votedOnly 
+      ? {
+          p_user_id: user!.id,
+          p_limit: pageSize + 1,
+          ...(cursor ? { p_cursor: cursor } : {})
+        }
+      : {
+          p_limit: pageSize + 1,
+          ...(cursor ? { p_cursor: cursor } : {})
+        };
+
+    const { data: debates, error } = votedOnly 
+      ? await supabaseClient.rpc('get_unvoted_debates_with_engagement', params as { p_user_id: string; p_limit: number; p_cursor: string })
+      : await supabaseClient.rpc('get_debates_with_engagement', params as { p_debate_ids: string[]; p_limit: number; p_cursor: string });
 
     if (error) throw error;
-    if (!data) return { items: [], nextCursor: undefined };
 
-    const hasMore = data.length > pageSize;
-    const items = data.slice(0, pageSize);
-    const nextCursor = hasMore ? items[items.length - 1].date : undefined;
+    // Handle pagination
+    const hasMore = debates && debates.length > pageSize;
+    const items = hasMore ? debates.slice(0, -1) : (debates || []);
+    const nextCursor = hasMore ? items[items.length - 1].id : undefined;
 
-    return { items, nextCursor };
+    // Transform database items to FeedItems with proper type casting
+    const processedItems: FeedItem[] = items.map((debate) => {
+      // Safely cast complex JSON types
+      const keyPoints = Array.isArray(debate.ai_key_points) 
+        ? (debate.ai_key_points as unknown as KeyPoint[]) 
+        : [];
+
+      const interestFactors = typeof debate.interest_factors === 'object' && debate.interest_factors
+        ? (debate.interest_factors as unknown as InterestFactors)
+        : {
+            diversity: 0,
+            discussion: 0,
+            controversy: 0,
+            participation: 0
+          };
+
+      const aiTopics = typeof debate.ai_topics === 'object' && debate.ai_topics
+        ? (debate.ai_topics as unknown as AiTopics)
+        : {};
+
+      const partyCount = typeof debate.party_count === 'object' && debate.party_count
+        ? (debate.party_count as unknown as PartyCount)
+        : {};
+
+      return {
+        id: debate.id,
+        ext_id: debate.id,
+        title: debate.title,
+        date: debate.date,
+        location: debate.location,
+        ai_title: debate.ai_title || '',
+        ai_summary: debate.ai_summary || '',
+        ai_tone: (debate.ai_tone as 'neutral' | 'contentious' | 'collaborative') || 'neutral',
+        ai_tags: Array.isArray(debate.ai_tags) ? debate.ai_tags as string[] : [],
+        ai_key_points: keyPoints,
+        ai_topics: aiTopics,
+        speaker_count: debate.speaker_count || 0,
+        contribution_count: debate.contribution_count || 0,
+        party_count: partyCount,
+        interest_score: calculateFinalScore(
+          debate.interest_score || 0,
+          userTopics,
+          debate.ai_topics ? Object.keys(aiTopics) : [],
+          debate.engagement_count || 0
+        ),
+        interest_factors: interestFactors,
+        engagement_count: debate.engagement_count || 0,
+        ai_question_1: debate.ai_question_1 || '',
+        ai_question_1_topic: debate.ai_question_1_topic || '',
+        ai_question_1_ayes: debate.ai_question_1_ayes || 0,
+        ai_question_1_noes: debate.ai_question_1_noes || 0,
+        ai_question_2: debate.ai_question_2 || '',
+        ai_question_2_topic: debate.ai_question_2_topic || '',
+        ai_question_2_ayes: debate.ai_question_2_ayes || 0,
+        ai_question_2_noes: debate.ai_question_2_noes || 0,
+        ai_question_3: debate.ai_question_3 || '',
+        ai_question_3_topic: debate.ai_question_3_topic || '',
+        ai_question_3_ayes: debate.ai_question_3_ayes || 0,
+        ai_question_3_noes: debate.ai_question_3_noes || 0,
+      };
+    });
+
+    return {
+      items: processedItems,
+      nextCursor
+    };
+    
+  } catch (error) {
+    console.error('getFeedItems error:', error);
+    throw error;
   }
-
-  // For non-voted debates
-  const { data: votedDebates, error: votesError } = await supabase
-    .from('debate_votes')
-    .select('debate_id')
-    .eq('user_id', user.id) as DbResponse<{ debate_id: string }[]>;
-
-  if (votesError) throw votesError;
-
-  const votedDebateIds = votedDebates?.map(v => v.debate_id) || [];
-
-  const { data, error } = await supabase
-    .rpc('get_unvoted_debates_with_engagement', {
-      p_user_id: user.id,
-      p_limit: pageSize * 2,
-      p_cursor: cursor || null
-    }) as DbResponse<FeedItem[]>;
-
-  if (error) throw error;
-  if (!data) return { items: [], nextCursor: undefined };
-
-  // Calculate final scores and sort
-  const scoredDebates = data.map(debate => ({
-    debate,
-    finalScore: calculateFinalScore(
-      debate.interest_score,
-      userTopics,
-      Object.keys(debate.ai_topics),
-      debate.engagement_count
-    ) + ((Math.random() * 0.2) - 0.1) // Add random factor (-0.1 to 0.1)
-  }));
-
-  // Sort by final score
-  const sortedDebates = scoredDebates
-    .sort((a, b) => b.finalScore - a.finalScore)
-    .slice(0, pageSize + 1);
-
-  const hasMore = sortedDebates.length > pageSize;
-  const items = sortedDebates.slice(0, pageSize).map(item => item.debate);
-  const nextCursor = hasMore ? items[items.length - 1].date : undefined;
-
-  return { items, nextCursor };
 }
 
 export async function getUserVotes(debateIds: string[]) {
-  const { data: votes, error } = await supabase
+  const { data: votes, error } = await supabaseClient
     .from('debate_votes')
     .select('debate_id, question_number, vote')
-    .in('debate_id', debateIds) as DbResponse<DebateVote[]>;
+    .in('debate_id', debateIds);
 
   if (error) throw error;
   
@@ -155,8 +175,14 @@ export async function getUserVotes(debateIds: string[]) {
 }
 
 export async function submitVote({ debate_id, question_number, vote }: DebateVote) {
-  // Start a transaction to update both the vote record and the count
-  const { data, error } = await supabase.rpc('submit_debate_vote', {
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+  
+  if (userError) throw userError;
+  if (!user) {
+    throw new Error('Authentication required for voting');
+  }
+
+  const { data, error } = await supabaseClient.rpc('submit_debate_vote', {
     p_debate_id: debate_id,
     p_question_number: question_number,
     p_vote: vote
@@ -166,32 +192,18 @@ export async function submitVote({ debate_id, question_number, vote }: DebateVot
   return data;
 }
 
-// Add this interface for debate scoring
-interface DebateScore {
-  id: string;
-  score: number;
-  factors: {
-    engagement: number;    // Based on votes
-    controversy: number;   // Based on tone and vote split
-    participation: number; // Based on speakers and contributions
-    diversity: number;    // Based on party count
-    discussion: number;   // Based on key points support/opposition
-  };
-}
-
 // Add this new function
 export async function lookupPostcode(postcode: string) {
-  // Clean the postcode - remove spaces and convert to uppercase
   const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
   
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('postcode_lookup')
     .select('mp, constituency')
-    .eq('postcode', cleanPostcode) // Use exact match instead of ilike
+    .eq('postcode', cleanPostcode)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') { // No rows returned
+    if (error.code === 'PGRST116') {
       return null;
     }
     throw error;

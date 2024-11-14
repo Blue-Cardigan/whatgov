@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabaseClient } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,10 +13,10 @@ export default function BillingPage() {
   const { data: subscription, isLoading } = useQuery({
     queryKey: ['subscription', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('subscription_tier, subscription_status, stripe_customer_id')
-        .eq('id', user?.id)
+      const { data, error } = await supabaseClient
+        .from('subscriptions')
+        .select('plan_type, status, stripe_customer_id')
+        .eq('user_id', user?.id || '')
         .single();
       
       if (error) throw error;
@@ -32,7 +32,7 @@ export default function BillingPage() {
       });
       const { url } = await response.json();
       window.location.href = url;
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Unable to access billing portal. Please try again.",
@@ -55,11 +55,11 @@ export default function BillingPage() {
         <div className="space-y-4">
           <div>
             <div className="text-sm text-muted-foreground">Current Plan</div>
-            <div className="font-medium">{subscription?.subscription_tier || 'Free'}</div>
+            <div className="font-medium">{subscription?.plan_type || 'Free'}</div>
           </div>
           <div>
             <div className="text-sm text-muted-foreground">Status</div>
-            <div className="font-medium capitalize">{subscription?.subscription_status || 'inactive'}</div>
+            <div className="font-medium capitalize">{subscription?.status || 'inactive'}</div>
           </div>
           {subscription?.stripe_customer_id && (
             <Button onClick={handleManageSubscription}>

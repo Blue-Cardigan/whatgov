@@ -1,6 +1,5 @@
 'use client';
 
-import { useVotes } from "@/hooks/useVotes";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +16,7 @@ import {
 import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabaseClient } from '@/lib/supabase-client';
 
 interface VotingStats {
   totalVotes: number;
@@ -35,6 +34,14 @@ interface VotingStats {
   }[];
 }
 
+interface VoteHistoryEntry {
+  vote: boolean;
+  created_at: string;
+  debates: {
+    ai_topics: string[];
+  } | null;
+}
+
 export function UserVoteHistory() {
   const { user } = useAuth();
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'year'>('month');
@@ -43,10 +50,10 @@ export function UserVoteHistory() {
   const { data: userProfile } = useQuery({
     queryKey: ['userProfile', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('user_profiles')
         .select('selected_topics')
-        .eq('id', user?.id)
+        .eq('id', user?.id || '')
         .single();
       
       if (error) throw error;
@@ -59,7 +66,7 @@ export function UserVoteHistory() {
   const { data: votingHistory } = useQuery({
     queryKey: ['votingHistory', user?.id, selectedTimeframe],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('debate_votes')
         .select(`
           vote,
@@ -68,7 +75,7 @@ export function UserVoteHistory() {
             ai_topics
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id || '')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -82,8 +89,8 @@ export function UserVoteHistory() {
     totalVotes: votingHistory.length,
     ayeVotes: votingHistory.filter(v => v.vote).length,
     noVotes: votingHistory.filter(v => !v.vote).length,
-    topicStats: calculateTopicStats(votingHistory, userProfile?.selected_topics || []),
-    weeklyStats: calculateWeeklyStats(votingHistory),
+    topicStats: calculateTopicStats(votingHistory as VoteHistoryEntry[], userProfile?.selected_topics || []),
+    weeklyStats: calculateWeeklyStats(votingHistory as VoteHistoryEntry[]),
   } : undefined;
 
   if (!user) {
@@ -189,7 +196,7 @@ export function UserVoteHistory() {
               </div>
             </CardHeader>
             <CardContent>
-              <VotingTrends stats={stats?.weeklyStats || []} />
+              <VotingTrends />
             </CardContent>
           </Card>
         </TabsContent>
@@ -254,12 +261,9 @@ function TopicStatCard({ topic, stats }: {
   );
 }
 
-function VotingTrends({ stats }: { stats: VotingStats['weeklyStats'] }) {
-  // Implement a line or bar chart showing voting trends
-  // You might want to use a charting library like recharts here
+function VotingTrends() {
   return (
     <div className="h-[300px]">
-      {/* Add your chart implementation here */}
       <div className="text-center text-muted-foreground">
         Chart implementation coming soon...
       </div>
@@ -269,7 +273,7 @@ function VotingTrends({ stats }: { stats: VotingStats['weeklyStats'] }) {
 
 // Helper functions for statistics calculations
 function calculateTopicStats(
-  votingHistory: any[],
+  votingHistory: VoteHistoryEntry[],
   selectedTopics: string[]
 ): Map<string, { total: number; ayes: number; noes: number; }> {
   const stats = new Map();
@@ -293,7 +297,7 @@ function calculateTopicStats(
   return stats;
 }
 
-function calculateWeeklyStats(votingHistory: any[]): VotingStats['weeklyStats'] {
+function calculateWeeklyStats(votingHistory: VoteHistoryEntry[]): VotingStats['weeklyStats'] {
   // Group votes by week and calculate totals
   const weeklyStats = new Map<string, { ayes: number; noes: number; }>();
   

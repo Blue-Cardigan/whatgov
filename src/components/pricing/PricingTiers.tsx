@@ -16,8 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PLANS } from '@/lib/stripe';
+import { PLANS } from '@/lib/stripe-client';
 import { useEffect } from 'react';
+import { supabaseClient } from '@/lib/supabase-client';
+import { Suspense } from 'react';
 
 const tiers = [
   {
@@ -42,7 +44,7 @@ const tiers = [
   {
     name: "Engaged Citizen",
     description: "Enhanced engagement and personalisation",
-    price: "£4.99",
+    price: "£0.25",
     icon: Crown,
     features: [
       "Everything in Free, plus:",
@@ -83,7 +85,8 @@ const tiers = [
   },
 ];
 
-export function PricingTiers() {
+// Create a separate component for the search params logic
+function PricingContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,34 +108,61 @@ export function PricingTiers() {
     }
   }, [searchParams]);
 
-  const handleSubscribe = async (planId: string) => {
+  const handleSubscribe = async (priceId: string) => {
     if (!user) {
       toast({
         title: "Sign in required",
         description: "Please sign in to subscribe to a plan",
-        variant: "default",
+        variant: "destructive",
       });
       router.push('/auth/signin');
       return;
     }
 
     try {
+      // Get authenticated user data
+      const { data: { user: authenticatedUser }, error: userError } = 
+        await supabaseClient.auth.getUser();
+      
+      if (userError || !authenticatedUser) {
+        console.error('Authentication error:', userError);
+        toast({
+          title: "Authentication error",
+          description: "Please sign in again",
+          variant: "destructive",
+        });
+        await supabaseClient.auth.signOut();
+        router.push('/auth/signin');
+        return;
+      }
+
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authenticatedUser.id}`,
+          'Idempotency-Key': `${authenticatedUser.id}-${Date.now()}`,
         },
-        body: JSON.stringify({
-          priceId: planId,
-        }),
+        body: JSON.stringify({ priceId }),
       });
 
-      const { url } = await response.json();
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const { url, sessionId } = await response.json();
+      if (!url) throw new Error('No checkout URL received');
+      
+      // Store the session ID if needed
+      localStorage.setItem('checkoutSessionId', sessionId);
+      
+      // Redirect to checkout
       window.location.href = url;
     } catch (error) {
+      console.error('Subscription error:', error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     }
@@ -284,5 +314,19 @@ export function PricingTiers() {
         {/* Add FAQ component here */}
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export function PricingTiers() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-8">
+        {/* You can add a loading skeleton here if desired */}
+        <div>Loading...</div>
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 } 

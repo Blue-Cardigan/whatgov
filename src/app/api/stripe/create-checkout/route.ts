@@ -1,24 +1,116 @@
 import { stripe } from '@/lib/stripe';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { PLANS } from '@/lib/stripe-client';
+import Stripe from 'stripe';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
+
+type CheckoutResponse = {
+  url: string | null;
+  sessionId: string;
+  error?: string;
+};
 
 export async function POST(req: Request) {
-  try {
-    // Get user session from Supabase
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session?.user) {
+  try {    
+    // Use shared server client
+    const supabase = await createServerSupabaseClient();
+
+    // Get user instead of session for better security
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('Auth error:', userError);
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const { priceId } = await req.json();
-    const headersList = await headers();
-    const origin = headersList.get('origin');
+    // Parse request body
+    const body = await req.json();
+    const { priceId } = body;
+    
+    if (!priceId) {
+      return new NextResponse('Price ID is required', { status: 400 });
+    }
 
-    // Create Stripe checkout session
-    const checkoutSession = await stripe.checkout.sessions.create({
+    // Validate priceId
+    if (!Object.values(PLANS).some(plan => plan.id === priceId)) {
+      return new NextResponse('Invalid price ID', { status: 400 });
+    }
+
+    // Check existing subscription
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('status, stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    // Log the subscription check
+    console.log('Subscription check:', {
+      userId: user.id,
+      hasSubscription: !!subscription,
+      status: subscription?.status,
+      error: subscriptionError?.code
+    });
+
+    // Handle the no subscription case explicitly
+    if (subscriptionError) {
+      if (subscriptionError.code === 'PGRST116') {
+        // This is a first-time subscriber - continue with checkout
+        console.log('First-time subscriber detected:', { userId: user.id });
+      } else {
+        // This is an actual error
+        console.error('Subscription error:', subscriptionError);
+        return new NextResponse('Error fetching subscription', { status: 500 });
+      }
+    }
+
+    // Only block if there's an active subscription
+    if (subscription?.status === 'active') {
+      console.log('Preventing duplicate subscription:', {
+        userId: user.id,
+        subscriptionStatus: subscription.status
+      });
+      return new NextResponse('Subscription already active', { status: 400 });
+    }
+
+    const headersList = await headers();
+    const origin = headersList.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL;
+
+    // Add request rate limiting
+    // Add input validation middleware
+    
+    // Add proper error types and handling
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Stripe secret key not configured');
+    }
+
+    // Add idempotency key for safe retries
+    const idempotencyKey = headersList.get('Idempotency-Key');
+    if (!idempotencyKey) {
+      return new NextResponse('Idempotency key required', { status: 400 });
+    }
+
+    if (!origin) {
+      throw new Error('origin is required for success and cancel URLs');
+    }
+    
+    if (!user.email) {
+      throw new Error('User email is required for checkout');
+    }
+    
+    if (!priceId) {
+      throw new Error('Price ID is required');
+    }
+    
+    // Validate the price ID exists in your plans
+    const selectedPlan = Object.entries(PLANS).find(([, plan]) => plan.id === priceId);
+    if (!selectedPlan) {
+      throw new Error('Invalid price ID');
+    }
+
+    const params: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
-      customer_email: session.user.email!,
+      payment_method_types: ['card'],
       line_items: [
         {
           price: priceId,
@@ -27,19 +119,48 @@ export async function POST(req: Request) {
       ],
       success_url: `${origin}/pricing?success=true`,
       cancel_url: `${origin}/pricing?canceled=true`,
+      customer_email: user.email ?? undefined,
+      metadata: {
+        userId: user.id,
+        plan: Object.entries(PLANS).find(([, plan]) => plan.id === priceId)?.[0] ?? ''
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'required',
+      client_reference_id: user.id,
+      payment_method_collection: 'always',
       subscription_data: {
+        trial_period_days: 7,
         metadata: {
-          userId: session.user.id,
+          userId: user.id,
         },
       },
-      metadata: {
-        userId: session.user.id,
+      automatic_tax: {
+        enabled: true,
       },
-    });
+      tax_id_collection: {
+        enabled: true,
+      },
+      custom_text: {
+        submit: {
+          message: 'Start your subscription',
+        },
+      },
+      consent_collection: {
+        terms_of_service: 'required',
+      },
+    };
 
-    return NextResponse.json({ url: checkoutSession.url });
+    const checkoutSession = await stripe.checkout.sessions.create(params);
+
+    return NextResponse.json<CheckoutResponse>({ 
+      url: checkoutSession.url,
+      sessionId: checkoutSession.id
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    console.error('Checkout error:', error);
+    return new NextResponse(
+      error instanceof Error ? error.message : 'Internal Error', 
+      { status: 500 }
+    );
   }
 } 

@@ -1,8 +1,7 @@
 -- Function to get debates with engagement count
 CREATE OR REPLACE FUNCTION get_debates_with_engagement(
-  p_debate_ids uuid[],
   p_limit integer,
-  p_cursor date
+  p_cursor uuid default null
 )
 RETURNS TABLE (
   id uuid,
@@ -70,9 +69,8 @@ BEGIN
     d.interest_factors,
     (SELECT COUNT(*) FROM debate_votes WHERE debate_id = d.id) as engagement_count
   FROM debates d
-  WHERE d.id = ANY(p_debate_ids)
-    AND (p_cursor IS NULL OR d.date < p_cursor)
-  ORDER BY d.date DESC
+  WHERE (p_cursor IS NULL OR d.id > p_cursor)
+  ORDER BY d.id
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql;
@@ -81,7 +79,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_unvoted_debates_with_engagement(
   p_user_id uuid,
   p_limit integer,
-  p_cursor date
+  p_cursor uuid default null
 )
 RETURNS TABLE (
   -- Same columns as above
@@ -154,8 +152,8 @@ BEGIN
     SELECT 1 FROM debate_votes
     WHERE debate_id = d.id AND user_id = p_user_id
   )
-    AND (p_cursor IS NULL OR d.date < p_cursor)
-  ORDER BY d.date DESC
+      AND (p_cursor IS NULL OR d.id > p_cursor)
+    ORDER BY d.id
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql;

@@ -113,8 +113,8 @@ export default function SignUp() {
 
   const [postcodeError, setPostcodeError] = useState("");
   const [mpDetails, setMpDetails] = useState<{
-    mp: string;
-    constituency: string;
+    mp: string | null;
+    constituency: string | null;
   } | null>(null);
 
   const [stepValid, setStepValid] = useState(false);
@@ -190,13 +190,18 @@ export default function SignUp() {
       setIsLookingUpPostcode(true);
       try {
         const details = await lookupPostcode(withSpace);
-        if (details) {
-          setMpDetails(details);
+        if (details && details.mp && details.constituency) {
+          setMpDetails({
+            mp: details.mp,
+            constituency: details.constituency
+          });
         } else {
           setPostcodeError("Postcode not found");
+          setMpDetails(null);
         }
       } catch {
         setPostcodeError("Could not find MP for this postcode");
+        setMpDetails(null);
       } finally {
         setIsLookingUpPostcode(false);
       }

@@ -1,18 +1,14 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserVoteHistory } from "./UserVoteHistory";
 import { MPProfile } from "./MPProfile";
 import { UpcomingDebates } from "./UpcomingDebates";
-import { CalendarClock, User2, Vote, Crown, BarChart2, ThumbsUp, Building2, AlertCircle } from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { CalendarClock, User2, BarChart2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 export function MyParliament() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("activity");
 
   const menuItems = [

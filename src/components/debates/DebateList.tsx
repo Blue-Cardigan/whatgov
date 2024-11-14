@@ -30,9 +30,6 @@ export function DebateList({
   const parentRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   
-  // Create a Map to store measured heights
-  const heightsRef = useRef(new Map<string, number>());
-  
   // Track which cards have key points expanded
   const expandedStatesRef = useRef(new Map<string, boolean>());
 

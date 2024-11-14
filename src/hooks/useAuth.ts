@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, signInWithEmail, signUpWithEmail } from '@/lib/supabase';
+import { supabaseClient } from '@/lib/supabase-client';
 
 interface SignUpData {
   name: string;
@@ -16,23 +16,56 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+    // Get initial user state
+    const initUser = async () => {
+      try {
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        
+        if (error) {
+          console.error('User retrieval error:', error);
+          await supabaseClient.auth.signOut();
+          setUser(null);
+          return;
+        }
+
+        setUser(user);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initUser();
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async () => {
+      // Verify user state when auth state changes
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      setUser(user);
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { data: { user, session } } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+      return { user, session };
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
+  };
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabaseClient.auth.signOut();
       if (error) throw error;
     } catch (error) {
       console.error('Error signing out:', error);
@@ -41,11 +74,14 @@ export function useAuth() {
 
   const signUp = async (email: string, password: string, userData: SignUpData) => {
     // First, create the auth user
-    const { user, session } = await signUpWithEmail(email, password);
+    const { data: { user, session } } = await supabaseClient.auth.signUp({
+      email,
+      password
+    });
     if (!user) throw new Error('Failed to create user');
 
     // Then create the user profile
-    const { error: profileError } = await supabase
+    const { error: profileError } = await supabaseClient
       .from('user_profiles')
       .insert({
         id: user.id, // This must match auth.uid() for RLS
@@ -61,7 +97,7 @@ export function useAuth() {
 
     if (profileError) {
       // If profile creation fails, we should clean up the auth user
-      await supabase.auth.admin.deleteUser(user.id);
+      await supabaseClient.auth.admin.deleteUser(user.id);
       throw profileError;
     }
 
@@ -69,11 +105,11 @@ export function useAuth() {
   };
 
   const updateProfile = async (userData: Partial<SignUpData>) => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError) throw userError;
     if (!user) throw new Error('No user found');
 
-    const { error: profileError } = await supabase
+    const { error: profileError } = await supabaseClient
       .from('user_profiles')
       .update({
         ...userData,
@@ -87,7 +123,7 @@ export function useAuth() {
   return {
     user,
     loading,
-    signIn: signInWithEmail,
+    signIn,
     signUp,
     updateProfile,
     signOut: handleSignOut,
