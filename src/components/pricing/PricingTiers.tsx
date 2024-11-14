@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { PLANS } from '@/lib/stripe-client';
 import { useEffect } from 'react';
-import { supabaseClient } from '@/lib/supabase-client';
+import { createClient } from '@/lib/supabase-client';
 import { Suspense } from 'react';
 
 const tiers = [
@@ -122,7 +122,7 @@ function PricingContent() {
     try {
       // Get authenticated user data
       const { data: { user: authenticatedUser }, error: userError } = 
-        await supabaseClient.auth.getUser();
+        await createClient().auth.getUser();
       
       if (userError || !authenticatedUser) {
         console.error('Authentication error:', userError);
@@ -131,7 +131,7 @@ function PricingContent() {
           description: "Please sign in again",
           variant: "destructive",
         });
-        await supabaseClient.auth.signOut();
+        await createClient().auth.signOut();
         router.push('/auth/signin');
         return;
       }

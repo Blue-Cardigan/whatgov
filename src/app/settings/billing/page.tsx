@@ -1,48 +1,41 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { supabaseClient } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
 export default function BillingPage() {
-  const { user } = useAuth();
-
-  const { data: subscription, isLoading } = useQuery({
-    queryKey: ['subscription', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabaseClient
-        .from('subscriptions')
-        .select('plan_type, status, stripe_customer_id')
-        .eq('user_id', user?.id || '')
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { user, subscription } = useAuth();
 
   const handleManageSubscription = async () => {
     try {
       const response = await fetch('/api/stripe/create-portal', {
         method: 'POST',
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to access billing portal');
+      }
+      
       const { url } = await response.json();
+      if (!url) {
+        throw new Error('No portal URL returned');
+      }
+      
       window.location.href = url;
-    } catch {
+    } catch (error) {
       toast({
         title: "Error",
         description: "Unable to access billing portal. Please try again.",
         variant: "destructive",
       });
+      console.error('Billing portal error:', error);
     }
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (!user) {
+    return null;
   }
 
   return (

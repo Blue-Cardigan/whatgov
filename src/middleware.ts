@@ -1,6 +1,35 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+
+async function checkSubscriptionStatus(supabase: any, userId: string) {
+  try {
+    const { data: subscription, error } = await supabase
+      .from('subscriptions')
+      .select('status, current_period_end, cancel_at_period_end')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!subscription) {
+      return false;
+    }
+
+    const gracePeriodDays = 3;
+    const hasGracePeriod = subscription.current_period_end && 
+      new Date(subscription.current_period_end).getTime() + (gracePeriodDays * 86400000) > Date.now();
+
+    return subscription.status === 'active' && 
+      (!subscription.cancel_at_period_end || hasGracePeriod);
+  } catch (error) {
+    console.error('Subscription check error:', error);
+    return false;
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const response = NextResponse.next()
 
@@ -53,24 +82,13 @@ export async function middleware(req: NextRequest) {
 
       // Check premium routes
       if (req.nextUrl.pathname.startsWith('/api/premium/')) {
-        const { data: subscription } = await supabase
-          .from('subscriptions')
-          .select('status, current_period_end, cancel_at_period_end')
-          .eq('user_id', user.id)
-          .single()
-
-        const gracePeriodDays = 3
-        const hasGracePeriod = subscription?.current_period_end && 
-          new Date(subscription.current_period_end).getTime() + (gracePeriodDays * 86400000) > Date.now()
-
-        const isActive = subscription?.status === 'active' && 
-          (!subscription.cancel_at_period_end || hasGracePeriod)
+        const isActive = await checkSubscriptionStatus(supabase, user.id);
 
         if (!isActive) {
           return NextResponse.json(
             { error: 'Subscription required' },
             { status: 403 }
-          )
+          );
         }
       }
     }

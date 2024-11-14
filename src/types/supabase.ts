@@ -604,6 +604,7 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          plan: string | null
           plan_type: string | null
           status: string | null
           stripe_customer_id: string | null
@@ -619,6 +620,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          plan?: string | null
           plan_type?: string | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -634,6 +636,7 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          plan?: string | null
           plan_type?: string | null
           status?: string | null
           stripe_customer_id?: string | null
@@ -803,9 +806,8 @@ export type Database = {
       }
       get_debates_with_engagement: {
         Args: {
-          p_debate_ids: string[]
           p_limit: number
-          p_cursor: string
+          p_cursor?: string
         }
         Returns: {
           id: string
@@ -814,9 +816,9 @@ export type Database = {
           type: string
           house: string
           location: string
-          ai_title: string
+          ai_title: string | null
           ai_summary: string
-          ai_tone: string
+          ai_tone: string | null
           ai_topics: Json
           ai_tags: Json
           ai_key_points: Json
@@ -835,8 +837,8 @@ export type Database = {
           speaker_count: number
           contribution_count: number
           party_count: Json
-          interest_score: number
-          interest_factors: Json
+          interest_score: number | null
+          interest_factors: Json | null
           engagement_count: number
         }[]
       }
@@ -849,45 +851,6 @@ export type Database = {
           input_date: string
         }
         Returns: string
-      }
-      get_unvoted_debates_with_engagement: {
-        Args: {
-          p_user_id: string
-          p_limit: number
-          p_cursor: string
-        }
-        Returns: {
-          id: string
-          title: string
-          date: string
-          type: string
-          house: string
-          location: string
-          ai_title: string
-          ai_summary: string
-          ai_tone: string
-          ai_topics: Json
-          ai_tags: Json
-          ai_key_points: Json
-          ai_question_1: string
-          ai_question_1_topic: string
-          ai_question_1_ayes: number
-          ai_question_1_noes: number
-          ai_question_2: string
-          ai_question_2_topic: string
-          ai_question_2_ayes: number
-          ai_question_2_noes: number
-          ai_question_3: string
-          ai_question_3_topic: string
-          ai_question_3_ayes: number
-          ai_question_3_noes: number
-          speaker_count: number
-          contribution_count: number
-          party_count: Json
-          interest_score: number
-          interest_factors: Json
-          engagement_count: number
-        }[]
       }
       gtrgm_compress: {
         Args: {
@@ -1047,6 +1010,45 @@ export type Database = {
           p_vote: boolean
         }
         Returns: undefined
+      }
+      get_unvoted_debates_with_engagement: {
+        Args: {
+          p_user_id: string
+          p_limit: number
+          p_cursor?: string
+        }
+        Returns: {
+          id: string
+          title: string
+          date: string
+          type: string
+          house: string
+          location: string
+          ai_title: string | null
+          ai_summary: string
+          ai_tone: string | null
+          ai_topics: Json
+          ai_tags: Json
+          ai_key_points: Json
+          ai_question_1: string
+          ai_question_1_topic: string
+          ai_question_1_ayes: number
+          ai_question_1_noes: number
+          ai_question_2: string
+          ai_question_2_topic: string
+          ai_question_2_ayes: number
+          ai_question_2_noes: number
+          ai_question_3: string
+          ai_question_3_topic: string
+          ai_question_3_ayes: number
+          ai_question_3_noes: number
+          speaker_count: number
+          contribution_count: number
+          party_count: Json
+          interest_score: number | null
+          interest_factors: Json | null
+          engagement_count: number
+        }[]
       }
     }
     Enums: {

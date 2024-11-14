@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { supabaseClient } from '@/lib/supabase-client';
+import { createClient } from '@/lib/supabase-client';
 import { toast } from "@/hooks/use-toast";
 import {
   Search,
@@ -35,23 +35,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
-
-  // Fetch user's premium status
-  const { data: userProfile } = useQuery({
-    queryKey: ['userProfile', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabaseClient
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user?.id || '')
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { user, signOut, isPremium } = useAuth();
 
   const handlePremiumNavigation = (e: React.MouseEvent, href: string) => {
     e.preventDefault();
@@ -66,7 +50,7 @@ export function Sidebar({ className }: SidebarProps) {
       return;
     }
 
-    if (userProfile?.status !== 'active') {
+    if (!isPremium) {
       toast({
         title: "Premium feature",
         description: "Upgrade to access research tools",
@@ -188,12 +172,12 @@ export function Sidebar({ className }: SidebarProps) {
                     "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
                     pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
                     "lg:w-full",
-                    item.isPremium && userProfile?.status !== 'active' && "opacity-75"
+                    item.isPremium && !isPremium && "opacity-75"
                   )}>
                     <item.icon className="h-5 w-5" />
                     <span className="hidden lg:block ml-3">
                       {item.title}
-                      {item.isPremium && userProfile?.status !== 'active' && (
+                      {item.isPremium && !isPremium && (
                         <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
                       )}
                     </span>
@@ -233,12 +217,12 @@ export function Sidebar({ className }: SidebarProps) {
               <div className={cn(
                 "flex flex-col items-center p-2",
                 pathname === item.href ? "text-primary" : "text-muted-foreground",
-                item.isPremium && userProfile?.status !== 'active' && "opacity-75"
+                item.isPremium && !isPremium && "opacity-75"
               )}>
                 <item.icon className="h-5 w-5" />
                 <span className="text-xs mt-1">
                   {item.title}
-                  {item.isPremium && userProfile?.status !== 'active' && (
+                  {item.isPremium && !isPremium && (
                     <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
                   )}
                 </span>

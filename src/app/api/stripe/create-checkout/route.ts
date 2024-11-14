@@ -11,12 +11,31 @@ type CheckoutResponse = {
   error?: string;
 };
 
+async function checkExistingSubscription(supabase: any, userId: string) {
+  try {
+    const { data: subscription, error } = await supabase
+      .from('subscriptions')
+      .select('status, stripe_customer_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    return {
+      hasActiveSubscription: subscription?.status === 'active',
+      stripeCustomerId: subscription?.stripe_customer_id
+    };
+  } catch (error) {
+    console.error('Subscription check error:', error);
+    throw error;
+  }
+}
+
 export async function POST(req: Request) {
   try {    
-    // Use shared server client
     const supabase = await createServerSupabaseClient();
-
-    // Get user instead of session for better security
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
@@ -24,7 +43,6 @@ export async function POST(req: Request) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Parse request body
     const body = await req.json();
     const { priceId } = body;
     
@@ -32,44 +50,15 @@ export async function POST(req: Request) {
       return new NextResponse('Price ID is required', { status: 400 });
     }
 
-    // Validate priceId
     if (!Object.values(PLANS).some(plan => plan.id === priceId)) {
       return new NextResponse('Invalid price ID', { status: 400 });
     }
 
     // Check existing subscription
-    const { data: subscription, error: subscriptionError } = await supabase
-      .from('subscriptions')
-      .select('status, stripe_customer_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const { hasActiveSubscription } = await checkExistingSubscription(supabase, user.id);
 
-    // Log the subscription check
-    console.log('Subscription check:', {
-      userId: user.id,
-      hasSubscription: !!subscription,
-      status: subscription?.status,
-      error: subscriptionError?.code
-    });
-
-    // Handle the no subscription case explicitly
-    if (subscriptionError) {
-      if (subscriptionError.code === 'PGRST116') {
-        // This is a first-time subscriber - continue with checkout
-        console.log('First-time subscriber detected:', { userId: user.id });
-      } else {
-        // This is an actual error
-        console.error('Subscription error:', subscriptionError);
-        return new NextResponse('Error fetching subscription', { status: 500 });
-      }
-    }
-
-    // Only block if there's an active subscription
-    if (subscription?.status === 'active') {
-      console.log('Preventing duplicate subscription:', {
-        userId: user.id,
-        subscriptionStatus: subscription.status
-      });
+    if (hasActiveSubscription) {
+      console.log('Preventing duplicate subscription:', { userId: user.id });
       return new NextResponse('Subscription already active', { status: 400 });
     }
 

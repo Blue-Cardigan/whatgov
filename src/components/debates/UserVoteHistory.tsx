@@ -16,7 +16,7 @@ import {
 import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabaseClient } from '@/lib/supabase-client';
+import { createClient } from '@/lib/supabase-client';
 
 interface VotingStats {
   totalVotes: number;
@@ -38,7 +38,7 @@ interface VoteHistoryEntry {
   vote: boolean;
   created_at: string;
   debates: {
-    ai_topics: string[];
+    ai_topics: Record<string, any>;
   } | null;
 }
 
@@ -50,7 +50,7 @@ export function UserVoteHistory() {
   const { data: userProfile } = useQuery({
     queryKey: ['userProfile', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabaseClient
+      const { data, error } = await createClient()
         .from('user_profiles')
         .select('selected_topics')
         .eq('id', user?.id || '')
@@ -66,12 +66,12 @@ export function UserVoteHistory() {
   const { data: votingHistory } = useQuery({
     queryKey: ['votingHistory', user?.id, selectedTimeframe],
     queryFn: async () => {
-      const { data, error } = await supabaseClient
+      const { data, error } = await createClient()
         .from('debate_votes')
         .select(`
           vote,
           created_at,
-          debates (
+          debates!inner (
             ai_topics
           )
         `)
@@ -79,7 +79,11 @@ export function UserVoteHistory() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return (data as any[]).map(entry => ({
+        vote: entry.vote,
+        created_at: entry.created_at,
+        debates: entry.debates || null
+      })) as VoteHistoryEntry[];
     },
     enabled: !!user,
   });
@@ -89,8 +93,8 @@ export function UserVoteHistory() {
     totalVotes: votingHistory.length,
     ayeVotes: votingHistory.filter(v => v.vote).length,
     noVotes: votingHistory.filter(v => !v.vote).length,
-    topicStats: calculateTopicStats(votingHistory as VoteHistoryEntry[], userProfile?.selected_topics || []),
-    weeklyStats: calculateWeeklyStats(votingHistory as VoteHistoryEntry[]),
+    topicStats: calculateTopicStats(votingHistory, userProfile?.selected_topics || []),
+    weeklyStats: calculateWeeklyStats(votingHistory),
   } : undefined;
 
   if (!user) {

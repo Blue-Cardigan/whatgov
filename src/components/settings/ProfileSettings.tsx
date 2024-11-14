@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabaseClient } from '@/lib/supabase-client';
+import { createClient } from '@/lib/supabase-client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UserProfile {
   name: string;
@@ -27,7 +27,7 @@ export function ProfileSettings() {
     async function fetchProfile() {
       if (!user) return;
 
-      const { data, error } = await supabaseClient
+      const { data, error } = await createClient()
         .from('user_profiles')
         .select('*')
         .eq('id', user.id)
@@ -62,7 +62,7 @@ export function ProfileSettings() {
     
     try {
       // Update profile in the database
-      const { error } = await supabaseClient
+      const { error } = await createClient()
         .from('user_profiles')
         .update({
           name: profile.name,
@@ -77,7 +77,7 @@ export function ProfileSettings() {
 
       // Update email if it has changed
       if (profile.email !== user.email) {
-        const { error: emailError } = await supabaseClient.auth.updateUser({
+        const { error: emailError } = await createClient().auth.updateUser({
           email: profile.email
         });
         if (emailError) throw emailError;
