@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-
+import type { UserVotingStats, TopicStats, TopicStatsRaw, WeeklyStatsRaw } from '@/types/VoteStats';
 export type AuthError = {
   message: string;
 }
@@ -192,60 +192,16 @@ export async function getFeedItems(
         return processDebates(debates, pageSize, userTopics);
       }
     } else {
-      // Unauthenticated user flow - fetch recent debates
-      const { data: debates, error } = await supabase
-        .from('debates')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(pageSize + 1)
-        .gt('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      // Unauthenticated user flow - fetch using get_unvoted_debates_unauth
+      const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
+        p_limit: pageSize + 1,
+        p_cursor: cursor || undefined
+      });
 
       if (error) throw error;
       if (!debates) return { items: [] };
 
-      return {
-        items: debates.slice(0, pageSize).map(debate => ({
-          id: debate.result_id,
-          ext_id: debate.ext_id,
-          title: debate.title,
-          date: debate.date,
-          location: debate.location,
-          ai_title: debate.ai_title ?? '',
-          ai_summary: debate.ai_summary ?? '',
-          ai_tone: (debate.ai_tone ?? 'neutral') as FeedItem['ai_tone'],
-          ai_tags: Array.isArray(debate.ai_tags) 
-            ? debate.ai_tags.filter((tag: string): tag is string => typeof tag === 'string')
-            : [],
-          ai_key_points: parseKeyPoints(debate.ai_key_points),
-          ai_topics: debate.ai_topics as AiTopics,
-          speaker_count: debate.speaker_count,
-          contribution_count: debate.contribution_count,
-          party_count: debate.party_count as PartyCount ?? {},
-          interest_score: calculateFinalScore(
-            debate.interest_score ?? 0,
-            userTopics,
-            debate.ai_topics ? Object.keys(debate.ai_topics as AiTopics) : [],
-            0  // No engagement for unauthenticated users
-          ),
-          interest_factors: parseInterestFactors(debate.interest_factors),
-          engagement_count: 0,
-          ai_question_1: debate.ai_question_1 ?? '',
-          ai_question_1_topic: debate.ai_question_1_topic ?? '',
-          ai_question_1_ayes: debate.ai_question_1_ayes ?? 0,
-          ai_question_1_noes: debate.ai_question_1_noes ?? 0,
-          ai_question_2: debate.ai_question_2 ?? '',
-          ai_question_2_topic: debate.ai_question_2_topic ?? '',
-          ai_question_2_ayes: debate.ai_question_2_ayes ?? 0,
-          ai_question_2_noes: debate.ai_question_2_noes ?? 0,
-          ai_question_3: debate.ai_question_3 ?? '',
-          ai_question_3_topic: debate.ai_question_3_topic ?? '',
-          ai_question_3_ayes: debate.ai_question_3_ayes ?? 0,
-          ai_question_3_noes: debate.ai_question_3_noes ?? 0,
-        })),
-        nextCursor: debates.length > pageSize 
-          ? (parseInt(cursor || '0') + pageSize).toString()
-          : undefined
-      };
+      return processDebates(debates, pageSize, userTopics);
     }
   } catch (error) {
     console.error('getFeedItems error:', error);
@@ -355,43 +311,6 @@ function processDebates(
   };
 }
 
-export async function getUserVotes(debateIds: string[]) {
-  const supabase = getSupabase()
-  
-  // Validate input array
-  if (!debateIds || !debateIds.length) {
-    return new Map<string, Map<number, boolean>>();
-  }
-
-  // Filter out any invalid UUIDs
-  const validDebateIds = debateIds.filter(id => {
-    // UUID regex pattern
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return id && typeof id === 'string' && uuidPattern.test(id);
-  });
-
-  if (!validDebateIds.length) {
-    return new Map<string, Map<number, boolean>>();
-  }
-
-  const { data: votes, error } = await supabase
-    .from('debate_votes')
-    .select('debate_id, question_number, vote')
-    .in('debate_id', validDebateIds);
-
-  if (error) throw error;
-  
-  const voteMap = new Map<string, Map<number, boolean>>();
-  votes?.forEach(vote => {
-    if (!voteMap.has(vote.debate_id)) {
-      voteMap.set(vote.debate_id, new Map());
-    }
-    voteMap.get(vote.debate_id)?.set(vote.question_number, vote.vote);
-  });
-  
-  return voteMap;
-}
-
 export async function submitVote({ debate_id, question_number, vote }: DebateVote) {
   const supabase = getSupabase()
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -406,7 +325,6 @@ export async function submitVote({ debate_id, question_number, vote }: DebateVot
     p_question_number: question_number,
     p_vote: vote
   });
-  console.log(debate_id, question_number, vote)
 
   if (error) throw error;
   return data;
@@ -456,4 +374,85 @@ function calculateFinalScore(
   );
 
   return finalScore;
+}
+
+export async function getUserVotingStats(timeframe: 'week' | 'month' | 'year' = 'month'): Promise<UserVotingStats> {
+  const supabase = getSupabase();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    throw new Error('Authentication required');
+  }
+
+  // Calculate date range based on timeframe
+  const now = new Date();
+  const startDate = new Date();
+  switch (timeframe) {
+    case 'week':
+      startDate.setDate(now.getDate() - 7);
+      break;
+    case 'month':
+      startDate.setMonth(now.getMonth() - 1);
+      break;
+    case 'year':
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+  }
+
+  const { data, error } = await supabase.rpc('get_user_voting_stats', {
+    p_user_id: user.id,
+    p_start_date: startDate.toISOString(),
+    p_end_date: now.toISOString()
+  });
+
+  if (error) throw error;
+
+  // Transform the raw data to match our interface
+  const transformedTopicStats: { [topic: string]: TopicStats } = {};
+
+  // Process each topic's stats
+  for (const [topic, stats] of Object.entries(data.topic_stats)) {
+    const topicStats = stats as TopicStatsRaw;
+    transformedTopicStats[topic] = {
+      total: topicStats.total,
+      ayes: topicStats.ayes,
+      noes: topicStats.noes,
+      subtopics: topicStats.subtopics || [],
+      details: (topicStats.details || []).map((detail) => ({
+        tags: detail.tags || [],
+        question_1: {
+          text: detail.question_1?.text || '',
+          topic: detail.question_1?.topic || '',
+          ayes: detail.question_1?.ayes || 0,
+          noes: detail.question_1?.noes || 0,
+        },
+        question_2: {
+          text: detail.question_2?.text || '',
+          topic: detail.question_2?.topic || '',
+          ayes: detail.question_2?.ayes || 0,
+          noes: detail.question_2?.noes || 0,
+        },
+        question_3: {
+          text: detail.question_3?.text || '',
+          topic: detail.question_3?.topic || '',
+          ayes: detail.question_3?.ayes || 0,
+          noes: detail.question_3?.noes || 0,
+        },
+        speakers: detail.speakers || [],
+      })),
+      frequency: topicStats.frequency?.[0] || 0,
+    };
+  }
+
+  return {
+    totalVotes: data.total_votes,
+    ayeVotes: data.aye_votes,
+    noVotes: data.no_votes,
+    topicStats: transformedTopicStats,
+    weeklyStats: data.weekly_stats.map((stat: WeeklyStatsRaw) => ({
+      week: stat.week,
+      ayes: stat.ayes,
+      noes: stat.noes,
+    })),
+  };
 }

@@ -1,12 +1,11 @@
 'use client';
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserVoteHistory } from "./UserVoteHistory";
+import { UserVoteHistory } from "./YourStats";
 import { MPProfile } from "./MPProfile";
 import { UpcomingDebates } from "./UpcomingDebates";
 import { CalendarClock, User2, BarChart2, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { MenuItem } from "./MenuItem";
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("activity");
@@ -44,8 +43,8 @@ export function MyParliament() {
     },
     {
       id: "alerts",
-      title: "Vote Alerts",
-      description: "Get notified when your search terms are mentioned",
+      title: "Search Alerts",
+      description: "Subscribe to searches",
       icon: <AlertCircle className="h-6 w-6" />,
       color: "text-teal-500",
       bgColor: "bg-teal-50 dark:bg-teal-500/10",
@@ -57,43 +56,14 @@ export function MyParliament() {
   return (
     <div className="space-y-8">
       {/* Grid of Action Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         {menuItems.map((item) => (
-          <Card
+          <MenuItem
             key={item.id}
-            className={cn(
-              "group border transition-all duration-200",
-              "hover:shadow-md cursor-pointer",
-              item.id === activeTab && "ring-2 ring-primary ring-offset-2",
-              item.isPremium && "bg-gradient-to-br from-primary/5 to-primary/10"
-            )}
-            onClick={() => item.isPremium ? window.location.href = '/pricing' : setActiveTab(item.id)}
-          >
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "p-3 rounded-xl transition-colors duration-200",
-                    item.bgColor,
-                    item.color
-                  )}
-                >
-                  {item.icon}
-                </div>
-                <div>
-                  <CardTitle className={cn(
-                    "text-base font-semibold transition-colors duration-200",
-                    `group-hover:${item.color}`
-                  )}>
-                    {item.title}
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    {item.description}
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+            item={item}
+            isActive={item.id === activeTab}
+            onSelect={() => item.isPremium ? window.location.href = '/pricing' : setActiveTab(item.id)}
+          />
         ))}
       </div>
 

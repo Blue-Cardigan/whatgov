@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DebateCardProps {
   debate: FeedItem;
@@ -21,21 +22,21 @@ interface DebateCardProps {
 
 export function DebateCard({ 
   debate, 
-  onVote, 
-  votes, 
+  onVote,
   readOnly = false,
   onExpandChange 
 }: DebateCardProps) {
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const [expandedPoint, setExpandedPoint] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const isCommonsDebate = debate.location.includes('Commons');
   const partyCount = debate.party_count as PartyCount;
   const keyPoints = debate.ai_key_points as KeyPoint[];
   const cardRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [hasVoted, setHasVoted] = useState<Record<number, boolean>>({});
   
-  const totalSpeakers = Object.values(partyCount || {}).reduce((sum, count) => sum + count, 0);
-
   // Notify parent of expansion state changes
   useEffect(() => {
     onExpandChange?.(showKeyPoints);
@@ -69,121 +70,157 @@ export function DebateCard({
     }, 300);
   };
 
+  // Get existing votes for this debate
+  const existingVotes = queryClient.getQueryData<Map<string, Map<number, boolean>>>(['votes']);
+  const debateVotes = existingVotes?.get(debate.id);
+
+  // Handle voting and question progression
+  const handleVote = async (questionNum: number, vote: boolean) => {
+    await onVote?.(debate.id, questionNum, vote);
+    setHasVoted(prev => ({ ...prev, [questionNum]: true }));
+    
+    // Automatically progress to next question after voting
+    setTimeout(() => {
+      if (questionNum < 3 && debate[`ai_question_${questionNum + 1}` as keyof FeedItem]) {
+        setCurrentQuestion(questionNum + 1);
+      }
+    }, 500);
+  };
+
   // Helper function to render a question with parliamentary styling
   const renderQuestion = (num: number) => {
     const question = debate[`ai_question_${num}` as keyof FeedItem] as string;
+    if (!question) return null;
+    
     const ayes = debate[`ai_question_${num}_ayes` as keyof FeedItem] as number;
     const noes = debate[`ai_question_${num}_noes` as keyof FeedItem] as number;
     const total = ayes + noes;
     const ayePercentage = total > 0 ? (ayes / total) * 100 : 50;
-    
     const isVoting = queryClient.isMutating({ mutationKey: ['votes'] }) > 0;
-    
-    if (!question) return null;
-    
-    return (
-      <div className={cn(
-        "space-y-3 p-4 rounded-lg transition-all duration-200",
-        "border-2 dark:border-1",
-        num === 1 ? "border-blue-200/50 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10" :
-        num === 2 ? "border-emerald-200/50 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-900/10" :
-        "border-amber-200/50 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10",
-        "hover:bg-background/80 dark:hover:bg-background/20"
-      )}>
-        {/* Question header */}
-        <div className="flex items-center justify-between">
-          <Badge variant="outline" className={cn(
-            "font-semibold text-xs",
-            num === 1 ? "border-blue-200 dark:border-blue-500 text-blue-700 dark:text-blue-400" :
-            num === 2 ? "border-emerald-200 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400" :
-            "border-amber-200 dark:border-amber-500 text-amber-700 dark:text-amber-400"
-          )}>
-            Question {num}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {total} votes
-          </span>
-        </div>
-        
-        <p className="text-sm font-medium">{question}</p>
-        
-        {/* Votes display */}
-        <div className="space-y-3">
-          {/* Enhanced proportion bar */}
-          <div className="h-3 flex rounded-full overflow-hidden bg-muted/50 dark:bg-muted/20">
-            <div 
-              className={cn(
-                "transition-all duration-300",
-                "bg-gradient-to-r from-emerald-500/90 to-emerald-600/90",
-                "dark:from-emerald-600/90 dark:to-emerald-700/90"
-              )}
-              style={{ width: `${ayePercentage}%` }}
-            />
-            <div 
-              className={cn(
-                "transition-all duration-300",
-                "bg-gradient-to-r from-rose-500/90 to-rose-600/90",
-                "dark:from-rose-600/90 dark:to-rose-700/90"
-              )}
-              style={{ width: `${100 - ayePercentage}%` }}
-            />
-          </div>
+    const userVote = debateVotes?.get(num);
+    const isVisible = currentQuestion === num;
 
-          {/* Vote counts */}
-          <div className="flex justify-between text-xs">
-            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-              Ayes: {ayes}
-            </span>
-            <span className="text-rose-700 dark:text-rose-400 font-medium">
-              Noes: {noes}
-            </span>
-          </div>
-          
-          {/* Modified vote buttons */}
-          <div className="flex gap-3">
-            <Button
-              size="sm"
-              variant={votes?.get(debate.id)?.get(num) === true ? "default" : "outline"}
-              disabled={readOnly || isVoting}
-              className={cn(
-                "flex-1 relative overflow-hidden",
-                votes?.get(debate.id)?.get(num) === true
-                  ? "bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-700 dark:hover:bg-emerald-800 text-white border-0"
-                  : "border-emerald-600 dark:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
-                "font-semibold tracking-wide transition-all duration-200"
-              )}
-              onClick={() => onVote?.(debate.id, num, true)}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              AYE
-              {votes?.get(debate.id)?.get(num) === true && (
-                <div className="absolute inset-0 bg-white/10 animate-pulse" />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant={votes?.get(debate.id)?.get(num) === false ? "default" : "outline"}
-              disabled={readOnly || isVoting}
-              className={cn(
-                "flex-1 relative overflow-hidden",
-                votes?.get(debate.id)?.get(num) === false
-                  ? "bg-rose-600 dark:bg-rose-700 hover:bg-rose-700 dark:hover:bg-rose-800 text-white border-0"
-                  : "border-rose-600 dark:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30",
-                "font-semibold tracking-wide transition-all duration-200"
-              )}
-              onClick={() => onVote?.(debate.id, num, false)}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              NO
-              {votes?.get(debate.id)?.get(num) === false && (
-                <div className="absolute inset-0 bg-white/10 animate-pulse" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+    return (
+      <AnimatePresence mode="wait">
+        {isVisible && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className={cn(
+              "overflow-hidden",
+              "space-y-4 p-4 rounded-lg",
+              "border-2 dark:border-1",
+              num === 1 ? "border-blue-200/50 dark:border-blue-900/50 bg-blue-50/30 dark:bg-blue-900/10" :
+              num === 2 ? "border-emerald-200/50 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-900/10" :
+              "border-amber-200/50 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className={cn(
+                "font-semibold text-xs",
+                num === 1 ? "text-blue-700 dark:text-blue-400" :
+                num === 2 ? "text-emerald-700 dark:text-emerald-400" :
+                "text-amber-700 dark:text-amber-400"
+              )}>
+                Question {num} of {getTotalQuestions()}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {total} votes
+              </span>
+            </div>
+
+            <p className="text-sm font-medium">{question}</p>
+
+            {/* Vote Results */}
+            {hasVoted[num] && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-2"
+              >
+                <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${ayePercentage}%` }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="absolute inset-y-0 left-0 bg-emerald-500"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{Math.round(ayePercentage)}% Aye</span>
+                  <span>{Math.round(100 - ayePercentage)}% No</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Vote Buttons - Only show if current question and not voted */}
+            {isVisible && !hasVoted[num] && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex gap-3"
+              >
+                <Button
+                  size="sm"
+                  variant={userVote === true ? "default" : "outline"}
+                  disabled={readOnly || isVoting}
+                  className={cn(
+                    "flex-1 relative overflow-hidden",
+                    userVote === true
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "border-emerald-600 hover:bg-emerald-50"
+                  )}
+                  onClick={() => handleVote(num, true)}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  AYE
+                </Button>
+                <Button
+                  size="sm"
+                  variant={userVote === false ? "default" : "outline"}
+                  disabled={readOnly || isVoting}
+                  className={cn(
+                    "flex-1 relative overflow-hidden",
+                    userVote === false
+                      ? "bg-rose-600 hover:bg-rose-700 text-white"
+                      : "border-rose-600 hover:bg-rose-50"
+                  )}
+                  onClick={() => handleVote(num, false)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  NO
+                </Button>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     );
   };
+
+  // Helper to get total number of questions
+  const getTotalQuestions = () => {
+    return [1, 2, 3].filter(num => 
+      debate[`ai_question_${num}` as keyof FeedItem]
+    ).length;
+  };
+
+  // Calculate total speakers with proper type safety
+  const totalSpeakers = Object.values(partyCount || {}).reduce<number>((sum, count) => 
+    sum + (count || 0), 
+    0
+  );
+  
+  // Party colors mapping
+  const partyColors = {
+    Conservative: "bg-blue-500",
+    Labour: "bg-rose-500",
+    "Liberal Democrat": "bg-amber-500",
+    "Scottish National Party": "bg-yellow-500",
+    Other: "bg-gray-500"
+  } as const;
 
   return (
     <Card 
@@ -197,78 +234,160 @@ export function DebateCard({
         "rounded-none"
       )}
     >
-      <CardHeader>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <div className="flex items-center gap-1">
-            <CalendarIcon className="h-4 w-4" />
-            {format(new Date(debate.date), 'dd MMM')}
+      <CardHeader className="space-y-4">
+        <div className="space-y-2">
+          {/* Metadata row */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4" />
+              {format(new Date(debate.date), 'dd MMM')}
+            </div>
+            <span>•</span>
+            <div className="flex items-center gap-1">
+              <Building2 className="h-4 w-4" />
+              {debate.location.replace(' Chamber', '')}
+            </div>
+            {totalSpeakers > 0 && (
+              <>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <Users2 className="h-4 w-4" />
+                  {totalSpeakers} {totalSpeakers === 1 ? 'speaker' : 'speakers'}
+                </div>
+              </>
+            )}
           </div>
-          <span>•</span>
-          <div className="flex items-center gap-1">
-            <Building2 className="h-4 w-4" />
-            {debate.location.replace(' Chamber', '')}
-          </div>
+
+          {/* Party proportions bar - only for Commons debates */}
+          {isCommonsDebate && totalSpeakers > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-1.5"
+            >
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                {Object.entries(partyCount || {}).map(([party, count], index) => {
+                  const width = (count || 0 / totalSpeakers) * 100;
+                  if (width === 0) return null;
+                  
+                  return (
+                    <motion.div
+                      key={party}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${width}%` }}
+                      transition={{ 
+                        duration: 0.5, 
+                        delay: index * 0.1,
+                        ease: "easeOut" 
+                      }}
+                      className={cn(
+                        "transition-all",
+                        partyColors[party as keyof typeof partyColors] || partyColors.Other
+                      )}
+                    />
+                  );
+                })}
+              </div>
+              
+              {/* Party legend */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                {Object.entries(partyCount || {}).map(([party, count]) => {
+                  if (count === 0) return null;
+                  
+                  return (
+                    <div key={party} className="flex items-center gap-1">
+                      <div className={cn(
+                        "h-2 w-2 rounded-full",
+                        partyColors[party as keyof typeof partyColors] || partyColors.Other
+                      )} />
+                      <span className="text-muted-foreground">
+                        {party} ({count})
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          <CardTitle className="leading-tight">
+            {debate.ai_title || debate.title}
+          </CardTitle>
         </div>
-        <CardTitle className="hover:text-primary cursor-pointer mb-4">
-          {debate.ai_title || debate.title}
-        </CardTitle>
-        
-        {/* Move first question outside content for emphasis */}
-        <div className="mt-6">
+
+        {/* First question */}
+        <motion.div
+          animate={{
+            marginBottom: hasVoted[1] ? 0 : '1.5rem',
+            opacity: hasVoted[1] ? 0 : 1,
+            height: hasVoted[1] ? 0 : 'auto'
+          }}
+          transition={{ duration: 0.3 }}
+        >
           {renderQuestion(1)}
-        </div>
+        </motion.div>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Reorganize content for better flow */}
-        <div className="prose prose-sm max-w-none">
+        {/* First part of summary with conditional spacing */}
+        <motion.div
+          className="prose prose-sm max-w-none"
+          animate={{
+            marginBottom: hasVoted[2] ? 0 : '1.5rem'
+          }}
+          transition={{ duration: 0.3 }}
+        >
           <p className="text-muted-foreground leading-relaxed">
             {debate.ai_summary.split('.').slice(0, 1).join('.')}.
           </p>
-        </div>
+        </motion.div>
         
-        {renderQuestion(2)}
+        {/* Second question */}
+        <motion.div
+          animate={{
+            marginBottom: hasVoted[2] ? 0 : '1.5rem',
+            opacity: hasVoted[2] ? 0 : 1,
+            height: hasVoted[2] ? 0 : 'auto'
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderQuestion(2)}
+        </motion.div>
         
+        {/* Rest of summary */}
         <p className="text-muted-foreground">
           {debate.ai_summary.split('.').slice(1).join('.')} {/* Rest of the summary */}
         </p>
         
-        {/* Party Proportions Bar */}
-        {partyCount && (
-          <div>
-            <h4 className="text-sm font-medium mb-2">Party Participation</h4>
-            <div className="h-4 flex rounded-full overflow-hidden">
-              {Object.entries(partyCount).map(([party, count]) => {
-                const proportion = (count / totalSpeakers) * 100;
-                const colors: { [key: string]: string } = {
-                  'Labour': 'bg-red-500',
-                  'Conservative': 'bg-blue-500',
-                  'Liberal Democrat': 'bg-yellow-500',
-                  'Scottish National Party': 'bg-yellow-400',
-                  'Green Party': 'bg-green-500',
-                  'Speaker': 'bg-gray-500',
-                  'Labour (Co-op)': 'bg-red-400',
-                  'Democratic Unionist Party': 'bg-purple-500'
-                };
-                
-                return (
-                  <div
-                    key={party}
-                    className={cn(
-                      colors[party] || 'bg-gray-400',
-                      'h-full hover:opacity-80 transition-opacity'
-                    )}
-                    style={{ width: `${proportion}%` }}
-                    title={`${party}: ${count} speakers (${proportion.toFixed(1)}%)`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
-        {/* Third question after party participation */}
+        {/* Third question */}
         {renderQuestion(3)}
+
+        {/* Progress indicators - only show if there are unvoted questions */}
+        <motion.div
+          animate={{
+            opacity: Object.keys(hasVoted).length === getTotalQuestions() ? 0 : 1,
+            height: Object.keys(hasVoted).length === getTotalQuestions() ? 0 : 'auto'
+          }}
+          className="flex justify-center gap-2"
+        >
+          {[1, 2, 3].map(num => {
+            const hasQuestion = debate[`ai_question_${num}` as keyof FeedItem];
+            if (!hasQuestion || hasVoted[num]) return null;
+
+            return (
+              <motion.div
+                key={num}
+                className={cn(
+                  "w-2 h-2 rounded-full",
+                  currentQuestion === num ? "bg-primary" : "bg-muted"
+                )}
+                whileHover={{ scale: 1.2 }}
+                onClick={() => setCurrentQuestion(num)}
+                style={{ cursor: 'pointer' }}
+              />
+            );
+          })}
+        </motion.div>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-4 px-2">

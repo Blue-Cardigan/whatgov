@@ -1,4 +1,4 @@
-import { MyParliament } from '@/components/debates/MyParliament';
+import { MyParliament } from '@/components/myparliament';
 
 export default function MyParliamentPage() {
   return (

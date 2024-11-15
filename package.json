@@ -53,6 +53,7 @@
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
     "react-swipeable": "^7.0.2",
+    "recharts": "^2.13.3",
     "server-only": "^0.0.1",
     "shadcn-ui": "^0.9.3",
     "stripe": "^17.3.1",

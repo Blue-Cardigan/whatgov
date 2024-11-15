@@ -33,7 +33,12 @@ export interface FeedItem {
   }
 
 export interface PartyCount {
-  [key: string]: number;
+  Conservative?: number;
+  Labour?: number;
+  "Liberal Democrat"?: number;
+  "Scottish National Party"?: number;
+  Other?: number;
+  [key: string]: number | undefined;
 }
 
 export interface KeyPoint {

@@ -12,7 +12,6 @@ interface DebateListProps {
   isLoading: boolean;
   loadMoreRef: React.RefObject<HTMLDivElement>;
   isFetchingNextPage: boolean;
-  votes?: Map<string, Map<number, boolean>>;
   onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
   readOnly?: boolean;
 }
@@ -22,11 +21,10 @@ export function DebateList({
   isLoading, 
   loadMoreRef, 
   isFetchingNextPage,
-  votes,
   onVote,
   readOnly = false
 }: DebateListProps) {
-  const { votes: globalVotes, submitVote } = useVotes();
+  const { submitVote } = useVotes();
   const { user } = useAuth();
   const parentRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -214,7 +212,6 @@ export function DebateList({
             >
               <DebateCard
                 debate={debate}
-                votes={votes || globalVotes}
                 onVote={handleVote}
                 readOnly={readOnly}
                 onExpandChange={(isExpanded) => handleExpandChange(debate.id, isExpanded)}

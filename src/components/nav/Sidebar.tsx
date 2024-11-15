@@ -8,7 +8,6 @@ import { toast } from "@/hooks/use-toast";
 import {
   Search,
   BookOpen,
-  Users,
   Settings,
   Info,
   LogOut,
@@ -16,7 +15,8 @@ import {
   Menu,
   UserPlus,
   Crown,
-  ScrollText
+  ScrollText,
+  BookMarked
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+  
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
 }
@@ -50,8 +50,8 @@ export function Sidebar({ className }: SidebarProps) {
 
     if (!isPremium) {
       toast({
-        title: "Premium feature",
-        description: "Upgrade to access research tools",
+        title: "Professional plan required",
+        description: "Upgrade to Professional to access research tools",
         variant: "destructive",
       });
       router.push('/pricing');
@@ -74,14 +74,8 @@ export function Sidebar({ className }: SidebarProps) {
     return (
       <>
         <DropdownMenuItem asChild>
-          <Link href="/settings" className="flex items-center">
-            <Settings className="h-4 w-4 mr-2" />
-            <span>Settings</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/info" className="flex items-center">
-            <Info className="h-4 w-4 mr-2" />
+          <Link href="/info" className="flex w-full items-center">
+            <Info className="h-4 w-4 mr-2.5" />
             <span>Info</span>
           </Link>
         </DropdownMenuItem>
@@ -89,22 +83,22 @@ export function Sidebar({ className }: SidebarProps) {
         {user ? (
           <DropdownMenuItem 
             onClick={handleSignOut}
-            className="flex items-center text-destructive focus:text-destructive cursor-pointer"
+            className="flex w-full items-center text-destructive focus:text-destructive cursor-pointer"
           >
-            <LogOut className="h-4 w-4 mr-2" />
+            <LogOut className="h-4 w-4 mr-2.5" />
             <span>Sign out</span>
           </DropdownMenuItem>
         ) : (
           <>
             <DropdownMenuItem asChild>
-              <Link href="/auth/signin" className="flex items-center">
-                <LogIn className="h-4 w-4 mr-2" />
+              <Link href="/auth/signin" className="flex w-full items-center">
+                <LogIn className="h-4 w-4 mr-2.5" />
                 <span>Sign in</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/auth/signup" className="flex items-center">
-                <UserPlus className="h-4 w-4 mr-2" />
+              <Link href="/auth/signup" className="flex w-full items-center">
+                <UserPlus className="h-4 w-4 mr-2.5" />
                 <span>Sign up</span>
               </Link>
             </DropdownMenuItem>
@@ -130,36 +124,36 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/myparliament",
       icon: BookOpen
     },
-    {
+    ...(isPremium ? [{
       title: "Research",
       href: "/research",
-      icon: Users,
+      icon: BookMarked,
       isPremium: true,
-    }
+    }] : [])
   ];
 
   return (
     <>
       {/* Desktop Sidebar */}
       <div className={cn(
-        "border-r overflow-y-auto hidden md:block z-50",
+        "border-r overflow-y-auto hidden md:block z-50 h-screen flex-col",
         className
       )}>
-        <div className="space-y-4 py-4">
-          <div className="px-3 py-2">
-            <div className="space-y-1">
-              {/* Logo */}
-              <Link 
-                href="/" 
-                className="flex h-14 items-center border-b px-3"
-              >
-                <span className="font-bold text-xl">
-                  <span className="lg:hidden">W</span>
-                  <span className="hidden lg:inline">WhatGov</span>
-                </span>
-              </Link>
+        <div className="flex flex-col h-full py-4">
+          {/* Logo */}
+          <Link 
+            href="/" 
+            className="flex h-14 items-center border-b px-6 mb-4"
+          >
+            <span className="font-bold text-xl">
+              <span className="lg:hidden">W</span>
+              <span className="hidden lg:inline">WhatGov</span>
+            </span>
+          </Link>
 
-              {/* Nav Items */}
+          {/* Main Navigation */}
+          <div className="px-3 flex-1">
+            <div className="space-y-1">
               {navItems.map((item) => (
                 <Link 
                   key={item.href} 
@@ -167,7 +161,8 @@ export function Sidebar({ className }: SidebarProps) {
                   onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
                 >
                   <div className={cn(
-                    "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                    "py-2 md:py-3",
                     pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
                     "lg:w-full",
                     item.isPremium && !isPremium && "opacity-75"
@@ -182,23 +177,38 @@ export function Sidebar({ className }: SidebarProps) {
                   </div>
                 </Link>
               ))}
-
-              {/* More Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className={cn(
-                    "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground w-full",
-                    "lg:w-full"
-                  )}>
-                    <Menu className="h-5 w-5" />
-                    <span className="hidden lg:block ml-3">More</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  {renderAuthMenuItems()}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
+          </div>
+
+          {/* Bottom Section */}
+          <div className="px-3 mt-auto border-t pt-4 space-y-2">
+              <Link href="/settings">
+                <div className={cn(
+                  "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  "py-2 md:py-3",
+                  pathname === '/settings' ? "bg-accent text-accent-foreground" : "transparent",
+                  "lg:w-full"
+                )}>
+                  <Settings className="h-5 w-5" />
+                  <span className="hidden lg:block ml-3">Settings</span>
+                </div>
+              </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={cn(
+                  "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground w-full",
+                  "py-2 md:py-3",
+                  "text-left"
+                )}>
+                  <Menu className="h-5 w-5" />
+                  <span className="hidden lg:block ml-3">More</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {renderAuthMenuItems()}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

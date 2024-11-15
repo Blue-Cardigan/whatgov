@@ -101,7 +101,6 @@ export function useAuth() {
 
     try {
       const response = await signInWithEmail(email, password);
-      console.log('response', response)
       
       if (response.error) {
         setAuthError(response.error);
@@ -204,7 +203,9 @@ export function useAuth() {
     loading,
     authError,
     subscription,
-    isPremium: subscription?.status === 'active',
+    isPremium: subscription?.status === 'active' && subscription?.plan_type === 'PROFESSIONAL',
+    isEngagedCitizen: subscription?.status === 'active' && 
+      (subscription?.plan_type === 'ENGAGED_CITIZEN' || subscription?.plan_type === 'PROFESSIONAL'),
     signIn,
     signUp,
     updateProfile,

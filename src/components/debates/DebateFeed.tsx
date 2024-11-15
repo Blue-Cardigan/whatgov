@@ -2,7 +2,6 @@
 
 import { useRef, useEffect } from 'react';
 import { useFeed } from '@/hooks/useFeed';
-import { useVotes } from '@/hooks/useVotes';
 import { DebateList } from './DebateList';
 
 export function DebateFeed() {
@@ -14,7 +13,6 @@ export function DebateFeed() {
     hasNextPage, 
     isFetchingNextPage 
   } = useFeed({ pageSize: 8 });
-  const { updateVisibleDebates, votes } = useVotes();
 
   useEffect(() => {
     // Create intersection observer
@@ -47,24 +45,16 @@ export function DebateFeed() {
     };
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  useEffect(() => {
-    if (data?.pages) {
-      const debateIds = data.pages.flatMap(page => page.items.map(debate => debate.id));
-      updateVisibleDebates(debateIds);
-    }
-  }, [data?.pages, updateVisibleDebates]);
-
   const allItems = data?.pages.flatMap(page => page.items) ?? [];
 
   return (
     <div className="flex justify-center">
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-xl">
         <DebateList
           items={allItems}
           isLoading={isLoading}
           loadMoreRef={loadMoreRef}
           isFetchingNextPage={isFetchingNextPage}
-          votes={votes}
         />
       </div>
     </div>

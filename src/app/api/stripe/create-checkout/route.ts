@@ -60,7 +60,6 @@ export async function POST(req: Request) {
     const { hasActiveSubscription } = await checkExistingSubscription(supabase, user.id);
 
     if (hasActiveSubscription) {
-      console.log('Preventing duplicate subscription:', { userId: user.id });
       return new NextResponse('Subscription already active', { status: 400 });
     }
 

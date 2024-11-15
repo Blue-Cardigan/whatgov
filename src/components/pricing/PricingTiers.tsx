@@ -227,9 +227,15 @@ function PricingContent() {
                 <Button 
                   className="w-full" 
                   variant="outline"
-                  onClick={() => router.push('/auth/signup')}
+                  onClick={() => {
+                    if (user) {
+                      router.push('/myparliament');
+                    } else {
+                      router.push('/auth/signup');
+                    }
+                  }}
                 >
-                  Get Started
+                  {user ? "Get Started" : "Sign Up Free"}
                 </Button>
               ) : tier.name === "Enterprise" ? (
                 <Dialog>

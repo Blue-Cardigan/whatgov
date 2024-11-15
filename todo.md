@@ -1,19 +1,23 @@
-Prioritise more recent debates
-Remove auth request at feed load
-skeletons/cached items instead of loading spinner
-Load more virtualized debates at once/ slow down scroll/ skeletons 
-- problem: 
 Favicon etc.
-Fix 
-
-
+Terms & Privacy
+Create whatgov email and update sendgrid
+Billing management (e.g cancel)
+account update (change email, delete)
 My Parliament
-- 'Voting record & analysis'
--- Can edit up to 24h of votes
-- My MP
+- voting data retrieval and page
+- Integrate MP data
+- Integrate schedule
+- Integrate search
+
+Banner reminders/tooltips/progress bar to create account, upgrade etc.
+
+#Optimizations
+Load more virtualized debates at once/ slow down scroll/ skeletons 
+- problem: looks janky when scrolling fast
 
 Free Features
 - Feed and votes
+- Basic Feed filters
 - Basic voting record view
 - Basic search
 - Parliamentary schedule

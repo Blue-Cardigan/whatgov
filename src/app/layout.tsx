@@ -15,7 +15,7 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             <div className="min-h-screen bg-background flex">
-              <Sidebar className="w-16 lg:w-64 shrink-0 sticky top-0 h-screen" />
+              <Sidebar className="w-20 lg:w-72 shrink-0 sticky top-0 h-screen" />
               <main className="flex-1 min-w-0 h-screen overflow-y-auto pb-16 md:pb-0">
                 {children}
               </main>
