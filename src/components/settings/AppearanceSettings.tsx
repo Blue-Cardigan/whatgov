@@ -5,9 +5,16 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Wait until mounted to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const themes = [
     {
@@ -27,6 +34,30 @@ export function AppearanceSettings() {
     }
   ];
 
+  // Show loading state until mounted
+  if (!mounted) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Customize how WhatGov looks on your device.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 w-20 bg-muted rounded" />
+            <div className="grid grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-muted rounded-md" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -39,7 +70,7 @@ export function AppearanceSettings() {
         <div className="space-y-4">
           <Label>Theme</Label>
           <RadioGroup
-            defaultValue={theme}
+            value={theme}
             onValueChange={setTheme}
             className="grid grid-cols-3 gap-4"
           >

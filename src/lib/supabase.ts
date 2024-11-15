@@ -20,6 +20,7 @@ export type AuthResponse = {
 export type UserProfile = {
   name: string;
   gender: string;
+  age: string;
   postcode: string;
   constituency: string;
   mp: string;
@@ -204,7 +205,7 @@ export async function getFeedItems(
 
       return {
         items: debates.slice(0, pageSize).map(debate => ({
-          id: debate.id,
+          id: debate.result_id,
           ext_id: debate.ext_id,
           title: debate.title,
           date: debate.date,
@@ -307,11 +308,11 @@ function processDebates(
 ): { items: FeedItem[]; nextCursor?: string } {
   const hasMore = debates.length > pageSize;
   const items = hasMore ? debates.slice(0, -1) : debates;
-  const nextCursor = hasMore ? items[items.length - 1].id : undefined;
+  const nextCursor = hasMore ? items[items.length - 1].result_id : undefined;
 
   const processedItems: FeedItem[] = items.map(debate => ({
-    id: debate.id,
-    ext_id: debate.id,
+    id: debate.result_id,
+    ext_id: debate.ext_id,
     title: debate.title,
     date: debate.date,
     location: debate.location,
@@ -405,6 +406,7 @@ export async function submitVote({ debate_id, question_number, vote }: DebateVot
     p_question_number: question_number,
     p_vote: vote
   });
+  console.log(debate_id, question_number, vote)
 
   if (error) throw error;
   return data;

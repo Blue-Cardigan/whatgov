@@ -96,6 +96,7 @@ export default function SignUp() {
       const response = await signUpWithAuth(formData.email, formData.password, {
         name: formData.name || "",
         gender: formData.gender || "",
+        age: formData.age || "",
         postcode: formData.postcode || "",
         constituency: mpDetails?.constituency || "",
         mp: mpDetails?.mp || "",

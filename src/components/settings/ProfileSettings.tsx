@@ -8,14 +8,11 @@ import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { createClient } from '@/lib/supabase-client';
 import { useAuth } from '@/hooks/useAuth';
-
-interface UserProfile {
-  name: string;
-  email: string;
-  postcode: string;
-  constituency: string;
-  mp: string;
-}
+import { UserProfile } from '@/lib/supabase';
+import { Badge } from "@/components/ui/badge";
+import { TOPICS } from "@/lib/utils";
+import { CheckCircle2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function ProfileSettings() {
   const { user } = useAuth();
@@ -48,6 +45,9 @@ export function ProfileSettings() {
         postcode: data.postcode || '',
         constituency: data.constituency || '',
         mp: data.mp || '',
+        gender: data.gender || '',
+        age: data.age || '',
+        selected_topics: data.selected_topics || [],
       });
     }
 
@@ -61,7 +61,6 @@ export function ProfileSettings() {
     setIsLoading(true);
     
     try {
-      // Update profile in the database
       const { error } = await createClient()
         .from('user_profiles')
         .update({
@@ -69,6 +68,9 @@ export function ProfileSettings() {
           postcode: profile.postcode,
           constituency: profile.constituency,
           mp: profile.mp,
+          gender: profile.gender,
+          age: profile.age,
+          selected_topics: profile.selected_topics,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -120,7 +122,7 @@ export function ProfileSettings() {
             Update your profile information and email settings.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -171,7 +173,79 @@ export function ProfileSettings() {
               disabled
             />
           </div>
-          
+
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender</Label>
+            <Select
+              value={profile.gender}
+              onValueChange={(value) => setProfile({ ...profile, gender: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="age">Age Range</Label>
+            <Select
+              value={profile.age}
+              onValueChange={(value) => setProfile({ ...profile, age: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select age range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="under-18">Under 18</SelectItem>
+                <SelectItem value="18-24">18-24</SelectItem>
+                <SelectItem value="25-34">25-34</SelectItem>
+                <SelectItem value="35-44">35-44</SelectItem>
+                <SelectItem value="45-54">45-54</SelectItem>
+                <SelectItem value="55-64">55-64</SelectItem>
+                <SelectItem value="65+">65+</SelectItem>
+                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Topics of Interest</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {TOPICS.map((topic) => {
+                const isSelected = profile.selected_topics.includes(topic.id);
+                const Icon = topic.icon;
+                
+                return (
+                  <Badge
+                    key={topic.id}
+                    variant={isSelected ? "default" : "outline"}
+                    className="w-full cursor-pointer transition-all py-4 px-4 flex items-center justify-between gap-3"
+                    onClick={() => {
+                      setProfile({
+                        ...profile,
+                        selected_topics: isSelected
+                          ? profile.selected_topics.filter(t => t !== topic.id)
+                          : [...profile.selected_topics, topic.id]
+                      });
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="text-sm font-medium">{topic.label}</span>
+                    </div>
+                    {isSelected && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "Saving..." : "Save Changes"}
           </Button>

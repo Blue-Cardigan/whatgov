@@ -37,6 +37,7 @@ export function useFeed({
       }
 
       const data = await getFeedItems(pageSize, pageParam, votedOnly, userTopics);
+      console.log(data)
       await setCache(cacheKey, data, CACHE_KEYS.debates.ttl);
       
       return data;

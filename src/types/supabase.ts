@@ -307,6 +307,7 @@ export type Database = {
           created_at: string
           email: string | null
           gender: string | null
+          age: number | null
           id: string
           mp: string | null
           name: string | null
@@ -324,6 +325,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           gender?: string | null
+          age?: number | null
           id: string
           mp?: string | null
           name?: string | null
@@ -341,6 +343,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           gender?: string | null
+          age?: number | null
           id?: string
           mp?: string | null
           name?: string | null
@@ -366,7 +369,7 @@ export type Database = {
           p_cursor?: string  // UUID
         }
         Returns: {
-          id: string
+          result_id: string
           ai_key_points: string
           ai_question_1: string
           ai_question_1_ayes: number
@@ -465,7 +468,7 @@ export type Database = {
       },
       submit_debate_vote: {
         Args: {
-          p_debate_id: string  // UUID
+          p_debate_id: string
           p_question_number: number
           p_vote: boolean
         }
