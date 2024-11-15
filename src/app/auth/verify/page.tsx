@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function VerifyEmail() {
-  const router = useRouter();
+// Create a separate component for the verification logic
+function VerificationHandler() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -217,6 +218,11 @@ export default function VerifyEmail() {
     }
   };
 
+  return renderContent();
+}
+
+// Main component
+export default function VerifyEmail() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <div className="container max-w-lg mx-auto p-8">
@@ -225,7 +231,18 @@ export default function VerifyEmail() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {renderContent()}
+          <Suspense fallback={
+            <div className="text-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"
+              />
+              <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+            </div>
+          }>
+            <VerificationHandler />
+          </Suspense>
         </motion.div>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
