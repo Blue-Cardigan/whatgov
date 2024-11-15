@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from '@/lib/supabase-client';
-import type { Database } from '@/types/supabase'
+import type { Json } from '@/types/supabase'
 
 interface VotingStats {
   totalVotes: number;
@@ -39,8 +39,8 @@ interface VoteHistoryEntry {
   vote: boolean;
   created_at: string;
   debates: {
-    ai_topics: string[];
-  } | null;
+    ai_topics: Json;
+  };
 }
 
 export function UserVoteHistory() {
@@ -80,11 +80,7 @@ export function UserVoteHistory() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Array<{
-        vote: boolean;
-        created_at: string;
-        debates: Database['public']['Tables']['debates']['Row'] | null;
-      }>;
+      return data as unknown as VoteHistoryEntry[];
     },
     enabled: !!user,
   });
@@ -288,7 +284,10 @@ function calculateTopicStats(
   });
 
   votingHistory.forEach(vote => {
-    const topics = vote.debates?.ai_topics || [];
+    const topics = Array.isArray(vote.debates?.ai_topics) 
+      ? vote.debates.ai_topics as string[]
+      : [];
+      
     topics.forEach((topic: string) => {
       if (stats.has(topic)) {
         const topicStats = stats.get(topic);

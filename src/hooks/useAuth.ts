@@ -5,7 +5,10 @@ import { signInWithEmail, signUpWithEmail, UserProfile } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
-  // Any additional fields specific to SignUpData can go here
+  // Required properties from UserProfile minus email & email_verified
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
 }
 
 type Subscription = {

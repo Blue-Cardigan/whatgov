@@ -14,6 +14,8 @@ export default function VerifyEmail() {
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'error'>('pending');
+  const [countdown, setCountdown] = useState(60);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Get email from URL params or localStorage on mount
   useEffect(() => {
@@ -26,44 +28,44 @@ export default function VerifyEmail() {
 
   // Handle token verification
   useEffect(() => {
+    const verifyToken = async (token: string) => {
+      setIsVerifying(true);
+      try {
+        const supabase = createClient();
+        
+        const { data, error } = await supabase.rpc('verify_user_email', {
+          token: token
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error || 'Verification failed');
+
+        setVerificationStatus('success');
+        localStorage.removeItem('verification_email');
+        
+        setTimeout(() => {
+          router.push('/auth/signin');
+        }, 2000);
+
+      } catch (err) {
+        console.error('Error verifying email:', err);
+        setVerificationStatus('error');
+        setError(
+          err instanceof Error 
+            ? err.message 
+            : 'Failed to verify email address'
+        );
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
     const token = searchParams.get('token');
     
     if (token) {
       verifyToken(token);
     }
-  }, [searchParams]);
-
-  const verifyToken = async (token: string) => {
-    try {
-      const supabase = createClient();
-      
-      // Call our custom verification function
-      const { data, error } = await supabase.rpc('verify_user_email', {
-        token: token
-      });
-
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error || 'Verification failed');
-
-      setVerificationStatus('success');
-      // Clear the stored email since verification is complete
-      localStorage.removeItem('verification_email');
-      
-      // Redirect to signin after a short delay
-      setTimeout(() => {
-        router.push('/auth/signin');
-      }, 2000);
-
-    } catch (err) {
-      console.error('Error verifying email:', err);
-      setVerificationStatus('error');
-      setError(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to verify email address'
-      );
-    }
-  };
+  }, [searchParams, router]);
 
   const handleResendEmail = async () => {
     setResendStatus('loading');
@@ -107,6 +109,19 @@ export default function VerifyEmail() {
     }
   };
 
+  // Add countdown effect for resend cooldown
+  useEffect(() => {
+    if (resendStatus === 'success' && countdown > 0) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else if (countdown === 0) {
+      setResendStatus('idle');
+      setCountdown(60);
+    }
+  }, [countdown, resendStatus]);
+
   // Clear stored email on unmount
   useEffect(() => {
     return () => {
@@ -133,6 +148,7 @@ export default function VerifyEmail() {
         );
 
       case 'error':
+      case 'pending':
         return (
           <div className="text-center mb-6">
             <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -142,13 +158,45 @@ export default function VerifyEmail() {
               Check your email
             </h1>
             <p className="text-muted-foreground">
-              We've sent you a verification link. Please check your email to continue.
+              We&apos;ve sent you a verification link. Please check your email to continue.
             </p>
             {email && (
               <p className="text-sm text-muted-foreground mt-2">
                 Verification email sent to <span className="font-medium">{email}</span>
               </p>
             )}
+            
+            {/* Add loading indicator during verification */}
+            {isVerifying && (
+              <div className="mt-4">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"
+                />
+                <p className="text-sm text-muted-foreground mt-2">Verifying your email...</p>
+              </div>
+            )}
+
+            {/* Add resend button section */}
+            {!isVerifying && (
+              <div className="mt-6">
+                <button
+                  onClick={handleResendEmail}
+                  disabled={resendStatus === 'loading' || resendStatus === 'success'}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                    ${resendStatus === 'loading' || resendStatus === 'success'
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                    }`}
+                >
+                  {resendStatus === 'loading' && 'Sending...'}
+                  {resendStatus === 'success' && `Resend available in ${countdown}s`}
+                  {resendStatus === 'idle' && 'Resend verification email'}
+                </button>
+              </div>
+            )}
+
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -165,24 +213,7 @@ export default function VerifyEmail() {
         );
 
       default:
-        return (
-          <div className="text-center mb-6">
-            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold mb-2">
-              Check your email
-            </h1>
-            <p className="text-muted-foreground">
-              We've sent you a verification link. Please check your email to continue.
-            </p>
-            {email && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Verification email sent to <span className="font-medium">{email}</span>
-              </p>
-            )}
-          </div>
-        );
+        return null;
     }
   };
 

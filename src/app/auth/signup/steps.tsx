@@ -24,7 +24,7 @@ type FormData = {
 interface StepsProps {
   step: number;
   formData: FormData;
-  setFormData: (data: any) => void;
+  setFormData: (data: FormData | ((prev: FormData) => FormData)) => void;
   postcodeError: string;
   setPostcodeError: (error: string) => void;
   mpDetails: { mp: string | null; constituency: string | null; } | null;

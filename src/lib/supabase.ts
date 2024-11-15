@@ -123,7 +123,7 @@ export const signInWithEmail = async (email: string, password: string): Promise<
 
     // Only check profile after successful authentication, using the user's ID
     if (data.user?.id) {
-      const { data: profile, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('user_profiles')
         .select('email_verified')
         .eq('id', data.user.id)  // Changed from 'id' to 'user_id'

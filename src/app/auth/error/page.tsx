@@ -14,7 +14,7 @@ export default function AuthError() {
             Verification Failed
           </h1>
           <p className="text-muted-foreground mb-6">
-            We couldn't verify your email. The link may have expired or is invalid.
+            We couldn&apos;t verify your email. The link may have expired or is invalid.
           </p>
           <div className="space-y-4">
             <Link href="/auth/signup">

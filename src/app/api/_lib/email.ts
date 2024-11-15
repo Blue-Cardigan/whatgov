@@ -107,10 +107,10 @@ export async function sendConfirmationEmail(email: string, confirmationLink: str
   try {
     await sgMail.send(msg);
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error('SendGrid error:', error);
-    if (error.response) {
-      console.error(error.response.body);
+    if (error) {
+      console.error(error);
     }
     return { success: false, error };
   }

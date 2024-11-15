@@ -4,7 +4,7 @@ import { useVotes } from '@/hooks/useVotes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { DebateSkeleton } from './DebateSkeleton';
 
 interface DebateListProps {
