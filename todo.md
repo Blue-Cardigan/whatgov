@@ -1,3 +1,12 @@
+Prioritise more recent debates
+Remove auth request at feed load
+skeletons/cached items instead of loading spinner
+Load more virtualized debates at once/ slow down scroll/ skeletons 
+- problem: 
+Favicon etc.
+Fix 
+
+
 My Parliament
 - 'Voting record & analysis'
 -- Can edit up to 24h of votes

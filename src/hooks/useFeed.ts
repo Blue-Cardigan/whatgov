@@ -2,6 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { getFeedItems } from '@/lib/supabase';
 import { useCache } from './useCache';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UseFeedOptions {
   votedOnly?: boolean;
@@ -15,11 +16,14 @@ export function useFeed({
   userTopics = [] 
 }: UseFeedOptions = {}) {
   const { getCache, setCache, CACHE_KEYS } = useCache();
+  const { user } = useAuth();
 
   return useInfiniteQuery({
-    queryKey: ['feed', { votedOnly, pageSize, userTopics }],
+    queryKey: ['feed', { votedOnly, pageSize, userTopics, isAuthenticated: !!user }],
     queryFn: async ({ pageParam = null }) => {
-      const cacheKey = CACHE_KEYS.debates.key(`${votedOnly}:${pageSize}:${pageParam || 'initial'}`);
+      const cacheKey = CACHE_KEYS.debates.key(
+        `${votedOnly}:${pageSize}:${pageParam || 'initial'}:${!!user}`
+      );
       
       const VERSION = "v1";
       const versionedKey = `${VERSION}:${cacheKey}`;

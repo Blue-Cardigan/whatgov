@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useCallback, useEffect, useState } from 'react';
+import { DebateSkeleton } from './DebateSkeleton';
 
 interface DebateListProps {
   items: FeedItem[];
@@ -63,14 +64,6 @@ export function DebateList({
     return isExpanded ? baseHeight + questionsHeight + 300 : baseHeight + questionsHeight;
   }, [items]);
 
-  // Add state for window height
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  // Set scroll margin after component mounts
-  useEffect(() => {
-    setScrollMargin(window.innerHeight * 0.1);
-  }, []);
-
   // 4. Optimized virtualizer configuration
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -79,7 +72,7 @@ export function DebateList({
     overscan: 3,
     paddingStart: 0,
     paddingEnd: 0,
-    scrollMargin,
+    scrollMargin: 0,
     measureElement: useCallback((element: HTMLElement) => {
       const height = element.getBoundingClientRect().height;
       const debateId = element.getAttribute('data-debate-id');
@@ -180,8 +173,10 @@ export function DebateList({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="space-y-px">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <DebateSkeleton key={i} />
+        ))}
       </div>
     );
   }
@@ -189,7 +184,7 @@ export function DebateList({
   return (
     <div 
       ref={parentRef} 
-      className="w-full"
+      className="w-full space-y-px"
       style={{
         minHeight: '100vh'
       }}

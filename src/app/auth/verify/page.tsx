@@ -1,59 +1,213 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase-client";
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function VerifyEmail() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'success' | 'error'>('pending');
 
-  // Auto-redirect after 5 seconds
+  // Get email from URL params or localStorage on mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.push("/");
-    }, 5000);
+    const emailFromStorage = localStorage.getItem('verification_email');
+    
+    if (emailFromStorage) {
+      setEmail(emailFromStorage);
+    }
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [router]);
+  // Handle token verification
+  useEffect(() => {
+    const token = searchParams.get('token');
+    
+    if (token) {
+      verifyToken(token);
+    }
+  }, [searchParams]);
+
+  const verifyToken = async (token: string) => {
+    try {
+      const supabase = createClient();
+      
+      // Call our custom verification function
+      const { data, error } = await supabase.rpc('verify_user_email', {
+        token: token
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Verification failed');
+
+      setVerificationStatus('success');
+      // Clear the stored email since verification is complete
+      localStorage.removeItem('verification_email');
+      
+      // Redirect to signin after a short delay
+      setTimeout(() => {
+        router.push('/auth/signin');
+      }, 2000);
+
+    } catch (err) {
+      console.error('Error verifying email:', err);
+      setVerificationStatus('error');
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to verify email address'
+      );
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setResendStatus('loading');
+    setError(null);
+
+    if (!email) {
+      setError('No email address found. Please try signing up again.');
+      setResendStatus('error');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('Supabase resend error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        throw error;
+      }
+      
+      setResendStatus('success');
+    } catch (err) {
+      console.error('Error resending verification email:', err);
+      setError(
+        err instanceof Error 
+          ? `${err.message} (This might be due to email sending limits)` 
+          : 'Failed to resend verification email'
+      );
+      setResendStatus('error');
+    }
+  };
+
+  // Clear stored email on unmount
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('verification_email');
+    };
+  }, []);
+
+  // Render different content based on verification status
+  const renderContent = () => {
+    switch (verificationStatus) {
+      case 'success':
+        return (
+          <div className="text-center mb-6">
+            <div className="bg-green-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-semibold mb-2">
+              Email Verified!
+            </h1>
+            <p className="text-muted-foreground">
+              Your email has been successfully verified. Redirecting you to sign in...
+            </p>
+          </div>
+        );
+
+      case 'error':
+        return (
+          <div className="text-center mb-6">
+            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold mb-2">
+              Check your email
+            </h1>
+            <p className="text-muted-foreground">
+              We've sent you a verification link. Please check your email to continue.
+            </p>
+            {email && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Verification email sent to <span className="font-medium">{email}</span>
+              </p>
+            )}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-lg mb-6"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="text-center mb-6">
+            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold mb-2">
+              Check your email
+            </h1>
+            <p className="text-muted-foreground">
+              We've sent you a verification link. Please check your email to continue.
+            </p>
+            {email && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Verification email sent to <span className="font-medium">{email}</span>
+              </p>
+            )}
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <div className="container max-w-lg mx-auto p-8">
         <motion.div 
-          className="bg-background rounded-xl shadow-lg p-8 text-center"
+          className="bg-background rounded-xl shadow-lg p-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6"
-          >
-            <CheckCircle2 className="h-8 w-8 text-primary" />
-          </motion.div>
-
-          <h1 className="text-3xl font-semibold mb-3">
-            Account Created Successfully!
-          </h1>
-          
-          <p className="text-muted-foreground mb-8">
-            Your account has been created and you&apos;re ready to start voting on issues.
-          </p>
-          <p className="text-sm text-muted-foreground mb-8">
-            You&apos;ll be automatically redirected to the home page in a few seconds.
-          </p>
-
-          <div className="space-y-4">
-            <Button 
-              onClick={() => router.push("/")}
-              className="w-full py-6 text-lg"
-            >
-              Go to Home Page
-            </Button>
-          </div>
+          {renderContent()}
         </motion.div>
+
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          <p>
+            Having trouble?{" "}
+            <Link 
+              href="/support" 
+              className="text-primary hover:underline font-medium"
+            >
+              Contact support
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

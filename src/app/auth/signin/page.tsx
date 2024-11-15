@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -14,6 +16,8 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams()
+  const verified = searchParams.get('verified')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,8 +25,14 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      await signIn( email, password );
-      router.push("/"); // Redirect to home page after successful sign in
+      const response = await signIn(email, password);
+      if (response?.status === 'verify_email') {
+        router.push('/auth/verify');
+      } else if (response?.user) {
+        router.push("/");
+      } else {
+        setError(response?.error || "Invalid email or password");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
     } finally {
@@ -34,6 +44,19 @@ export default function SignIn() {
     <div className="container max-w-md mx-auto mt-16 px-4">
       <h1 className="text-2xl font-bold mb-8">Sign In</h1>
       
+      {verified && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Email verified successfully! Please sign in.</span>
+          </div>
+        </motion.div>
+      )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}

@@ -57,14 +57,16 @@ export function DebateFeed() {
   const allItems = data?.pages.flatMap(page => page.items) ?? [];
 
   return (
-    <div >
-      <DebateList
-        items={allItems}
-        isLoading={isLoading}
-        loadMoreRef={loadMoreRef}
-        isFetchingNextPage={isFetchingNextPage}
-        votes={votes}
-      />
+    <div className="flex justify-center">
+      <div className="w-full max-w-3xl">
+        <DebateList
+          items={allItems}
+          isLoading={isLoading}
+          loadMoreRef={loadMoreRef}
+          isFetchingNextPage={isFetchingNextPage}
+          votes={votes}
+        />
+      </div>
     </div>
   );
 } 
