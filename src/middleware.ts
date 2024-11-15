@@ -71,6 +71,14 @@ export async function middleware(req: NextRequest) {
     // Refresh session if expired
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Check if it's a first-time visitor for non-auth pages
+    if (!user && !req.nextUrl.pathname.startsWith('/auth/')) {
+      const hasVisited = req.cookies.get('has_visited')?.value
+      if (!hasVisited) {
+        return NextResponse.redirect(new URL('/intro', req.url))
+      }
+    }
+
     // Handle API routes that require authentication
     if (req.nextUrl.pathname.startsWith('/api/')) {
       if (!user) {
@@ -98,6 +106,13 @@ export async function middleware(req: NextRequest) {
       }
     }
 
+    // Handle protected page routes
+    if (req.nextUrl.pathname.startsWith('/settings/')) {
+      if (!user) {
+        return NextResponse.redirect(new URL('/auth/login', req.url))
+      }
+    }
+
     return response
   } catch (error) {
     console.error('Middleware error:', error)
@@ -113,5 +128,6 @@ export const config = {
     '/api/stripe/:path*',
     '/api/premium/:path*',
     '/settings/:path*',
+    '/',  // Add home page to check first visit
   ],
 } 

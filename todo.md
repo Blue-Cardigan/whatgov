@@ -1,13 +1,15 @@
+Direct to signup on first visit
 Favicon etc.
 Terms & Privacy
+
 Create whatgov email and update sendgrid
 Billing management (e.g cancel)
 account update (change email, delete)
+
 My Parliament
-- voting data retrieval and page
+- Integrate search
 - Integrate MP data
 - Integrate schedule
-- Integrate search
 
 Banner reminders/tooltips/progress bar to create account, upgrade etc.
 

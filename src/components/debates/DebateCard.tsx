@@ -215,12 +215,20 @@ export function DebateCard({
   
   // Party colors mapping
   const partyColors = {
-    Conservative: "bg-blue-500",
-    Labour: "bg-rose-500",
-    "Liberal Democrat": "bg-amber-500",
-    "Scottish National Party": "bg-yellow-500",
-    Other: "bg-gray-500"
+    Conservative: "bg-[hsl(var(--party-conservative))]",
+    Labour: "bg-[hsl(var(--party-labour))]",
+    "Liberal Democrat": "bg-[hsl(var(--party-libdem))]",
+    "Scottish National Party": "bg-[hsl(var(--party-snp))]",
+    Other: "bg-muted"
   } as const;
+
+  // Determine house based on location
+  const getHouse = (location: string): 'Commons' | 'Lords' => {
+    const lordsLocations = ['Grand Committee', 'Lords Chamber'];
+    return lordsLocations.some(loc => location.includes(loc)) ? 'Lords' : 'Commons';
+  };
+  
+  const house = getHouse(debate.location);
 
   return (
     <Card 
@@ -231,7 +239,15 @@ export function DebateCard({
         "border-x-0",
         "border-t-0",
         "border-b border-border/50 dark:border-border/30",
-        "rounded-none"
+        "rounded-none",
+        // Add subtle left border based on house
+        house === 'Commons' 
+          ? "border-l-2 border-l-emerald-500/20 dark:border-l-emerald-500/10" 
+          : "border-l-2 border-l-red-500/20 dark:border-l-red-500/10",
+        // Add subtle background tint based on house
+        house === 'Commons'
+          ? "bg-emerald-50/5 dark:bg-emerald-950/5"
+          : "bg-red-50/5 dark:bg-red-950/5"
       )}
     >
       <CardHeader className="space-y-4">
@@ -244,7 +260,12 @@ export function DebateCard({
             </div>
             <span>•</span>
             <div className="flex items-center gap-1">
-              <Building2 className="h-4 w-4" />
+              <Building2 className={cn(
+                "h-4 w-4",
+                house === 'Commons' 
+                  ? "text-emerald-500/70 dark:text-emerald-400/70" 
+                  : "text-red-500/70 dark:text-red-400/70"
+              )} />
               {debate.location.replace(' Chamber', '')}
             </div>
             {totalSpeakers > 0 && (
@@ -314,7 +335,22 @@ export function DebateCard({
             {debate.ai_title || debate.title}
           </CardTitle>
         </div>
+      </CardHeader>
 
+      <CardContent className="space-y-6">
+        {/* First part of summary */}
+        <motion.div
+          className="prose prose-sm max-w-none"
+          animate={{
+            marginBottom: hasVoted[1] ? 0 : '1.5rem'
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          <p className="text-muted-foreground leading-relaxed">
+            {debate.ai_summary.split('.').slice(0, 1).join('.')}.
+          </p>
+        </motion.div>
+        
         {/* First question */}
         <motion.div
           animate={{
@@ -325,21 +361,6 @@ export function DebateCard({
           transition={{ duration: 0.3 }}
         >
           {renderQuestion(1)}
-        </motion.div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* First part of summary with conditional spacing */}
-        <motion.div
-          className="prose prose-sm max-w-none"
-          animate={{
-            marginBottom: hasVoted[2] ? 0 : '1.5rem'
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <p className="text-muted-foreground leading-relaxed">
-            {debate.ai_summary.split('.').slice(0, 1).join('.')}.
-          </p>
         </motion.div>
         
         {/* Second question */}

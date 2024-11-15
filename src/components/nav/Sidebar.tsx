@@ -25,6 +25,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
   
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -132,6 +138,42 @@ export function Sidebar({ className }: SidebarProps) {
     }] : [])
   ];
 
+  const renderNavItem = (item: typeof navItems[0]) => (
+    <TooltipProvider key={item.href} delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link 
+            href={item.href}
+            onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
+          >
+            <div className={cn(
+              "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+              "h-10",
+              "justify-center lg:justify-start",
+              pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
+              "lg:w-full",
+              item.isPremium && !isPremium && "opacity-75"
+            )}>
+              <item.icon className="h-5 w-5" />
+              <span className="hidden lg:block ml-3">
+                {item.title}
+                {item.isPremium && !isPremium && (
+                  <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+                )}
+              </span>
+            </div>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="lg:hidden">
+          <span>{item.title}</span>
+          {item.isPremium && !isPremium && (
+            <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   return (
     <>
       {/* Desktop Sidebar */}
@@ -143,7 +185,7 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Logo */}
           <Link 
             href="/" 
-            className="flex h-14 items-center border-b px-6 mb-4"
+            className="flex h-14 items-center justify-center lg:justify-start border-b px-6 mb-4"
           >
             <span className="font-bold text-xl">
               <span className="lg:hidden">W</span>
@@ -153,62 +195,60 @@ export function Sidebar({ className }: SidebarProps) {
 
           {/* Main Navigation */}
           <div className="px-3 flex-1">
-            <div className="space-y-1">
-              {navItems.map((item) => (
-                <Link 
-                  key={item.href} 
-                  href={item.href}
-                  onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
-                >
-                  <div className={cn(
-                    "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                    "py-2 md:py-3",
-                    pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-                    "lg:w-full",
-                    item.isPremium && !isPremium && "opacity-75"
-                  )}>
-                    <item.icon className="h-5 w-5" />
-                    <span className="hidden lg:block ml-3">
-                      {item.title}
-                      {item.isPremium && !isPremium && (
-                        <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
-                      )}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+            <div className="space-y-2">
+              {navItems.map(renderNavItem)}
             </div>
           </div>
 
           {/* Bottom Section */}
           <div className="px-3 mt-auto border-t pt-4 space-y-2">
-              <Link href="/settings">
-                <div className={cn(
-                  "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  "py-2 md:py-3",
-                  pathname === '/settings' ? "bg-accent text-accent-foreground" : "transparent",
-                  "lg:w-full"
-                )}>
-                  <Settings className="h-5 w-5" />
-                  <span className="hidden lg:block ml-3">Settings</span>
-                </div>
-              </Link>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/settings">
+                    <div className={cn(
+                      "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                      "h-10",
+                      "justify-center lg:justify-start",
+                      pathname === '/settings' ? "bg-accent text-accent-foreground" : "transparent",
+                      "lg:w-full"
+                    )}>
+                      <Settings className="h-5 w-5" />
+                      <span className="hidden lg:block ml-3">Settings</span>
+                    </div>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="lg:hidden">
+                  Settings
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground w-full",
-                  "py-2 md:py-3",
-                  "text-left"
-                )}>
-                  <Menu className="h-5 w-5" />
-                  <span className="hidden lg:block ml-3">More</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                {renderAuthMenuItems()}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className={cn(
+                        "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground w-full",
+                        "h-10",
+                        "justify-center lg:justify-start",
+                        "text-left"
+                      )}>
+                        <Menu className="h-5 w-5" />
+                        <span className="hidden lg:block ml-3">More</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {renderAuthMenuItems()}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="lg:hidden">
+                  More
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>

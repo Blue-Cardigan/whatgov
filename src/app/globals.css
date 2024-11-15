@@ -10,57 +10,105 @@ body {
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
+    
+    /* Card and surface colors */
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    
+    /* Primary colors - used for main actions and emphasis */
+    --primary: 142 76% 36%;  /* Emerald-like green for Commons */
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    
+    /* Secondary colors - used for subtle backgrounds */
+    --secondary: 142 50% 95%;  /* Light emerald for hover states */
+    --secondary-foreground: 142 76% 36%;
+    
+    /* Muted colors - used for subtle text and borders */
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    
+    /* Accent colors - used for highlights */
+    --accent: 142 50% 95%;
+    --accent-foreground: 142 76% 36%;
+    
+    /* Status colors */
+    --destructive: 0 84.2% 60.2%;  /* Red for Lords and warnings */
     --destructive-foreground: 0 0% 98%;
-    --success: 12 76% 61%;
+    --success: 142 76% 36%;  /* Same as primary for consistency */
     --success-foreground: 0 0% 98%;
+    
+    /* UI element colors */
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 240 5% 64.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --ring: 142 76% 36%;
+    
+    /* Party colors used in the debate card */
+    --party-conservative: 210 100% 50%;  /* Blue */
+    --party-labour: 0 84% 60%;          /* Red */
+    --party-libdem: 45 100% 50%;        /* Amber */
+    --party-snp: 60 100% 50%;           /* Yellow */
+    
+    /* Chart colors */
+    --chart-1: 142 76% 36%;
+    --chart-2: 210 100% 50%;
+    --chart-3: 0 84% 60%;
+    --chart-4: 45 100% 50%;
+    --chart-5: 60 100% 50%;
+    
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
+    
+    /* Card and surface colors */
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    
+    /* Primary colors */
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 98%;
+    
+    /* Secondary colors */
+    --secondary: 142 50% 15%;
     --secondary-foreground: 0 0% 98%;
+    
+    /* Muted colors */
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    
+    /* Accent colors */
+    --accent: 142 50% 15%;
     --accent-foreground: 0 0% 98%;
+    
+    /* Status colors */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    
+    /* UI element colors */
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 142 76% 36%;
+    
+    /* Party colors - slightly muted for dark mode */
+    --party-conservative: 210 90% 45%;
+    --party-labour: 0 74% 55%;
+    --party-libdem: 45 90% 45%;
+    --party-snp: 60 90% 45%;
+    
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 142 76% 36%;
+    --chart-2: 210 90% 45%;
+    --chart-3: 0 74% 55%;
+    --chart-4: 45 90% 45%;
+    --chart-5: 60 90% 45%;
   }
 }
 
