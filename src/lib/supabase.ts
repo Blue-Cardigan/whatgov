@@ -57,9 +57,9 @@ export const signUpWithEmail = async (
     if (!data.success) throw new Error(data.error || 'User creation failed');
 
     const encodedToken = encodeURIComponent(data.confirmation_token);
-    const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/verify?token=${encodedToken}`;
+    const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify?token=${encodedToken}`;
     
-    const emailResponse = await fetch('/api/auth/send-verification', {
+    const emailResponse = await fetch('/api/accounts/send-verification', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

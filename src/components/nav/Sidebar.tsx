@@ -50,7 +50,7 @@ export function Sidebar({ className }: SidebarProps) {
         description: "Please sign in to access this feature",
         variant: "destructive",
       });
-      router.push('/auth/signin');
+      router.push('/accounts/signin');
       return;
     }
 
@@ -70,7 +70,7 @@ export function Sidebar({ className }: SidebarProps) {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push('/auth/signin');
+      router.push('/accounts/signin');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -97,13 +97,13 @@ export function Sidebar({ className }: SidebarProps) {
         ) : (
           <>
             <DropdownMenuItem asChild>
-              <Link href="/auth/signin" className="flex w-full items-center">
+              <Link href="/accounts/signin" className="flex w-full items-center">
                 <LogIn className="h-4 w-4 mr-2.5" />
                 <span>Sign in</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/auth/signup" className="flex w-full items-center">
+              <Link href="/accounts/signup" className="flex w-full items-center">
                 <UserPlus className="h-4 w-4 mr-2.5" />
                 <span>Sign up</span>
               </Link>

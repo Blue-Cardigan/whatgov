@@ -115,7 +115,7 @@ function PricingContent() {
         description: "Please sign in to subscribe to a plan",
         variant: "destructive",
       });
-      router.push('/auth/signin');
+      router.push('/accounts/signin');
       return;
     }
 
@@ -132,7 +132,7 @@ function PricingContent() {
           variant: "destructive",
         });
         await createClient().auth.signOut();
-        router.push('/auth/signin');
+        router.push('/accounts/signin');
         return;
       }
 
@@ -231,7 +231,7 @@ function PricingContent() {
                     if (user) {
                       router.push('/myparliament');
                     } else {
-                      router.push('/auth/signup');
+                      router.push('/accounts/signup');
                     }
                   }}
                 >

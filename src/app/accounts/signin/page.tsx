@@ -45,7 +45,7 @@ export default function SignIn() {
     try {
       const response = await signIn(email, password);
       if (response?.status === 'verify_email') {
-        router.push('/auth/verify');
+        router.push('/accounts/verify');
       } else if (response?.user) {
         router.push("/");
       } else {
@@ -110,7 +110,7 @@ export default function SignIn() {
 
       <p className="mt-4 text-center text-sm">
         Don&apos;t have an account?{" "}
-        <Link href="/auth/signup" className="text-primary hover:underline">
+        <Link href="/accounts/signup" className="text-primary hover:underline">
           Sign up
         </Link>
       </p>

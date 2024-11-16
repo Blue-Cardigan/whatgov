@@ -72,7 +72,7 @@ export async function middleware(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     // Check if it's a first-time visitor for non-auth pages
-    if (!user && !req.nextUrl.pathname.startsWith('/auth/')) {
+    if (!user && !req.nextUrl.pathname.startsWith('/accounts/')) {
       const hasVisited = req.cookies.get('has_visited')?.value
       if (!hasVisited && req.nextUrl.pathname === '/') {
         const response = NextResponse.redirect(new URL('/intro', req.url))
@@ -114,7 +114,7 @@ export async function middleware(req: NextRequest) {
     // Handle protected page routes
     if (req.nextUrl.pathname.startsWith('/settings/')) {
       if (!user) {
-        return NextResponse.redirect(new URL('/auth/login', req.url))
+        return NextResponse.redirect(new URL('/accounts/login', req.url))
       }
     }
 

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     
     if (error) {
       // Redirect to error page
-      return NextResponse.redirect(new URL('/auth/error', request.url))
+      return NextResponse.redirect(new URL('/accounts/error', request.url))
     }
 
     // Update user profile to mark email as verified
@@ -27,9 +27,9 @@ export async function GET(request: Request) {
     }
 
     // Redirect to success page or dashboard
-    return NextResponse.redirect(new URL('/auth/signin?verified=true', request.url))
+    return NextResponse.redirect(new URL('/accounts/signin?verified=true', request.url))
   }
 
   // Return error if code is missing
-  return NextResponse.redirect(new URL('/auth/error', request.url))
+  return NextResponse.redirect(new URL('/accounts/error', request.url))
 } 

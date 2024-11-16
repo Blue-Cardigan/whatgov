@@ -148,7 +148,7 @@ export function useAuth() {
       
       if (response.status === 'verify_email') {
         // Include email in redirect
-        router.push(`/auth/verify`);
+        router.push(`/accounts/verify`);
         localStorage.setItem('verification_email', email);
         return response;
       }

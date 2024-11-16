@@ -1,5 +1,3 @@
-Favicon etc.
-Terms & Privacy
 Page for each debate
 - Move key points here, add full debate summaries
 
@@ -23,20 +21,22 @@ Free Features
 - Basic search
 - Parliamentary schedule
 - View debate key points
+- *View general trends after info provided
+- - ONS data?
 
 Premium Features
 - View Your MP's activity
 - View your voting analytics
 - Read rewritten debates
 
-Researcher Features
+Professional Features
 - AI Research Assistant
 - Analysis with coverage
 - Advanced Hansard search
 - Subscribe to Hansard searches
 - Access parliamentary documents
 
-Organization Features
+Enterprise Features
 - View constituency voting trends
 - Generate reports for your team
 - Share research

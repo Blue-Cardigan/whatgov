@@ -170,7 +170,7 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/auth/signup')}
+            onClick={() => router.push('/accounts/signup')}
           >
             Create an account to continue voting
           </Button>
@@ -201,7 +201,7 @@ export function DebateList({
             <Button 
               variant="default" 
               size="sm" 
-              onClick={() => router.push('/auth/signup')}
+              onClick={() => router.push('/accounts/signup')}
             >
               Sign up
             </Button>
@@ -228,7 +228,7 @@ export function DebateList({
   ]);
 
   const handleSignup = useCallback(() => {
-    router.push('/auth/signup');
+    router.push('/accounts/signup');
   }, [router]);
 
   // Show engagement prompt toast when appropriate
@@ -241,7 +241,7 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/auth/signup')}
+            onClick={() => router.push('/accounts/signup')}
           >
             Create an account
           </Button>

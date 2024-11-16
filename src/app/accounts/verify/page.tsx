@@ -45,7 +45,7 @@ function VerificationHandler() {
         localStorage.removeItem('verification_email');
         
         setTimeout(() => {
-          router.push('/auth/signin');
+          router.push('/accounts/signin');
         }, 2000);
 
       } catch (err) {
@@ -85,7 +85,7 @@ function VerificationHandler() {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/accounts/callback`,
         },
       });
 

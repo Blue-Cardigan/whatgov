@@ -71,7 +71,7 @@ const plans = [
         "Access essential parliamentary information"
       ]}
     ],
-    cta: { text: "Start Free", href: "/auth/signup" }
+    cta: { text: "Start Free", href: "/accounts/signup" }
   },
   {
     name: "Engaged Citizen",

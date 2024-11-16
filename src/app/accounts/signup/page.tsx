@@ -114,7 +114,7 @@ export default function SignUp() {
 
       if (response.status === 'verify_email') {
         localStorage.setItem('verification_email', formData.email);
-        router.push('/auth/verify');
+        router.push('/accounts/verify');
       } else {
         throw new Error('Unexpected response status');
       }
@@ -304,7 +304,7 @@ export default function SignUp() {
 
         <p className="mt-8 text-center text-sm">
           Already have an account?{" "}
-          <Link href="/auth/signin" className="text-primary hover:underline font-medium">
+          <Link href="/accounts/signin" className="text-primary hover:underline font-medium">
             Sign in
           </Link>
         </p>
