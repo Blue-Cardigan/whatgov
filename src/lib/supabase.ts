@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { UserVotingStats, TopicStats, TopicStatsRaw, WeeklyStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
+import type { UserVotingStats, TopicStats, TopicStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
 export type AuthError = {
   message: string;
 }
@@ -386,7 +386,7 @@ export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' =
 
   // Calculate date range based on timeframe
   const now = new Date();
-  let startDate = new Date();
+  const startDate = new Date();
   let interval: 'hour' | 'day';
 
   switch (timeframe) {

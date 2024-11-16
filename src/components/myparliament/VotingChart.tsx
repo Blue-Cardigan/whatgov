@@ -9,6 +9,8 @@ import {
   Legend,
 } from 'recharts';
 import { format } from 'date-fns';
+import { TooltipProps } from 'recharts';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 interface ChartData {
   timestamp: string;
@@ -32,12 +34,16 @@ export function VotingChart({ data, timeframe }: {
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ 
+    active, 
+    payload, 
+    label 
+  }: TooltipProps<ValueType, NameType>) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium mb-1">{formatDate(label)}</p>
-          {payload.map((entry: any) => (
+          <p className="font-medium mb-1">{formatDate(label as string)}</p>
+          {payload.map((entry) => (
             <div 
               key={entry.name} 
               className="flex items-center gap-2 text-sm"

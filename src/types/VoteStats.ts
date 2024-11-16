@@ -73,12 +73,6 @@ export interface TopicStatsRaw {
     frequency?: number[];
 }
 
-export interface WeeklyStatsRaw {
-  week: string;
-  ayes: number;
-  noes: number;
-}
-
 export interface VoteStatsEntry {
   timestamp: string;
   ayes: number;
