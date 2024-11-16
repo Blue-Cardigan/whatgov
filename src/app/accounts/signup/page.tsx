@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn, UK_POSTCODE_REGEX } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import Steps from "./steps";
 
@@ -41,9 +41,6 @@ export default function SignUp() {
     postcodeLookup: false,
     submission: false
   });
-
-  const [showOptionalInfo, setShowOptionalInfo] = useState(false);
-  const [optionalStep, setOptionalStep] = useState<'gender' | 'age' | 'complete'>('gender');
 
   const TOTAL_STEPS = 5;
 

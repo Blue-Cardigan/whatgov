@@ -227,10 +227,6 @@ export function DebateList({
     router
   ]);
 
-  const handleSignup = useCallback(() => {
-    router.push('/accounts/signup');
-  }, [router]);
-
   // Show engagement prompt toast when appropriate
   useEffect(() => {
     if (shouldShowVotePrompt()) {

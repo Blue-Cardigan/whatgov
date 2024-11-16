@@ -9,7 +9,6 @@ import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import { lookupPostcode } from "@/lib/supabase";
-import { InfoIcon } from "lucide-react";
 import { ChartBarIcon } from "lucide-react";
 
 type FormData = {
