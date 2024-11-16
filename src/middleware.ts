@@ -74,8 +74,13 @@ export async function middleware(req: NextRequest) {
     // Check if it's a first-time visitor for non-auth pages
     if (!user && !req.nextUrl.pathname.startsWith('/auth/')) {
       const hasVisited = req.cookies.get('has_visited')?.value
-      if (!hasVisited) {
-        return NextResponse.redirect(new URL('/intro', req.url))
+      if (!hasVisited && req.nextUrl.pathname === '/') {
+        const response = NextResponse.redirect(new URL('/intro', req.url))
+        response.cookies.set('has_visited', 'true', {
+          maxAge: 60 * 60 * 24 * 365, // 1 year
+          path: '/',
+        })
+        return response
       }
     }
 

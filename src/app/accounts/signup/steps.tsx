@@ -9,6 +9,8 @@ import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import { lookupPostcode } from "@/lib/supabase";
+import { InfoIcon } from "lucide-react";
+import { ChartBarIcon } from "lucide-react";
 
 type FormData = {
   name: string;
@@ -68,11 +70,15 @@ export default function Steps({
     // Clear MP details when postcode changes
     setMpDetails(null);
 
-    // Validate the postcode
-    if (withSpace && !UK_POSTCODE_REGEX.test(withSpace)) {
-      setPostcodeError("Please enter a valid UK postcode");
+    // Only validate if there's a value
+    if (withSpace) {
+      if (!UK_POSTCODE_REGEX.test(withSpace)) {
+        setPostcodeError("Please enter a valid UK postcode");
+      } else {
+        setPostcodeError("");
+      }
     } else {
-      setPostcodeError("");
+      setPostcodeError(""); // Clear error when empty
     }
   };
 
@@ -85,8 +91,14 @@ export default function Steps({
       postcode: withSpace
     }));
 
-    // Validate and lookup postcode
-    if (withSpace && UK_POSTCODE_REGEX.test(withSpace)) {
+    // Only validate and lookup if there's a value
+    if (!withSpace) {
+      setPostcodeError("");
+      setMpDetails(null);
+      return;
+    }
+
+    if (UK_POSTCODE_REGEX.test(withSpace)) {
       setPostcodeError("");
       setIsLookingUpPostcode(true);
       try {
@@ -130,7 +142,7 @@ export default function Steps({
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              placeholder="Your full name"
+              placeholder="Your name"
               className="text-lg py-6"
               required
               autoFocus
@@ -157,6 +169,7 @@ export default function Steps({
             </p>
             <Input
               id="email"
+              name="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
@@ -184,6 +197,7 @@ export default function Steps({
             <div className="space-y-4">
               <Input
                 id="password"
+                name="password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -193,6 +207,7 @@ export default function Steps({
               />
               <Input
                 id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 value={formData.confirmPassword || ''}
                 onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
@@ -221,10 +236,11 @@ export default function Steps({
             <div className="relative">
               <Input
                 id="postcode"
+                name="postcode"
                 value={formData.postcode}
                 onChange={handlePostcodeChange}
                 onBlur={handlePostcodeBlur}
-                placeholder="e.g., SW1A 1AA"
+                placeholder="e.g. SW1A 1AA"
                 className={cn(
                   "text-lg py-6",
                   postcodeError ? "border-red-500" : 
@@ -291,153 +307,138 @@ export default function Steps({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
+            className="space-y-8"
           >
+            {/* Topics Selection */}
             <div>
-              <h2 className="text-3xl font-semibold mb-3">How do you identify?</h2>
+              <h2 className="text-3xl font-semibold mb-3">Choose your interests</h2>
               <p className="text-muted-foreground mb-6 text-lg">
-                Help us personalize your experience (optional)
+                Select topics you want to follow
               </p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: "male", label: "Male", icon: "👨" },
-                  { value: "female", label: "Female", icon: "👩" },
-                  { value: "other", label: "Other", icon: "🫂" },
-                  { value: "prefer-not-to-say", label: "Prefer not to say", icon: "🤝" }
-                ].map((option) => (
-                  <motion.div
-                    key={option.value}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      type="button"
-                      variant={formData.gender === option.value ? "default" : "outline"}
-                      className={cn(
-                        "w-full h-auto py-6 px-4",
-                        "flex flex-col items-center gap-3",
-                        formData.gender === option.value && "border-primary"
-                      )}
-                      onClick={() => setFormData({...formData, gender: option.value})}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {TOPICS.map((topic) => {
+                  const isSelected = formData.selectedTopics.includes(topic.id);
+                  const Icon = topic.icon;
+                  
+                  return (
+                    <motion.div
+                      key={topic.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <span className="text-3xl">{option.icon}</span>
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </Button>
-                  </motion.div>
-                ))}
+                      <Badge
+                        variant={isSelected ? "default" : "outline"}
+                        className={cn(
+                          "w-full cursor-pointer transition-all py-4 px-4",
+                          isSelected ? "bg-primary hover:bg-primary/90" : "hover:bg-muted",
+                          "flex items-center justify-between gap-3"
+                        )}
+                        onClick={() => handleTopicToggle(topic.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="h-5 w-5 shrink-0" />
+                          <span className="text-sm font-medium">{topic.label}</span>
+                        </div>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                          >
+                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                          </motion.div>
+                        )}
+                      </Badge>
+                    </motion.div>
+                  );  
+                })}
               </div>
+              {formData.selectedTopics.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  Please select at least one topic
+                </p>
+              )}
             </div>
-          </motion.div>
-        );
-      
-      case 6:
-        return (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div>
-              <h2 className="text-3xl font-semibold mb-3">What&apos;s your age?</h2>
-              <p className="text-muted-foreground mb-6 text-lg">
-                This helps us show you relevant content (optional)
-              </p>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[
-                  { value: "under-18", label: "Under 18", icon: "👶" },
-                  { value: "18-24", label: "18-24", icon: "🎓" },
-                  { value: "25-34", label: "25-34", icon: "💼" },
-                  { value: "35-44", label: "35-44", icon: "👨‍💼" },
-                  { value: "45-54", label: "45-54", icon: "👩‍💼" },
-                  { value: "55-64", label: "55-64", icon: "👨‍🦳" },
-                  { value: "65+", label: "65+", icon: "🧓" },
-                  { value: "prefer-not-to-say", label: "Prefer not to say", icon: "🤝" }
-                ].map((option) => (
-                  <motion.div
-                    key={option.value}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button
-                      type="button"
-                      variant={formData.age === option.value ? "default" : "outline"}
-                      className={cn(
-                        "w-full h-auto py-6 px-4",
-                        "flex flex-col items-center gap-3",
-                        formData.age === option.value && "border-primary"
-                      )}
-                      onClick={() => setFormData({...formData, age: option.value})}
-                    >
-                      <span className="text-3xl">{option.icon}</span>
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </Button>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        );
 
-    case 7:
-      return (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="space-y-6"
-        >
-          <div>
-            <h2 className="text-3xl font-semibold mb-3">Choose your interests</h2>
-            <p className="text-muted-foreground mb-6 text-lg">
-              You&apos;re interested in
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {TOPICS.map((topic) => {
-                const isSelected = formData.selectedTopics.includes(topic.id);
-                const Icon = topic.icon;
-                
-                return (
-                  <motion.div
-                    key={topic.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Badge
-                      variant={isSelected ? "default" : "outline"}
-                      className={cn(
-                        "w-full cursor-pointer transition-all py-4 px-4",
-                        isSelected ? "bg-primary hover:bg-primary/90" : "hover:bg-muted",
-                        "flex items-center justify-between gap-3"
-                      )}
-                      onClick={() => handleTopicToggle(topic.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5 shrink-0" />
-                        <span className="text-sm font-medium">{topic.label}</span>
-                      </div>
-                      {isSelected && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
-                          <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        </motion.div>
-                      )}
-                    </Badge>
-                  </motion.div>
-                );  
-              })}
-            </div>
-            {formData.selectedTopics.length === 0 && (
-              <p className="text-sm text-muted-foreground mt-4">
-                Please select at least one topic
-              </p>
-            )}
-          </div>
-        </motion.div>
-      );
+            {/* Optional Demographics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border bg-muted/50 p-6"
+            >
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <ChartBarIcon className="h-5 w-5 text-primary" />
+                  <div>
+                    <h3 className="font-medium">Help improve representation</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Optional demographic data helps ensure diverse voices are heard
+                    </p>
+                  </div>
+                </div>
+
+                {/* Age Selection */}
+                <div>
+                  <label className="text-sm font-medium mb-3 block">Age group</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: "18-24", icon: "🎓" },
+                      { value: "25-34", icon: "💼" },
+                      { value: "35-44", icon: "👨‍💼" },
+                      { value: "45-54", icon: "👩‍💼" },
+                      { value: "55-64", icon: "👨‍🦳" },
+                      { value: "65+", icon: "🧓" },
+                      { value: "prefer-not-to-say", icon: "🤝", label: "Skip" }
+                    ].map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={formData.age === option.value ? "default" : "outline"}
+                        className={cn(
+                          "h-auto py-2 px-3",
+                          "flex flex-col items-center gap-1",
+                          formData.age === option.value && "border-primary"
+                        )}
+                        onClick={() => setFormData({...formData, age: option.value})}
+                      >
+                        <span className="text-lg">{option.icon}</span>
+                        <span className="text-xs font-medium">
+                          {option.label || option.value}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gender Selection */}
+                <div>
+                  <label className="text-sm font-medium mb-3 block">Gender</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: "male", label: "Male", icon: "👨" },
+                      { value: "female", label: "Female", icon: "👩" },
+                      { value: "other", label: "Other", icon: "🫂" },
+                      { value: "prefer-not-to-say", label: "Skip", icon: "🤝" }
+                    ].map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={formData.gender === option.value ? "default" : "outline"}
+                        className={cn(
+                          "flex-1 h-auto py-2 px-3",
+                          "flex flex-col items-center gap-1",
+                          formData.gender === option.value && "border-primary"
+                        )}
+                        onClick={() => setFormData({...formData, gender: option.value})}
+                      >
+                        <span className="text-lg">{option.icon}</span>
+                        <span className="text-xs font-medium">{option.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        );
   }
 }

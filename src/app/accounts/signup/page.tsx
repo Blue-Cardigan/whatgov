@@ -42,27 +42,32 @@ export default function SignUp() {
     submission: false
   });
 
+  const [showOptionalInfo, setShowOptionalInfo] = useState(false);
+  const [optionalStep, setOptionalStep] = useState<'gender' | 'age' | 'complete'>('gender');
+
+  const TOTAL_STEPS = 5;
+
   useEffect(() => {
     switch (step) {
       case 1:
-        setStepValid(true);
+        setStepValid(formData.name.trim().length >= 2);
         break;
       case 2:
         setStepValid(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email));
         break;
       case 3:
-        setStepValid(formData.password.length >= 8);
+        setStepValid(
+          formData.password.length >= 8 && 
+          formData.password === formData.confirmPassword
+        );
         break;
       case 4:
-        setStepValid(true);
+        setStepValid(
+          !formData.postcode || 
+          UK_POSTCODE_REGEX.test(formData.postcode)
+        );
         break;
       case 5:
-        setStepValid(true);
-        break;
-      case 6:
-        setStepValid(true);
-        break;
-      case 7:
         setStepValid(formData.selectedTopics.length > 0);
         break;
     }
@@ -71,8 +76,7 @@ export default function SignUp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If not on the final step, just move to next step
-    if (step < 7) {
+    if (step < TOTAL_STEPS) {
       if (!validateCurrentStep()) {
         return;
       }
@@ -80,10 +84,7 @@ export default function SignUp() {
       return;
     }
 
-    // Final submission
-    if (!validateAllSteps()) {
-      return;
-    }
+    if (!validateAllSteps()) return;
 
     setLoadingStates(prev => ({ ...prev, submission: true }));
     setError("");
@@ -129,7 +130,6 @@ export default function SignUp() {
       setLoadingStates(prev => ({ ...prev, submission: false }));
     }
   };
-
   // Add step-specific validation
   const validateCurrentStep = (): boolean => {
     switch (step) {
@@ -166,18 +166,6 @@ export default function SignUp() {
         break;
 
       case 5:
-        if (!formData.gender) {
-          formData.gender = "-";
-        }
-        break;
-
-      case 6:
-        if (!formData.age) {
-          formData.age = "-";
-        }
-        break;
-
-      case 7:
         if (formData.selectedTopics.length === 0) {
           setError("Please select at least one topic");
           return false;
@@ -205,7 +193,7 @@ export default function SignUp() {
 
     if (formData.selectedTopics.length === 0) {
       setError("No topics selected");
-      setStep(7);
+      setStep(5);
       return false;
     }
 
@@ -215,107 +203,104 @@ export default function SignUp() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <div className="container max-w-2xl mx-auto p-8">
-        <motion.div 
-          className="bg-background rounded-xl shadow-lg p-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-6">
-              {[1, 2, 3, 4, 5, 6, 7].map((stepNumber) => (
-                <div key={stepNumber} className="flex-1">
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "h-2 rounded-full transition-all duration-300",
-                        stepNumber === step ? "bg-primary" : 
-                        stepNumber < step ? "bg-primary/40" : 
-                        "bg-muted"
-                      )}
-                    />
-                    {stepNumber < step && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -right-1 -top-1 bg-primary rounded-full p-0.5"
-                      >
-                        <CheckCircle2 className="h-3 w-3 text-white" />
-                      </motion.div>
+        <AnimatePresence mode="wait">
+          <motion.div 
+            className="bg-background rounded-xl shadow-lg p-8 relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="mb-8">
+              <div className="flex flex-col space-y-1 absolute left-0 top-0 bottom-0 w-1">
+                {[1, 2, 3, 4, 5].map((stepNumber) => (
+                  <div 
+                    key={stepNumber}
+                    className={cn(
+                      "flex-1 transition-all duration-500",
+                      stepNumber <= step ? "bg-primary" : "bg-muted"
                     )}
+                  >
                   </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Step {step} of 7
-            </p>
-          </div>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-lg mb-6"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="min-h-[400px] flex flex-col">
-              <AnimatePresence mode="wait">
-                <Steps 
-                  step={step}
-                  formData={formData}
-                  setFormData={setFormData}
-                  postcodeError={postcodeError}
-                  setPostcodeError={setPostcodeError}
-                  mpDetails={mpDetails}
-                  setMpDetails={setMpDetails}
-                  isLookingUpPostcode={isLookingUpPostcode}
-                  setIsLookingUpPostcode={setIsLookingUpPostcode}
-                />
-              </AnimatePresence>
+                ))}
+              </div>
             </div>
 
-            <div className="flex space-x-4 pt-6">
-              {step > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="w-full py-6 text-lg"
-                >
-                  Back
-                </Button>
-              )}
-              <Button
-                type={step === 7 ? "submit" : "button"}
-                onClick={step < 7 ? handleSubmit : undefined}
-                className={cn(
-                  "w-full py-6 text-lg",
-                  "transition-all duration-300",
-                  stepValid ? "bg-primary hover:bg-primary/90" : "bg-primary/50"
-                )}
-                disabled={loadingStates.submission || !stepValid}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-lg mb-6"
               >
-                {step < 7 ? (
-                  <span className="flex items-center">
-                    Next
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </span>
-                ) : loadingStates.submission ? (
-                  <span className="flex items-center justify-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </span>
-                ) : (
-                  "Finish"
+                {error}
+              </motion.div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="min-h-[400px] flex flex-col">
+                <AnimatePresence mode="wait">
+                  <Steps 
+                    step={step}
+                    formData={formData}
+                    setFormData={setFormData}
+                    postcodeError={postcodeError}
+                    setPostcodeError={setPostcodeError}
+                    mpDetails={mpDetails}
+                    setMpDetails={setMpDetails}
+                    isLookingUpPostcode={isLookingUpPostcode}
+                    setIsLookingUpPostcode={setIsLookingUpPostcode}
+                  />
+                </AnimatePresence>
+              </div>
+
+              <div className="flex space-x-4 pt-6">
+                {step > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStep(step - 1)}
+                    className="w-full py-6 text-lg"
+                  >
+                    Back
+                  </Button>
                 )}
-              </Button>
-            </div>
-          </form>
-        </motion.div>
+                <Button
+                  type={step === TOTAL_STEPS ? "submit" : "button"}
+                  onClick={step < TOTAL_STEPS ? handleSubmit : undefined}
+                  className={cn(
+                    "w-full py-6 text-lg",
+                    "transition-all duration-300",
+                    stepValid ? "bg-primary hover:bg-primary/90" : "bg-primary/50"
+                  )}
+                  disabled={loadingStates.submission || !stepValid}
+                >
+                  {step < TOTAL_STEPS ? (
+                    <span className="flex items-center">
+                      Next
+                      <ChevronRight className="ml-2 h-5 w-5" />
+                    </span>
+                  ) : loadingStates.submission ? (
+                    <span className="flex items-center justify-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </span>
+                  ) : (
+                    "Finish"
+                  )}
+                </Button>
+              </div>
+
+              <p className="text-sm text-muted-foreground text-center">
+                By continuing, you agree to our{" "}
+                <Link href="/terms" className="text-primary hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </p>
+            </form>
+          </motion.div>
+        </AnimatePresence>
 
         <p className="mt-8 text-center text-sm">
           Already have an account?{" "}

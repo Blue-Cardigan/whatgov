@@ -1,6 +1,7 @@
-Direct to signup on first visit
 Favicon etc.
 Terms & Privacy
+Page for each debate
+- Move key points here, add full debate summaries
 
 Create whatgov email and update sendgrid
 Billing management (e.g cancel)
@@ -10,8 +11,6 @@ My Parliament
 - Integrate search
 - Integrate MP data
 - Integrate schedule
-
-Banner reminders/tooltips/progress bar to create account, upgrade etc.
 
 #Optimizations
 Load more virtualized debates at once/ slow down scroll/ skeletons 

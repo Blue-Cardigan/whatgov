@@ -77,3 +77,14 @@ export const TOPICS: {
     icon: GraduationCap
   }
 ];
+
+export const FREE_LIMITS = {
+  DAILY_VOTES: 12,
+  DEBATE_SUMMARIES: 3,
+  POLL_RESPONSES: 3
+}
+
+export const ENGAGEMENT_TRIGGERS = {
+  VOTES_REMAINING: 8,    // Show signup prompt when 8 votes remain
+  SUMMARIES_VIEWED: 2    // Show signup prompt after viewing 2 summaries
+}

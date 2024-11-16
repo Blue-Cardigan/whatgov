@@ -18,13 +18,15 @@ interface DebateCardProps {
   readOnly?: boolean;
   onExpandChange?: (isExpanded: boolean) => void;
   isExpanded?: boolean;
+  hasReachedLimit?: boolean;
 }
 
 export function DebateCard({ 
   debate, 
   onVote,
   readOnly = false,
-  onExpandChange 
+  onExpandChange,
+  hasReachedLimit = false
 }: DebateCardProps) {
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const [expandedPoint, setExpandedPoint] = useState<number | null>(null);
@@ -165,32 +167,44 @@ export function DebateCard({
                 <Button
                   size="sm"
                   variant={userVote === true ? "default" : "outline"}
-                  disabled={readOnly || isVoting}
+                  disabled={readOnly || isVoting || hasReachedLimit}
                   className={cn(
                     "flex-1 relative overflow-hidden",
                     userVote === true
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      : "border-emerald-600 hover:bg-emerald-50"
+                      : "border-emerald-600 hover:bg-emerald-50",
+                    hasReachedLimit && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => handleVote(num, true)}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   AYE
+                  {hasReachedLimit && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      Daily limit reached
+                    </span>
+                  )}
                 </Button>
                 <Button
                   size="sm"
                   variant={userVote === false ? "default" : "outline"}
-                  disabled={readOnly || isVoting}
+                  disabled={readOnly || isVoting || hasReachedLimit}
                   className={cn(
                     "flex-1 relative overflow-hidden",
                     userVote === false
                       ? "bg-rose-600 hover:bg-rose-700 text-white"
-                      : "border-rose-600 hover:bg-rose-50"
+                      : "border-rose-600 hover:bg-rose-50",
+                    hasReachedLimit && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => handleVote(num, false)}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   NO
+                  {hasReachedLimit && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      Daily limit reached
+                    </span>
+                  )}
                 </Button>
               </motion.div>
             )}

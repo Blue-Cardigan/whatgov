@@ -6,6 +6,10 @@ import { toast } from '@/hooks/use-toast';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useCallback, useEffect } from 'react';
 import { DebateSkeleton } from './DebateSkeleton';
+import { useEngagement } from '@/hooks/useEngagement';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { FREE_LIMITS } from '@/lib/utils';
 
 interface DebateListProps {
   items: FeedItem[];
@@ -24,8 +28,15 @@ export function DebateList({
   onVote,
   readOnly = false
 }: DebateListProps) {
-  const { submitVote } = useVotes();
+  const { submitVote, hasVoted } = useVotes();
   const { user } = useAuth();
+  const router = useRouter();
+  const { 
+    recordVote, 
+    getRemainingVotes, 
+    shouldShowVotePrompt,
+    hasReachedVoteLimit 
+  } = useEngagement();
   const parentRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   
@@ -135,31 +146,110 @@ export function DebateList({
     }, 300); // Match your animation duration
   }, [virtualizer]);
 
-  const handleVote = async (debateId: string, questionNumber: number, vote: boolean) => {
-    if (!user) {
+  const handleVote = useCallback(async (
+    debateId: string, 
+    questionNumber: number, 
+    vote: boolean
+  ) => {
+    // Check if already voted
+    if (hasVoted(debateId, questionNumber)) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to vote on debates",
-        variant: "destructive",
+        title: "Already voted",
+        description: "You've already voted on this question",
+        variant: "default",
       });
       return;
     }
-    
-    if (onVote) {
-      onVote(debateId, questionNumber, vote);
-    } else {
-      try {
+
+    // Check vote limits for anonymous users
+    if (!user && hasReachedVoteLimit()) {
+      toast({
+        title: "Daily vote limit reached",
+        description: "Create a free account to get more daily votes",
+        action: (
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => router.push('/auth/signup')}
+          >
+            Create an account to continue voting
+          </Button>
+        ),
+      });
+      return;
+    }
+
+    try {
+      // Record anonymous vote in engagement tracking
+      if (!user) {
+        recordVote();
+      }
+      
+      // Handle vote submission
+      if (onVote) {
+        onVote(debateId, questionNumber, vote);
+      } else {
         await submitVote({ debate_id: debateId, question_number: questionNumber, vote });
-      } catch (error) {
-        console.error('Failed to submit vote:', error);
+      }
+
+      // Show success toast for anonymous users to encourage signup
+      if (!user) {
         toast({
-          title: "Error",
-          description: "Failed to submit your vote. Please try again.",
-          variant: "destructive",
+          title: "Vote recorded",
+          description: `${getRemainingVotes()} votes remaining today. Sign up for more!`,
+          action: (
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => router.push('/auth/signup')}
+            >
+              Sign up
+            </Button>
+          ),
         });
       }
+    } catch (error) {
+      console.error('Failed to submit vote:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit your vote. Please try again.",
+        variant: "destructive",
+      });
     }
-  };
+  }, [
+    hasVoted,
+    user,
+    hasReachedVoteLimit,
+    recordVote,
+    onVote,
+    submitVote,
+    getRemainingVotes,
+    router
+  ]);
+
+  const handleSignup = useCallback(() => {
+    router.push('/auth/signup');
+  }, [router]);
+
+  // Show engagement prompt toast when appropriate
+  useEffect(() => {
+    if (shouldShowVotePrompt()) {
+      toast({
+        title: `${getRemainingVotes()}/${FREE_LIMITS.DAILY_VOTES} votes remaining today`,
+        description: "Create a free account to get unlimited daily votes, and track your engagement over time.",
+        action: (
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => router.push('/auth/signup')}
+          >
+            Create an account
+          </Button>
+        ),
+        duration: 10000, // 10 seconds
+      });
+    }
+  }, [shouldShowVotePrompt, getRemainingVotes, router]);
 
   if (items.length === 0 && !isLoading) {
     return (
@@ -180,13 +270,7 @@ export function DebateList({
   }
 
   return (
-    <div 
-      ref={parentRef} 
-      className="w-full space-y-px"
-      style={{
-        minHeight: '100vh'
-      }}
-    >
+    <div ref={parentRef} className="w-full space-y-4">
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -216,6 +300,7 @@ export function DebateList({
                 readOnly={readOnly}
                 onExpandChange={(isExpanded) => handleExpandChange(debate.id, isExpanded)}
                 isExpanded={expandedStatesRef.current.get(debate.id)}
+                hasReachedLimit={hasReachedVoteLimit()}
               />
             </div>
           );
