@@ -1,4 +1,4 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface MenuItemProps {
@@ -27,7 +27,7 @@ export function MenuItem({ item, isActive, onSelect }: MenuItemProps) {
       )}
       onClick={onSelect}
     >
-      <CardHeader className="p-4 lg:p-5">
+      <div className="p-4 lg:p-5">
         <div className="flex flex-col lg:flex-row items-center gap-3 lg:gap-4">
           <div
             className={cn(
@@ -39,18 +39,18 @@ export function MenuItem({ item, isActive, onSelect }: MenuItemProps) {
             {item.icon}
           </div>
           <div className="space-y-0.5 text-center lg:text-left w-full">
-            <CardTitle className={cn(
+            <h3 className={cn(
               "text-sm font-semibold transition-colors duration-200 line-clamp-1",
               `group-hover:${item.color}`
             )}>
               {item.title}
-            </CardTitle>
-            <CardDescription className="text-xs leading-tight line-clamp-2">
+            </h3>
+            <p className="text-xs leading-tight line-clamp-2">
               {item.description}
-            </CardDescription>
+            </p>
           </div>
         </div>
-      </CardHeader>
+      </div>
     </Card>
   );
 }

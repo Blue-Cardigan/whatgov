@@ -2,7 +2,7 @@ Page for each debate
 - Move key points here, add full debate summaries
 
 Create whatgov email and update sendgrid
-Billing management (e.g cancel)
+Billing management (e.g upgrade, cancel)
 account update (change email, delete)
 
 My Parliament
@@ -13,6 +13,7 @@ My Parliament
 #Optimizations
 Load more virtualized debates at once/ slow down scroll/ skeletons 
 - problem: looks janky when scrolling fast
+Reduce middleware build size for edge runtime
 
 Free Features
 - Feed and votes

@@ -4,68 +4,74 @@ import type { NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
+// Cache subscription status
+const subscriptionCache = new Map<string, {status: boolean, timestamp: number}>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 async function checkSubscriptionStatus(
   supabase: SupabaseClient<Database>,
   userId: string
 ) {
-  try {
-    const { data: subscription, error } = await supabase
-      .from('subscriptions')
-      .select('status, current_period_end, cancel_at_period_end')
-      .eq('user_id', userId)
-      .maybeSingle();
+  const cached = subscriptionCache.get(userId);
+  if (cached?.timestamp && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+    return cached.status;
+  }
 
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('status, current_period_end')
+    .eq('user_id', userId)
+    .single();
 
-    if (!subscription) {
-      return false;
-    }
+  const result = data?.status === 'active' && 
+    (data.current_period_end ? new Date(data.current_period_end).getTime() + 259200000 > Date.now() : false);
 
-    const gracePeriodDays = 3;
-    const hasGracePeriod = subscription.current_period_end && 
-      new Date(subscription.current_period_end).getTime() + (gracePeriodDays * 86400000) > Date.now();
+  subscriptionCache.set(userId, { status: result, timestamp: Date.now() });
+  return result;
+}
 
-    return subscription.status === 'active' && 
-      (!subscription.cancel_at_period_end || hasGracePeriod);
-  } catch (error) {
-    console.error('Subscription check error:', error);
-    return false;
+// Create a memoized client factory
+const getSupabaseClient = (() => {
+  let client: SupabaseClient<Database> | null = null;
+  return (req: NextRequest, res: NextResponse) => {
+    if (client) return client;
+    client = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: (name: string) => req.cookies.get(name)?.value,
+          set: (name: string, value: string, options: CookieOptions) => {
+            res.cookies.set({ name, value, ...options })
+          },
+          remove: (name: string, options: CookieOptions) => {
+            res.cookies.set({ name, value: '', ...options })
+          },
+        },
+      }
+    );
+    return client;
+  };
+})();
+
+// Create custom error types
+class MiddlewareError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
   }
 }
 
 export async function middleware(req: NextRequest) {
-  const response = NextResponse.next()
+  const response = NextResponse.next();
 
-  // Create a Supabase client configured to use cookies
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the response
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the response
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
+  // Early return for non-matching routes
+  if (!req.nextUrl.pathname.startsWith('/api/') && 
+      !req.nextUrl.pathname.startsWith('/settings/') && 
+      req.nextUrl.pathname !== '/') {
+    return response;
+  }
+
+  const supabase = getSupabaseClient(req, response);
 
   try {
     // Refresh session if expired
@@ -120,11 +126,17 @@ export async function middleware(req: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Middleware error:', error)
+    if (error instanceof MiddlewareError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status }
+      );
+    }
+    console.error('Middleware error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
-    )
+    );
   }
 }
 

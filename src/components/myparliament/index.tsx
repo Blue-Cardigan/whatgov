@@ -1,11 +1,16 @@
 'use client';
 
-import { UserVoteHistory } from "./YourStats";
-import { MPProfile } from "./MPProfile";
-import { UpcomingDebates } from "./UpcomingDebates";
-import { CalendarClock, User2, BarChart2, AlertCircle } from "lucide-react";
-import { useState } from "react";
-import { MenuItem } from "./MenuItem";
+import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
+import { useState } from 'react';
+import dynamic from 'next/dynamic';
+import { MenuItem } from './MenuItem';
+
+const UserVoteHistory = dynamic(() => import("./YourStats").then(mod => mod.UserVoteHistory), {
+  loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
+});
+
+const MPProfile = dynamic(() => import("./MPProfile").then(mod => mod.MPProfile));
+const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mod.UpcomingDebates));
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("activity");

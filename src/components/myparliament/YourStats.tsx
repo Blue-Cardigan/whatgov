@@ -6,69 +6,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { 
-  CheckCircle2, 
-  XCircle,
-  Tags,
-  TrendingUp,
-  Activity,
-  ChevronDown,
-} from "lucide-react";
+import { Tags, TrendingUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getUserVotingStats } from '@/lib/supabase'
 import { TOPICS } from "@/lib/utils";
 import type { UserVotingStats, TopicStats, TopicQuestion, TopicDetails } from "@/types/VoteStats";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
+import dynamic from 'next/dynamic';
 
-function StatRow() {
-  const { user } = useAuth();
-  const [selectedTimeframe] = useState<'week' | 'month' | 'year'>('month');
-
-  const { data: stats } = useQuery<UserVotingStats>({
-    queryKey: ['votingStats', user?.id, selectedTimeframe],
-    queryFn: () => getUserVotingStats(selectedTimeframe),
-    enabled: !!user,
-  });
-
-  return (
-    <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
-      <div className="flex items-center gap-2 flex-1">
-        <Activity className="h-4 w-4 text-muted-foreground" />
-        <div className="flex flex-col">
-          <span className="text-lg font-semibold">{stats?.totalVotes || 0}</span>
-          <span className="text-xs text-muted-foreground">Total Votes</span>
-        </div>
+// Create a single dynamic chart component
+const DynamicChart = dynamic(
+  () => import('./VotingChart').then((mod) => mod.VotingChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="animate-pulse bg-muted rounded-lg w-full h-full" />
       </div>
-      <div className="w-px h-8 bg-border" />
-      <div className="flex items-center gap-2 flex-1">
-        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-        <div className="flex flex-col">
-          <span className="text-lg font-semibold text-emerald-600">{stats?.ayeVotes || 0}</span>
-          <span className="text-xs text-muted-foreground">Aye Votes</span>
-        </div>
-      </div>
-      <div className="w-px h-8 bg-border" />
-      <div className="flex items-center gap-2 flex-1">
-        <XCircle className="h-4 w-4 text-rose-600" />
-        <div className="flex flex-col">
-          <span className="text-lg font-semibold text-rose-600">{stats?.noVotes || 0}</span>
-          <span className="text-xs text-muted-foreground">No Votes</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+    ),
+  }
+);
 
 export function UserVoteHistory() {
   const { user } = useAuth();
@@ -93,44 +51,44 @@ export function UserVoteHistory() {
 
   return (
     <div className="space-y-6">
-      {/* Timeframe Selection */}
-      <div className="flex justify-end gap-2">
-        <Button
-          variant={selectedTimeframe === 'week' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedTimeframe('week')}
-        >
-          Week
-        </Button>
-        <Button
-          variant={selectedTimeframe === 'month' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedTimeframe('month')}
-        >
-          Month
-        </Button>
-        <Button
-          variant={selectedTimeframe === 'year' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedTimeframe('year')}
-        >
-          Year
-        </Button>
+      {/* Move timeframe selection to the top level */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Your Voting History</h2>
+        <div className="flex gap-2">
+          <Button
+            variant={selectedTimeframe === 'week' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedTimeframe('week')}
+          >
+            Week
+          </Button>
+          <Button
+            variant={selectedTimeframe === 'month' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedTimeframe('month')}
+          >
+            Month
+          </Button>
+          <Button
+            variant={selectedTimeframe === 'year' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedTimeframe('year')}
+          >
+            Year
+          </Button>
+        </div>
       </div>
 
-      {/* Overview Stats */}
-      <StatRow />
-
       {/* Detailed Analysis */}
-      <Tabs defaultValue="topics">
+      <Tabs defaultValue="trends">
         <TabsList>
+          <TabsTrigger value="trends">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="topics">
             <Tags className="h-4 w-4 mr-2" />
             By Topic
-          </TabsTrigger>
-          <TabsTrigger value="trends">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Trends
           </TabsTrigger>
         </TabsList>
 
@@ -159,36 +117,13 @@ export function UserVoteHistory() {
 
         <TabsContent value="trends" className="mt-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="text-lg font-medium">
-                Voting Trends
+                Voting Overview
               </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={selectedTimeframe === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTimeframe('week')}
-                >
-                  Week
-                </Button>
-                <Button
-                  variant={selectedTimeframe === 'month' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTimeframe('month')}
-                >
-                  Month
-                </Button>
-                <Button
-                  variant={selectedTimeframe === 'year' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTimeframe('year')}
-                >
-                  Year
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
-              <VotingTrends />
+              <VotingTrends selectedTimeframe={selectedTimeframe} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -291,10 +226,8 @@ function TopicStatCard({ topic, stats }: {
   );
 }
 
-function VotingTrends() {
+function VotingTrends({ selectedTimeframe }: { selectedTimeframe: 'week' | 'month' | 'year' }) {
   const { user } = useAuth();
-  const [selectedTimeframe] = useState<'week' | 'month' | 'year'>('month');
-
   const { data: stats } = useQuery<UserVotingStats>({
     queryKey: ['votingStats', user?.id, selectedTimeframe],
     queryFn: () => getUserVotingStats(selectedTimeframe),
@@ -311,64 +244,57 @@ function VotingTrends() {
     );
   }
 
+  // Calculate totals once
+  const totals = {
+    ayes: stats.ayeVotes || 0,
+    noes: stats.noVotes || 0,
+    weeks: stats.weeklyStats.length
+  };
+
   const chartData = stats.weeklyStats.map(week => ({
     week: format(new Date(week.week), 'MMM d'),
     Ayes: week.ayes,
     Noes: week.noes,
-    Total: week.ayes + week.noes,
   }));
 
   return (
     <div className="space-y-4">
+      {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-emerald-600">
-              {chartData.reduce((sum, week) => sum + week.Ayes, 0)}
+              {totals.ayes}
             </div>
             <div className="text-sm text-muted-foreground">
-              Total Aye votes
+              Aye Votes
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-rose-600">
-              {chartData.reduce((sum, week) => sum + week.Noes, 0)}
+              {totals.noes}
             </div>
             <div className="text-sm text-muted-foreground">
-              Total No votes
+              No Votes
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {chartData.length}
+              {totals.weeks}
             </div>
             <div className="text-sm text-muted-foreground">
-              Weeks of activity
+              Active Weeks
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="week" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="Ayes" fill="#10b981" stackId="stack" /> {/* emerald-600 */}
-            <Bar dataKey="Noes" fill="#e11d48" stackId="stack" /> {/* rose-600 */}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Chart */}
+      <DynamicChart data={chartData} />
     </div>
   );
 }
