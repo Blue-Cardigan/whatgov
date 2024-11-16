@@ -30,7 +30,7 @@ const DynamicChart = dynamic(
 
 export function UserVoteHistory() {
   const { user } = useAuth();
-  const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'year'>('month');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<'daily' | 'weekly' | 'all'>('weekly');
 
   // Fetch voting statistics
   const { data: stats } = useQuery<UserVotingStats>({
@@ -56,25 +56,25 @@ export function UserVoteHistory() {
         <h2 className="text-lg font-semibold">Your Voting History</h2>
         <div className="flex gap-2">
           <Button
-            variant={selectedTimeframe === 'week' ? 'default' : 'outline'}
+            variant={selectedTimeframe === 'daily' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSelectedTimeframe('week')}
+            onClick={() => setSelectedTimeframe('daily')}
           >
-            Week
+            Daily
           </Button>
           <Button
-            variant={selectedTimeframe === 'month' ? 'default' : 'outline'}
+            variant={selectedTimeframe === 'weekly' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSelectedTimeframe('month')}
+            onClick={() => setSelectedTimeframe('weekly')}
           >
-            Month
+            Weekly
           </Button>
           <Button
-            variant={selectedTimeframe === 'year' ? 'default' : 'outline'}
+            variant={selectedTimeframe === 'all' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setSelectedTimeframe('year')}
+            onClick={() => setSelectedTimeframe('all')}
           >
-            Year
+            All Time
           </Button>
         </div>
       </div>
@@ -226,7 +226,7 @@ function TopicStatCard({ topic, stats }: {
   );
 }
 
-function VotingTrends({ selectedTimeframe }: { selectedTimeframe: 'week' | 'month' | 'year' }) {
+function VotingTrends({ selectedTimeframe }: { selectedTimeframe: 'daily' | 'weekly' | 'all' }) {
   const { user } = useAuth();
   const { data: stats } = useQuery<UserVotingStats>({
     queryKey: ['votingStats', user?.id, selectedTimeframe],
@@ -248,13 +248,16 @@ function VotingTrends({ selectedTimeframe }: { selectedTimeframe: 'week' | 'mont
   const totals = {
     ayes: stats.ayeVotes || 0,
     noes: stats.noVotes || 0,
-    weeks: stats.weeklyStats.length
+    periods: stats.weeklyStats.length,
+    periodLabel: selectedTimeframe === 'daily' ? 'Hours' : 
+                 selectedTimeframe === 'weekly' ? 'Days' : 
+                 'Weeks'
   };
 
-  const chartData = stats.weeklyStats.map(week => ({
-    week: format(new Date(week.week), 'MMM d'),
-    Ayes: week.ayes,
-    Noes: week.noes,
+  const chartData = stats.weeklyStats.map(stat => ({
+    timestamp: stat.timestamp,
+    Ayes: stat.ayes,
+    Noes: stat.noes,
   }));
 
   return (
@@ -284,17 +287,20 @@ function VotingTrends({ selectedTimeframe }: { selectedTimeframe: 'week' | 'mont
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {totals.weeks}
+              {totals.periods}
             </div>
             <div className="text-sm text-muted-foreground">
-              Active Weeks
+              Active {totals.periodLabel}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Chart */}
-      <DynamicChart data={chartData} />
+      {/* Updated Chart component */}
+      <DynamicChart 
+        data={chartData} 
+        timeframe={selectedTimeframe} 
+      />
     </div>
   );
 }

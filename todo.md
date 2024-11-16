@@ -15,6 +15,11 @@ Load more virtualized debates at once/ slow down scroll/ skeletons
 - problem: looks janky when scrolling fast
 Reduce middleware build size for edge runtime
 
+intro page remove sidebar
+deprioritize Lords, prioritize bill discussion
+Max 2 columns in My Parliament; better layout
+Align questions/key points with ideology so users can tag themselves over time
+
 Free Features
 - Feed and votes
 - Basic Feed filters

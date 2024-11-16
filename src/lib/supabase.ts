@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { UserVotingStats, TopicStats, TopicStatsRaw, WeeklyStatsRaw } from '@/types/VoteStats';
+import type { UserVotingStats, TopicStats, TopicStatsRaw, WeeklyStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
 export type AuthError = {
   message: string;
 }
@@ -59,7 +59,7 @@ export const signUpWithEmail = async (
     const encodedToken = encodeURIComponent(data.confirmation_token);
     const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify?token=${encodedToken}`;
     
-    const emailResponse = await fetch('/api/accounts/send-verification', {
+    const emailResponse = await fetch('/api/auth/send-verification', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -376,7 +376,7 @@ function calculateFinalScore(
   return finalScore;
 }
 
-export async function getUserVotingStats(timeframe: 'week' | 'month' | 'year' = 'month'): Promise<UserVotingStats> {
+export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' = 'weekly'): Promise<UserVotingStats> {
   const supabase = getSupabase();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -386,23 +386,30 @@ export async function getUserVotingStats(timeframe: 'week' | 'month' | 'year' = 
 
   // Calculate date range based on timeframe
   const now = new Date();
-  const startDate = new Date();
+  let startDate = new Date();
+  let interval: 'hour' | 'day';
+
   switch (timeframe) {
-    case 'week':
+    case 'daily':
+      startDate.setDate(now.getDate() - 1);
+      interval = 'hour';
+      break;
+    case 'weekly':
       startDate.setDate(now.getDate() - 7);
+      interval = 'day';
       break;
-    case 'month':
-      startDate.setMonth(now.getMonth() - 1);
-      break;
-    case 'year':
-      startDate.setFullYear(now.getFullYear() - 1);
+    case 'all':
+      // Use a reasonable default for "all time" - e.g., 6 months
+      startDate.setMonth(now.getMonth() - 6);
+      interval = 'day';
       break;
   }
 
   const { data, error } = await supabase.rpc('get_user_voting_stats', {
     p_user_id: user.id,
     p_start_date: startDate.toISOString(),
-    p_end_date: now.toISOString()
+    p_end_date: now.toISOString(),
+    p_interval: interval
   });
 
   if (error) throw error;
@@ -449,8 +456,8 @@ export async function getUserVotingStats(timeframe: 'week' | 'month' | 'year' = 
     ayeVotes: data.aye_votes,
     noVotes: data.no_votes,
     topicStats: transformedTopicStats,
-    weeklyStats: data.weekly_stats.map((stat: WeeklyStatsRaw) => ({
-      week: stat.week,
+    weeklyStats: data.vote_stats.map((stat: VoteStatsEntry) => ({
+      timestamp: stat.timestamp,
       ayes: stat.ayes,
       noes: stat.noes,
     })),

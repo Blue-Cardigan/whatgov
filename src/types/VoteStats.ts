@@ -32,11 +32,7 @@ export interface UserVotingStats {
   topicStats: {
     [topic: string]: TopicStats;
   };
-  weeklyStats: {
-    week: string;
-    ayes: number;
-    noes: number;
-  }[];
+  weeklyStats: VoteStatsEntry[];
 }
 
 export interface VoteHistoryEntry {
@@ -79,6 +75,12 @@ export interface TopicStatsRaw {
 
 export interface WeeklyStatsRaw {
   week: string;
+  ayes: number;
+  noes: number;
+}
+
+export interface VoteStatsEntry {
+  timestamp: string;
   ayes: number;
   noes: number;
 }

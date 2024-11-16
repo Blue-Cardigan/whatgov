@@ -1,8 +1,8 @@
 import { DebateFeed } from '@/components/debates/DebateFeed';
 
 export const metadata = {
-  title: 'Latest Debates | Have Your Say',
-  description: 'Explore the latest debates on our platform. Join discussions on politics, science, philosophy, and more.',
+  title: 'WhatGov | Have Your Say',
+  description: 'Engage with complex parliamentary debates as short posts. Track issues you care about, and understand how Parliament\'s decisions affect your community.',
 };
 
 export default function DebatesPage() {
