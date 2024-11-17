@@ -24,3 +24,22 @@ export interface Contribution {
     content: string;
     timestamp: string;
   }
+
+  export interface SearchState {
+    searchTerm: string;
+    selectedDate?: Date;
+    house: 'Commons' | 'Lords';
+    topics: string[];
+    parties: string[];
+    spokenBy?: string;
+    debateType?: string;
+    sortOrder: 'SittingDateDesc' | 'SittingDateAsc';
+    page: number;
+  }
+  
+  export interface SearchDirectives {
+    spokenBy?: string;
+    debate?: string;
+    words?: string;
+    exact?: string;
+  } 

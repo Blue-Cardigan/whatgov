@@ -29,6 +29,35 @@ export type UserProfile = {
   email_verified?: boolean;
 };
 
+export type MPData = {
+  member_id: number;
+  display_as: string;
+  full_title: string;
+  gender: string;
+  party: string;
+  constituency: string;
+  house_start_date: string;
+  constituency_country: string;
+  twfy_image_url: string | null;
+  email: string | null;
+  age: number | null;
+  department: string | null;
+  ministerial_ranking: number | null;
+  media: {
+    twitter?: string;
+    facebook?: string;
+  } | null;
+};
+
+export type MPKeyPoint = {
+  debate_id: string;
+  debate_title: string;
+  debate_date: string;
+  point: string;
+  point_type: 'made' | 'supported' | 'opposed';
+  original_speaker: string | null;
+};
+
 const getSupabase = () => createClient()
 
 export const signUpWithEmail = async (
@@ -462,4 +491,90 @@ export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' =
       noes: stat.noes,
     })),
   };
+}
+
+export async function getMPData(mpName: string, constituency: string): Promise<MPData | null> {
+  const supabase = getSupabase();
+  
+  // Clean up the MP name by removing titles and extra spaces
+  let cleanMpName = mpName
+    .replace(/^(Sir|Dame|Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Miss\.?)\s+/i, '')
+    .trim();
+  
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .ilike('display_as', `%${cleanMpName}%`)
+    .eq('constituency', constituency)
+    .is('house_end_date', null)
+    .order('house_start_date', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Try again with just the last name
+      const lastName = cleanMpName.split(' ').pop() || '';
+      const { data: retryData, error: retryError } = await supabase
+        .from('members')
+        .select('*')
+        .ilike('display_as', `%${lastName}%`)
+        .eq('constituency', constituency)
+        .is('house_end_date', null)
+        .order('house_start_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (retryError) {
+        console.error('Error fetching MP data:', retryError);
+        return null;
+      }
+      return transformMPData(retryData);
+    }
+    console.error('Error fetching MP data:', error);
+    return null;
+  }
+
+  return transformMPData(data);
+}
+
+function transformMPData(data: any): MPData {
+  let parsedMedia = null;
+  if (data.media) {
+    try {
+      parsedMedia = typeof data.media === 'string' 
+        ? JSON.parse(data.media) 
+        : data.media;
+    } catch (e) {
+      console.error('Error parsing media JSON:', e);
+    }
+  }
+
+  // Transform constituency country codes to full names
+  const countryMap: { [key: string]: string } = {
+    'E': 'England',
+    'W': 'Wales',
+    'S': 'Scotland',
+    'I': 'Northern Ireland'
+  };
+
+  return {
+    ...data,
+    media: parsedMedia,
+    constituency_country: data.constituency_country 
+      ? countryMap[data.constituency_country] || data.constituency_country
+      : null
+  };
+}
+
+export async function getMPKeyPoints(mpName: string, limit: number = 10): Promise<MPKeyPoint[]> {
+  const supabase = getSupabase();
+  
+  const { data, error } = await supabase.rpc('get_mp_key_points', {
+    p_mp_name: mpName,
+    p_limit: limit
+  });
+
+  if (error) throw error;
+  return data || [];
 }

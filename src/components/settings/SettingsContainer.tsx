@@ -2,7 +2,6 @@
 
 import { ProfileSettings } from './ProfileSettings';
 import { AppearanceSettings } from './AppearanceSettings';
-// import { NotificationSettings } from './NotificationSettings';
 import BillingPage from './BillingPage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Palette, CreditCard } from 'lucide-react';
@@ -30,17 +29,6 @@ export function SettingsContainer() {
             <Palette className="h-4 w-4" />
             Appearance
           </TabsTrigger>
-          {/* <TabsTrigger 
-            value="notifications" 
-            className={cn(
-              "flex items-center gap-2",
-              !user && "opacity-50 cursor-not-allowed"
-            )}
-            disabled={!user}
-          >
-            <Bell className="h-4 w-4" />
-            Notifications
-          </TabsTrigger> */}
           {subscription?.stripe_customer_id && (
             <TabsTrigger 
               value="billing" 
@@ -61,12 +49,6 @@ export function SettingsContainer() {
         <TabsContent value="appearance">
           <AppearanceSettings />
         </TabsContent>
-        
-        {/* {user && (
-          <TabsContent value="notifications">
-            <NotificationSettings />
-          </TabsContent>
-        )} */}
         
         {subscription?.stripe_customer_id && (
           <TabsContent value="billing">

@@ -29,7 +29,7 @@ export function DebateList({
   readOnly = false
 }: DebateListProps) {
   const { submitVote, hasVoted } = useVotes();
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const router = useRouter();
   const { 
     recordVote, 
@@ -161,7 +161,7 @@ export function DebateList({
       return;
     }
 
-    // Check vote limits for anonymous users
+    // Only check vote limits for unauthenticated users
     if (!user && hasReachedVoteLimit()) {
       toast({
         title: "Daily vote limit reached",
@@ -180,7 +180,7 @@ export function DebateList({
     }
 
     try {
-      // Record anonymous vote in engagement tracking
+      // Only record anonymous vote if unauthenticated
       if (!user) {
         recordVote();
       }
@@ -192,7 +192,7 @@ export function DebateList({
         await submitVote({ debate_id: debateId, question_number: questionNumber, vote });
       }
 
-      // Show success toast for anonymous users to encourage signup
+      // Only show remaining votes toast for unauthenticated users
       if (!user) {
         toast({
           title: "Vote recorded",
@@ -219,6 +219,7 @@ export function DebateList({
   }, [
     hasVoted,
     user,
+    subscription,
     hasReachedVoteLimit,
     recordVote,
     onVote,
@@ -227,9 +228,9 @@ export function DebateList({
     router
   ]);
 
-  // Show engagement prompt toast when appropriate
+  // Only show engagement prompt for unauthenticated users
   useEffect(() => {
-    if (shouldShowVotePrompt()) {
+    if (!user && shouldShowVotePrompt()) {
       toast({
         title: `${getRemainingVotes()}/${FREE_LIMITS.DAILY_VOTES} votes remaining today`,
         description: "Create a free account to get unlimited daily votes, and track your engagement over time.",
@@ -242,10 +243,9 @@ export function DebateList({
             Create an account
           </Button>
         ),
-        duration: 10000, // 10 seconds
       });
     }
-  }, [shouldShowVotePrompt, getRemainingVotes, router]);
+  }, [shouldShowVotePrompt, getRemainingVotes, router, user]);
 
   if (items.length === 0 && !isLoading) {
     return (

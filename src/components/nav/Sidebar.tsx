@@ -79,10 +79,16 @@ export function Sidebar({ className }: SidebarProps) {
   const renderAuthMenuItems = () => {
     return (
       <>
+        <DropdownMenuItem asChild className="md:hidden">
+          <Link href="/settings" className="flex w-full items-center">
+            <Settings className="h-4 w-4 mr-2.5" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/info" className="flex w-full items-center">
+          <Link href="/about" className="flex w-full items-center">
             <Info className="h-4 w-4 mr-2.5" />
-            <span>Info</span>
+            <span>About</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -147,27 +153,27 @@ export function Sidebar({ className }: SidebarProps) {
             onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
           >
             <div className={cn(
-              "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-              "h-10",
+              "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground",
+              "h-12",
               "justify-center lg:justify-start",
               pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
               "lg:w-full",
               item.isPremium && !isPremium && "opacity-75"
             )}>
-              <item.icon className="h-5 w-5" />
-              <span className="hidden lg:block ml-3">
+              <item.icon className="h-6 w-6" />
+              <span className="hidden lg:block ml-4 font-semibold">
                 {item.title}
                 {item.isPremium && !isPremium && (
-                  <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+                  <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
                 )}
               </span>
             </div>
           </Link>
         </TooltipTrigger>
-        <TooltipContent side="right" className="lg:hidden">
+        <TooltipContent side="right" className="lg:hidden text-base">
           <span>{item.title}</span>
           {item.isPremium && !isPremium && (
-            <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+            <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
           )}
         </TooltipContent>
       </Tooltip>
@@ -205,20 +211,20 @@ export function Sidebar({ className }: SidebarProps) {
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/settings">
+                  <Link href="/settings" className="hidden md:block">
                     <div className={cn(
-                      "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      "h-10",
+                      "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground",
+                      "h-12",
                       "justify-center lg:justify-start",
                       pathname === '/settings' ? "bg-accent text-accent-foreground" : "transparent",
                       "lg:w-full"
                     )}>
-                      <Settings className="h-5 w-5" />
-                      <span className="hidden lg:block ml-3">Settings</span>
+                      <Settings className="h-6 w-6" />
+                      <span className="hidden lg:block ml-4 font-semibold">Settings</span>
                     </div>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="lg:hidden">
+                <TooltipContent side="right" className="lg:hidden text-base">
                   Settings
                 </TooltipContent>
               </Tooltip>
@@ -230,13 +236,13 @@ export function Sidebar({ className }: SidebarProps) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className={cn(
-                        "flex items-center rounded-md px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground w-full",
-                        "h-10",
+                        "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground w-full",
+                        "h-12",
                         "justify-center lg:justify-start",
                         "text-left"
                       )}>
-                        <Menu className="h-5 w-5" />
-                        <span className="hidden lg:block ml-3">More</span>
+                        <Menu className="h-6 w-6" />
+                        <span className="hidden lg:block ml-4 font-semibold">More</span>
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-48">
@@ -244,7 +250,7 @@ export function Sidebar({ className }: SidebarProps) {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="lg:hidden">
+                <TooltipContent side="right" className="lg:hidden text-base">
                   More
                 </TooltipContent>
               </Tooltip>
@@ -255,7 +261,7 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background z-50">
-        <div className="flex justify-around py-2">
+        <div className="flex justify-around py-3">
           {navItems.map((item) => (
             <Link 
               key={item.href} 
@@ -267,11 +273,11 @@ export function Sidebar({ className }: SidebarProps) {
                 pathname === item.href ? "text-primary" : "text-muted-foreground",
                 item.isPremium && !isPremium && "opacity-75"
               )}>
-                <item.icon className="h-5 w-5" />
-                <span className="text-xs mt-1">
+                <item.icon className="h-6 w-6" />
+                <span className="text-sm mt-1.5 font-medium">
                   {item.title}
                   {item.isPremium && !isPremium && (
-                    <Crown className="inline-block h-3 w-3 ml-1 text-primary" />
+                    <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
                   )}
                 </span>
               </div>

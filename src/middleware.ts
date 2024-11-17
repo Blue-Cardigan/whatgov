@@ -3,32 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
-
-// Cache subscription status
-const subscriptionCache = new Map<string, {status: boolean, timestamp: number}>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-async function checkSubscriptionStatus(
-  supabase: SupabaseClient<Database>,
-  userId: string
-) {
-  const cached = subscriptionCache.get(userId);
-  if (cached?.timestamp && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-    return cached.status;
-  }
-
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('status, current_period_end')
-    .eq('user_id', userId)
-    .single();
-
-  const result = data?.status === 'active' && 
-    (data.current_period_end ? new Date(data.current_period_end).getTime() + 259200000 > Date.now() : false);
-
-  subscriptionCache.set(userId, { status: result, timestamp: Date.now() });
-  return result;
-}
+import { getSubscriptionFromCache, isSubscriptionActive } from '@/lib/subscription';
 
 // Create a memoized client factory
 const getSupabaseClient = (() => {
@@ -106,9 +81,8 @@ export async function middleware(req: NextRequest) {
 
       // Check premium routes
       if (req.nextUrl.pathname.startsWith('/api/premium/')) {
-        const isActive = await checkSubscriptionStatus(supabase, user.id);
-
-        if (!isActive) {
+        const cached = getSubscriptionFromCache(user.id);
+        if (cached && !isSubscriptionActive(cached)) {
           return NextResponse.json(
             { error: 'Subscription required' },
             { status: 403 }

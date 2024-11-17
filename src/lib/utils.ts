@@ -88,3 +88,26 @@ export const ENGAGEMENT_TRIGGERS = {
   VOTES_REMAINING: 8,    // Show signup prompt when 8 votes remain
   SUMMARIES_VIEWED: 2    // Show signup prompt after viewing 2 summaries
 }
+
+export type PartyColoursType = {
+  [key: string]: { color: string };
+};
+
+export const partyColours: PartyColoursType = {
+  'Conservative': { color: '#0087DC' }, //blue
+  'Labour': { color: '#DC241f' }, //red
+  'Liberal Democrat': { color: '#FDBB30' }, //yellow
+  'Liberal': { color: '#FDBB30' }, //yellow
+  'Scottish National Party': { color: '#FFF95D' }, //yellow
+  'Green Party': { color: '#6AB023' }, //green
+  'Green': { color: '#6AB023' }, //green
+  'Plaid Cymru': { color: '#008142' }, //green
+  'DUP': { color: '#19283F' }, //dark blue
+  'Traditional Unionist Voice': { color: '#0C3A6A' }, //dark blue
+  'Reform UK': { color: '#00bed6' }, //blue
+  'Sinn Féin': { color: '#326760' }, //green
+  'Independent': { color: '#808080' }, //grey
+  'Independent/Labour': { color: '#DC241f' }, //red
+  'Independent/Liberal Democrat': { color: '#FDBB30' }, //yellow
+  'Labour (Co-op)': { color: '#DC241f' }, //lighter red
+}

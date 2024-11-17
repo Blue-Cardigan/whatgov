@@ -6,9 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase-client';
 import { useAuth } from '@/hooks/useAuth';
-import { UserProfile } from '@/lib/supabase';
 import { Badge } from "@/components/ui/badge";
 import { TOPICS } from "@/lib/utils";
 import { CheckCircle2 } from "lucide-react";
@@ -17,55 +15,22 @@ import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/ut
 import { Loader2 } from "lucide-react";
 import { lookupPostcode } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
+import type { UserProfile } from '@/lib/supabase';
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, profile: originalProfile, updateProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
   const [postcodeError, setPostcodeError] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Track original profile for comparison
-  const [originalProfile, setOriginalProfile] = useState<UserProfile | null>(null);
-
-  // Fetch the user's profile data
+  // Initialize profile from useAuth
   useEffect(() => {
-    async function fetchProfile() {
-      if (!user) return;
-
-      const { data, error } = await createClient()
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load profile data",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const profileData = {
-        name: data.name || '',
-        email: user.email || '',
-        postcode: data.postcode || '',
-        constituency: data.constituency || '',
-        mp: data.mp || '',
-        gender: data.gender || '',
-        age: data.age || '',
-        selected_topics: data.selected_topics || [],
-      };
-
-      setProfile(profileData);
-      setOriginalProfile(profileData);
+    if (originalProfile) {
+      setProfile(originalProfile);
     }
-
-    fetchProfile();
-  }, [user]);
+  }, [originalProfile]);
 
   // Check for changes
   useEffect(() => {
@@ -88,11 +53,7 @@ export function ProfileSettings() {
     setIsLoading(true);
     
     try {
-      // Optimistically update the original profile
-      setOriginalProfile(profile);
-      setHasChanges(false);
-
-      const updates = {
+      await updateProfile({
         name: profile.name,
         postcode: profile.postcode,
         constituency: profile.constituency,
@@ -100,23 +61,7 @@ export function ProfileSettings() {
         gender: profile.gender,
         age: profile.age,
         selected_topics: profile.selected_topics,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error: profileError } = await createClient()
-        .from('user_profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Only update email if it has changed
-      if (profile.email !== user.email) {
-        const { error: emailError } = await createClient().auth.updateUser({
-          email: profile.email
-        });
-        if (emailError) throw emailError;
-      }
+      });
 
       toast({
         title: "Success",
@@ -124,10 +69,6 @@ export function ProfileSettings() {
       });
     } catch (error) {
       console.error('Error updating profile:', error);
-      // Revert optimistic update
-      setProfile(originalProfile);
-      setHasChanges(true);
-      
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
@@ -146,12 +87,10 @@ export function ProfileSettings() {
     setProfile(prev => ({
       ...prev!,
       postcode: withSpace,
-      // Clear MP details when postcode changes
       constituency: "",
       mp: ""
     }));
 
-    // Only show error if there's a value and it's invalid
     if (withSpace && !UK_POSTCODE_REGEX.test(withSpace)) {
       setPostcodeError("Please enter a valid UK postcode");
     } else {
@@ -168,7 +107,6 @@ export function ProfileSettings() {
       postcode: withSpace
     }));
 
-    // Only proceed with validation if there's a value
     if (!withSpace) {
       setPostcodeError("");
       return;

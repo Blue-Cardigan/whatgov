@@ -20,8 +20,8 @@ deprioritize Lords, prioritize bill discussion
 Max 2 columns in My Parliament; better layout
 Align questions/key points with ideology so users can tag themselves over time
 
-Free Features
-- Feed and votes
+Free Features for Signed in Users
+- Feed and unlimited votes
 - Basic Feed filters
 - Basic voting record view
 - Basic search

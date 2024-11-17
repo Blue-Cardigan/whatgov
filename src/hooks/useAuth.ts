@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { signInWithEmail, signUpWithEmail, UserProfile } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { Subscription, setSubscriptionCache, isSubscriptionActive } from '@/lib/subscription';
 
 interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
   // Required properties from UserProfile minus email & email_verified
@@ -11,17 +12,12 @@ interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
   avatar_url?: string;
 }
 
-type Subscription = {
-  plan_type: string;
-  status: string;
-  stripe_customer_id: string | null;
-} | null;
-
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<Subscription>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -77,7 +73,7 @@ export function useAuth() {
       try {
         const { data, error } = await createClient()
           .from('subscriptions')
-          .select('plan_type, status, stripe_customer_id')
+          .select('plan_type, status, stripe_customer_id, current_period_end')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -86,13 +82,51 @@ export function useAuth() {
           return;
         }
 
-        setSubscription(data as Subscription);
+        const subscriptionData = data as Subscription | null;
+        setSubscription(subscriptionData);
+        setSubscriptionCache(user.id, subscriptionData);
       } catch (error) {
         console.error('Subscription fetch error:', error);
       }
     };
 
     fetchSubscription();
+  }, [user]);
+
+  // Add profile fetching when user changes
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!user) {
+        setProfile(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await createClient()
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setProfile({
+          name: data.name || '',
+          email: user.email || '',
+          postcode: data.postcode || '',
+          constituency: data.constituency || '',
+          mp: data.mp || '',
+          gender: data.gender || '',
+          age: data.age || '',
+          selected_topics: data.selected_topics || [],
+        });
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        setProfile(null);
+      }
+    }
+
+    fetchProfile();
   }, [user]);
 
   const signIn = async (email: string, password: string) => {
@@ -200,11 +234,12 @@ export function useAuth() {
 
   return {
     user,
+    profile,
     loading,
     authError,
     subscription,
-    isPremium: subscription?.status === 'active' && subscription?.plan_type === 'PROFESSIONAL',
-    isEngagedCitizen: subscription?.status === 'active' && 
+    isPremium: isSubscriptionActive(subscription) && subscription?.plan_type === 'PROFESSIONAL',
+    isEngagedCitizen: isSubscriptionActive(subscription) && 
       (subscription?.plan_type === 'ENGAGED_CITIZEN' || subscription?.plan_type === 'PROFESSIONAL'),
     signIn,
     signUp,
