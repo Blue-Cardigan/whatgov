@@ -16,43 +16,41 @@ export function QueryControls({
   onHouseChange
 }: QueryControlsProps) {
   return (
-    <div className="space-y-4">
+    <div className="flex items-center gap-4 text-sm">
+      {/* House Toggle */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToggleAdvanced}
-          className="text-xs"
-        >
-          {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-        </Button>
-
-        {/* House Toggle */}
-        <div className="flex items-center gap-2 ml-2 border-l pl-2">
-          <span className="text-sm text-muted-foreground">House:</span>
-          <div className="flex gap-1">
-            <Button
-              variant={house === 'Commons' ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => onHouseChange('Commons')}
-            >
-              Commons
-            </Button>
-            <Button
-              variant={house === 'Lords' ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => onHouseChange('Lords')}
-            >
-              Lords
-            </Button>
-          </div>
+        <span className="text-muted-foreground">House:</span>
+        <div className="flex gap-1">
+          <Button
+            variant={house === 'Commons' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => onHouseChange('Commons')}
+          >
+            Commons
+          </Button>
+          <Button
+            variant={house === 'Lords' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => onHouseChange('Lords')}
+          >
+            Lords
+          </Button>
         </div>
       </div>
 
+      <Button
+        variant="link"
+        size="sm"
+        onClick={onToggleAdvanced}
+        className="text-muted-foreground hover:text-foreground"
+      >
+        {showAdvanced ? '← Basic Search' : 'Advanced Search →'}
+      </Button>
+
       {showAdvanced && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -66,13 +64,6 @@ export function QueryControls({
             onClick={() => onAddPart('debate')}
           >
             Add Debate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAddPart('words')}
-          >
-            Add Word Count
           </Button>
         </div>
       )}

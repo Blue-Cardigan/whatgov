@@ -15,6 +15,7 @@ interface QueryPartInputProps {
   onUpdate: (index: number, value: string) => void;
   onRemove: (index: number) => void;
   onTypeChange: (index: number, newType: QueryPart['type']) => void;
+  showRemove: boolean;
 }
 
 export function QueryPartInput({
@@ -25,7 +26,8 @@ export function QueryPartInput({
   onBlur,
   onUpdate,
   onRemove,
-  onTypeChange
+  onTypeChange,
+  showRemove,
 }: QueryPartInputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -72,14 +74,16 @@ export function QueryPartInput({
         )}
       </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onRemove(index)}
-        className="h-8 w-8 p-0"
-      >
-        <X className="h-4 w-4" />
-      </Button>
+      {showRemove && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(index)}
+          className="h-8 w-8 p-0"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }

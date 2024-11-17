@@ -76,11 +76,6 @@ export function useSearch(): SearchHook {
   const performSearch = useCallback(async (reset = true) => {
     const { term, filters, page, sortOrder } = query;
     
-    if (!term && !filters.spokenBy && !filters.selectedDate) {
-      setResults([]);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { cleanTerm, directives } = parseSearchDirectives(term);
@@ -98,13 +93,11 @@ export function useSearch(): SearchHook {
         orderBy: sortOrder
       };
 
-      (Object.keys(searchParams) as Array<keyof SearchParams>).forEach(key => {
-        if (searchParams[key] === undefined) {
-          delete searchParams[key];
-        }
-      });
+      const cleanParams = Object.fromEntries(
+        Object.entries(searchParams).filter(([_, value]) => value !== undefined)
+      ) as SearchParams;
 
-      const response = await HansardAPI.searchWithFilters(searchParams);
+      const response = await HansardAPI.searchWithFilters(cleanParams);
       setResults(prev => reset ? response.Contributions : [...prev, ...response.Contributions]);
       setTotalResults(response.TotalContributions);
       
@@ -116,7 +109,7 @@ export function useSearch(): SearchHook {
     } finally {
       setIsLoading(false);
     }
-  }, [query]);
+  }, [query, parseSearchDirectives]);
 
   const debouncedSearch = useDebounce(performSearch, 300);
 
@@ -124,14 +117,18 @@ export function useSearch(): SearchHook {
     setQuery(prev => ({
       ...prev,
       ...updates,
-      page: updates.term !== undefined ? 1 : prev.page
+      page: (updates.term !== undefined || updates.filters !== undefined) ? 1 : prev.page
     }));
   }, []);
 
   const handleSearchUpdate = useCallback((updates: Partial<SearchQuery>) => {
-    updateSearch(updates);
-    debouncedSearch(true);
-  }, [updateSearch, debouncedSearch]);
+    setQuery(prev => ({
+      ...prev,
+      ...updates,
+      page: (updates.term !== undefined || updates.filters !== undefined) ? 1 : prev.page
+    }));
+    performSearch(true);
+  }, [performSearch]);
 
   const loadMore = useCallback(() => {
     performSearch(false);

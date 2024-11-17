@@ -248,7 +248,7 @@ export class HansardAPI {
       const searchParts: string[] = [];
       
       // Base search term comes first
-      if (params.searchTerm) {
+      if (params.searchTerm?.trim()) {
         searchParts.push(params.searchTerm);
       }
       
@@ -266,10 +266,9 @@ export class HansardAPI {
         searchParts.push(`debate:${quotedValue}`);
       }
       
-      // Combine search parts with AND
-      if (searchParts.length > 0) {
-        searchParams.append('searchTerm', searchParts.join(' AND '));
-      }
+      // Always add searchTerm parameter even if empty array
+      const searchTermValue = searchParts.join(' AND ');
+      searchParams.append('searchTerm', searchTermValue);
       
       // Add documented parameters
       if (params.house) searchParams.append('house', params.house);
