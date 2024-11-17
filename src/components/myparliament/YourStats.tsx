@@ -13,6 +13,7 @@ import { getUserVotingStats } from '@/lib/supabase'
 import { TOPICS } from "@/lib/utils";
 import type { UserVotingStats, TopicStats, TopicQuestion, TopicDetails } from "@/types/VoteStats";
 import dynamic from 'next/dynamic';
+import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 
 // Create a single dynamic chart component
 const DynamicChart = dynamic(
@@ -40,11 +41,10 @@ export function UserVoteHistory() {
 
   if (!user) {
     return (
-      <Card className="p-6">
-        <div className="text-center text-muted-foreground">
-          Please sign in to view your voting history
-        </div>
-      </Card>
+      <SignInPrompt
+        title="Sign in to view your voting history"
+        description="Track your voting patterns and see how they align with different topics and MPs"
+      />
     );
   }
 

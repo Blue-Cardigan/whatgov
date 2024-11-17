@@ -119,18 +119,27 @@ export function DebateCard({
               "border-amber-200/50 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-900/10"
             )}
           >
-            <div className="flex items-center justify-between">
-              <Badge variant="outline" className={cn(
-                "font-semibold text-xs",
-                num === 1 ? "text-blue-700 dark:text-blue-400" :
-                num === 2 ? "text-emerald-700 dark:text-emerald-400" :
-                "text-amber-700 dark:text-amber-400"
-              )}>
-                Question {num} of {getTotalQuestions()}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {total} votes
-              </span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={cn(
+                  "font-semibold",
+                  num === 1 ? "text-blue-700 dark:text-blue-400" :
+                  num === 2 ? "text-emerald-700 dark:text-emerald-400" :
+                  "text-amber-700 dark:text-amber-400"
+                )}>
+                  Question {num} of {getTotalQuestions()}
+                </Badge>
+              </div>
+              {num < getTotalQuestions() && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentQuestion(num + 1)}
+                  className="text-xs text-muted-foreground hover:text-primary"
+                >
+                  Skip →
+                </Button>
+              )}
             </div>
 
             <p className="text-sm font-medium">{question}</p>

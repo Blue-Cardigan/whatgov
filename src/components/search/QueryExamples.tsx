@@ -1,9 +1,5 @@
 import { Badge } from "../ui/badge";
-import { useMemo } from "react";
-
-interface QueryExamplesProps {
-  onChange: (value: string) => void;
-}
+import { useEffect, useState } from "react";
 
 const SEARCH_EXAMPLES = [
   { label: "climate change", value: "climate change" },
@@ -16,12 +12,20 @@ const SEARCH_EXAMPLES = [
   { label: "Budget debates", value: 'debate:"Budget"' },
   { label: "NHS waiting times", value: "NHS waiting times" },
   { label: "education funding", value: "education funding" }
-];
+] as const;
+
+interface QueryExamplesProps {
+  onChange: (value: string) => void;
+}
 
 export function QueryExamples({ onChange }: QueryExamplesProps) {
-  const examples = useMemo(() => {
+  // Initialize with first 3 examples to avoid hydration mismatch
+  const [examples, setExamples] = useState(SEARCH_EXAMPLES.slice(0, 3));
+
+  // Randomize examples after initial render on client side only
+  useEffect(() => {
     const shuffled = [...SEARCH_EXAMPLES].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 3);
+    setExamples(shuffled.slice(0, 3));
   }, []);
 
   return (

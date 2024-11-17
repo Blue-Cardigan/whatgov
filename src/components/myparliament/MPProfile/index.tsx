@@ -9,17 +9,23 @@ import { Button } from "@/components/ui/button";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
+import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
   const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+    
     async function fetchData() {
-      if (!profile?.mp) return;
+      if (!profile?.mp) {
+        setLoading(false);
+        return;
+      }
       
       try {
         const [mpData, points] = await Promise.all([
@@ -38,9 +44,9 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [profile?.mp, profile?.constituency]);
+  }, [profile?.mp, profile?.constituency, authLoading]);
 
-  if (loading) {
+  if (authLoading) {
     return (
       <Card className="p-6">
         <div className="space-y-4 animate-pulse">
@@ -49,6 +55,15 @@ export function MPProfile() {
           <div className="h-4 bg-muted rounded w-2/3" />
         </div>
       </Card>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SignInPrompt
+        title="Sign in to view your MP"
+        description="Sign in to track your MP's activity and see how they represent your interests in Parliament"
+      />
     );
   }
 

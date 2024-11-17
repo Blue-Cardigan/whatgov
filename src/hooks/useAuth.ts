@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase-client';
+import { useSupabase } from '@/components/providers/SupabaseProvider'
 import { signInWithEmail, signUpWithEmail, UserProfile } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Subscription, setSubscriptionCache, isSubscriptionActive } from '@/lib/subscription';
@@ -13,6 +13,7 @@ interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
 }
 
 export function useAuth() {
+  const supabase = useSupabase()
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -21,8 +22,6 @@ export function useAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    
     // Get initial user state
     const initUser = async () => {
       try {
@@ -71,8 +70,7 @@ export function useAuth() {
       }
 
       try {
-        const { data, error } = await createClient()
-          .from('subscriptions')
+        const { data, error } = await supabase.from('subscriptions')
           .select('plan_type, status, stripe_customer_id, current_period_end')
           .eq('user_id', user.id)
           .maybeSingle();
@@ -102,8 +100,7 @@ export function useAuth() {
       }
 
       try {
-        const { data, error } = await createClient()
-          .from('user_profiles')
+        const { data, error } = await supabase.from('user_profiles')
           .select('*')
           .eq('id', user.id)
           .single();
@@ -161,7 +158,7 @@ export function useAuth() {
 
   const handleSignOut = async () => {
     try {
-      const { error } = await createClient().auth.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error) {
       console.error('Error signing out:', error);
@@ -212,12 +209,11 @@ export function useAuth() {
   const updateProfile = async (userData: Partial<SignUpData>) => {
     setLoading(true);
     try {
-      const { data: { user }, error: userError } = await createClient().auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) throw new Error('No user found');
 
-      const { error: profileError } = await createClient()
-        .from('user_profiles')
+      const { error: profileError } = await supabase.from('user_profiles')
         .update({
           ...userData,
           updated_at: new Date().toISOString()
