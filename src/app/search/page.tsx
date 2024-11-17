@@ -3,25 +3,10 @@
 import { useState, useCallback } from 'react';
 import { useSearch } from '@/hooks/useSearch';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 
 import { SearchResults } from "@/components/search/SearchResults";
 import { X } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
 import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { QueryBuilder } from '@/components/search/QueryBuilder';
 
@@ -31,7 +16,6 @@ export default function Search() {
     query,
     updateSearch,
     resetSearch,
-    isLoading,
     searchTerm: currentSearchTerm,
     performSearch
   } = searchHook;
@@ -73,44 +57,32 @@ export default function Search() {
   }, [updateSearch, query.filters]);
 
   return (
-    <div className="container max-w-7xl py-8">
+    <div className="container py-4 px-4 lg:py-8 lg:px-8">
       {/* Hero Section */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold mb-3">Search Parliamentary Debates</h1>
-        <p className="text-muted-foreground text-lg mb-6">
+      <div className="mb-8 lg:mb-12">
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2 lg:mb-3">Search Parliamentary Debates</h1>
+        <p className="text-muted-foreground text-base lg:text-lg mb-4 lg:mb-6">
           Search across all parliamentary debates, written statements, and questions
         </p>
         
-        {/* Search Bar */}
-        <div className="relative max-w-3xl">
-          <QueryBuilder
-            value={localSearchTerm}
-            onChange={handleSearchTermChange}
-            onSubmit={handleSubmit}
-            onClear={handleClear}
-            house={query.filters.house}
-            onHouseChange={handleHouseChange}
-          />
-        </div>
+        {/* Search Section */}
+        <div className="space-y-3">
+          {/* Search Bar */}
+          <div className="relative w-full lg:max-w-3xl">
+            <QueryBuilder
+              value={localSearchTerm}
+              onChange={handleSearchTermChange}
+              onSubmit={handleSubmit}
+              onClear={handleClear}
+              house={query.filters.house}
+              onHouseChange={handleHouseChange}
+            />
+          </div>
 
-        {/* Active Search Terms */}
-        {(localSearchTerm || query.filters.spokenBy) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {localSearchTerm && (
-              <Badge variant="secondary">
-                Search: {localSearchTerm}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 ml-1"
-                  onClick={handleClear}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
-            )}
-            {query.filters.spokenBy && (
-              <Badge variant="secondary" className="flex items-center gap-1">
+          {/* Speaker Filter Badge */}
+          {query.filters.spokenBy && (
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="flex items-center gap-1 text-sm">
                 Spoken by: {query.filters.spokenBy}
                 <Button
                   variant="ghost"
@@ -121,16 +93,14 @@ export default function Search() {
                   <X className="h-3 w-3" />
                 </Button>
               </Badge>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
-        {/* Results */}
-        <div className="md:col-span-3">
-          <SearchResults searchHook={searchHook} />
-        </div>
+      {/* Results Section */}
+      <div className="w-full">
+        <SearchResults searchHook={searchHook} />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X, Search } from 'lucide-react';
 import { queryReducer, QueryPart } from './queryReducer';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 interface QueryBuilderProps {
     value: string;
@@ -38,10 +39,6 @@ export function QueryBuilder({
         switch (part.type) {
           case 'spokenby':
             return `spokenby:"${part.value}"`;
-          case 'debate':
-            return `debate:"${part.value}"`;
-          case 'words':
-            return part.value;
           default:
             return part.value;
         }
@@ -108,33 +105,106 @@ export function QueryBuilder({
 
   return (
     <div className="space-y-4">
+      {/* Search Header */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          {/* House Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">House:</span>
+            <div className="flex gap-1">
+              <Button
+                variant={house === 'Commons' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 px-2"
+                onClick={() => onHouseChange('Commons')}
+              >
+                Commons
+              </Button>
+              <Button
+                variant={house === 'Lords' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 px-2"
+                onClick={() => onHouseChange('Lords')}
+              >
+                Lords
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced Toggle */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (showAdvanced) {
+              const combinedValue = buildQueryString(state.parts);
+              dispatch({ 
+                type: 'SET_PARTS', 
+                payload: [{ type: 'text', value: combinedValue, isValid: true }] 
+              });
+            }
+            setShowAdvanced(!showAdvanced);
+          }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          {showAdvanced ? '← Basic Search' : 'Advanced Search →'}
+        </Button>
+      </div>
+
       {/* Basic Search Mode */}
       {!showAdvanced && (
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Search parliamentary debates..."
-            value={state.parts[0]?.value || ''}
-            onChange={(e) => handleUpdatePart(0, e.target.value)}
-            className="flex-1"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                onSubmit();
-              }
-            }}
-          />
-          <Button 
-            onClick={onSubmit}
-          >
-            <Search className="h-4 w-4 mr-2" />
-            Search
-          </Button>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Search parliamentary debates..."
+                value={state.parts[0]?.value || ''}
+                onChange={(e) => handleUpdatePart(0, e.target.value)}
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onSubmit();
+                  }
+                }}
+              />
+              <Button 
+                onClick={onSubmit}
+                className="min-w-[100px]"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+            </div>
+
+            {/* Search Term Badge */}
+            {value && (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="text-sm">
+                  Search: {value}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 ml-1"
+                    onClick={onClear}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Examples */}
+          <QueryExamples onChange={onChange} />
         </div>
       )}
 
       {/* Advanced Search Mode */}
       {showAdvanced && (
         <div className="space-y-4">
+          {/* Query Parts */}
           <div className="flex flex-wrap gap-2">
             {state.parts.map((part, index) => (
               <QueryPartInput
@@ -152,50 +222,40 @@ export function QueryBuilder({
             ))}
           </div>
 
-          <div className="flex justify-end gap-2">
-            {value && (
-              <Button 
-                variant="outline" 
-                onClick={onClear}
+          {/* Advanced Controls */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddPart('spokenby')}
               >
-                <X className="h-4 w-4 mr-2" />
-                Clear
+                <span className="mr-2">+</span> Add Speaker
               </Button>
-            )}
-            
-            <Button 
-              onClick={onSubmit}
-            >
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
+            </div>
+
+            <div className="flex gap-2">
+              {value && (
+                <Button 
+                  variant="outline" 
+                  onClick={onClear}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear
+                </Button>
+              )}
+              
+              <Button 
+                onClick={onSubmit}
+                className="min-w-[100px]"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Controls Section */}
-      <div className="flex items-center gap-4 pt-2">
-        <QueryControls
-          showAdvanced={showAdvanced}
-          onToggleAdvanced={() => {
-            // When switching to basic, convert all parts to a single text search
-            if (showAdvanced) {
-              const combinedValue = buildQueryString(state.parts);
-              dispatch({ 
-                type: 'SET_PARTS', 
-                payload: [{ type: 'text', value: combinedValue, isValid: true }] 
-              });
-            }
-            setShowAdvanced(!showAdvanced);
-          }}
-          onAddPart={handleAddPart}
-          house={house}
-          onHouseChange={onHouseChange}
-        />
-      </div>
-
-      {/* Examples Section */}
-      {!showAdvanced && <QueryExamples onChange={onChange} />}
     </div>
   );
 }
@@ -210,18 +270,6 @@ function parseInitialValue(value: string): QueryPart[] {
       return { 
         type: 'spokenby' as const, 
         value: match.slice(9).replace(/"/g, ''),
-        isValid: true 
-      };
-    } else if (match.startsWith('debate:')) {
-      return { 
-        type: 'debate' as const, 
-        value: match.slice(7).replace(/"/g, ''),
-        isValid: true 
-      };
-    } else if (match.startsWith('words:')) {
-      return { 
-        type: 'words' as const, 
-        value: match.slice(6).replace(/"/g, ''),
         isValid: true 
       };
     } else {

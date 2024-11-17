@@ -43,19 +43,19 @@ export function QueryPartInput({
         !part.isValid && "ring-2 ring-destructive"
       )}
     >
-      <Select
-        value={part.type}
-        onValueChange={handleTypeChange}
-      >
-        <SelectTrigger className="h-8 w-[100px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="spokenby">Speaker</SelectItem>
-          <SelectItem value="debate">Debate</SelectItem>
-          <SelectItem value="words">Words</SelectItem>
-        </SelectContent>
-      </Select>
+      {part.type !== 'text' && (
+        <Select
+          value={part.type}
+          onValueChange={handleTypeChange}
+        >
+          <SelectTrigger className="h-8 w-[100px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="spokenby">Speaker</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
 
       <div className="relative flex-1" ref={inputRef}>
         <Input
@@ -92,10 +92,6 @@ function getPlaceholder(type: QueryPart['type']): string {
   switch (type) {
     case 'spokenby':
       return "Enter MP name...";
-    case 'debate':
-      return "Enter debate topic...";
-    case 'words':
-      return "Enter exact phrase...";
     default:
       return "Enter search terms...";
   }
@@ -105,10 +101,6 @@ function getErrorMessage(part: QueryPart): string {
   switch (part.type) {
     case 'spokenby':
       return "Please enter at least 2 characters";
-    case 'debate':
-      return "Please enter at least 3 characters";
-    case 'words':
-      return "Please enter at least 1 character";
     default:
       return "Invalid input";
   }

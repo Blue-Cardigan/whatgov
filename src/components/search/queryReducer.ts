@@ -1,5 +1,5 @@
 export interface QueryPart {
-  type: 'text' | 'spokenby' | 'debate' | 'words';
+  type: 'text' | 'spokenby';
   value: string;
   isValid: boolean;
 }
@@ -31,7 +31,11 @@ export function queryReducer(state: QueryState, action: QueryAction): QueryState
       const part = newParts[index];
       if (!part) return state;
 
-      const minLength = part.type === 'spokenby' ? 2 : part.type === 'debate' ? 3 : 1;
+      const minLength = {
+        spokenby: 2,
+        text: 1
+      }[part.type];
+
       newParts[index] = {
         ...part,
         value,
