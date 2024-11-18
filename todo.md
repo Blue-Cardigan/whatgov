@@ -1,15 +1,11 @@
-Page for each debate
-- Move key points here, add full debate summaries
-
 Create whatgov email and update sendgrid
 Billing management (e.g upgrade, cancel)
 account update (change email, delete)
 
 My Parliament
 - Integrate schedule
-- Integrate Divisions
+- Track Bill progress
 
-Fix tailored feed prioritisation (old debates seem to be at the top)
 deprioritize Lords, prioritize bill discussion
 
 Align questions/key points with ideology so users can tag themselves over time
