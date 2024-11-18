@@ -60,16 +60,21 @@ function MinisterialBadge({ rank }: { rank: string }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="inline-flex items-center">
-            <Badge 
-              variant="outline" 
-              className={`${getRankStyle(rank)} cursor-help`}
-            >
-              {rank}
-            </Badge>
-          </div>
+          <Badge 
+            variant="outline" 
+            className={`${getRankStyle(rank)} cursor-help touch-action-none`}
+            role="button"
+            tabIndex={0}
+          >
+            {rank}
+          </Badge>
         </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
+        <TooltipContent 
+          side="top" 
+          align="center"
+          sideOffset={5}
+          className="max-w-[280px] text-sm text-center"
+        >
           <p>{MINISTERIAL_RANKINGS[rank as MinisterialRank] || 'Your MP is in the Cabinet. This is their place in the "pecking order"'}</p>
         </TooltipContent>
       </Tooltip>

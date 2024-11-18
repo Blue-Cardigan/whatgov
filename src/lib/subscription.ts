@@ -24,7 +24,7 @@ export function setSubscriptionCache(userId: string, data: Subscription | null) 
 export function isSubscriptionActive(subscription: Subscription | null): boolean {
   if (!subscription) return false;
   
-  return subscription.status === 'active' && 
+  return (subscription.status === 'active' || subscription.status === 'trialing') && 
     (!subscription.current_period_end || 
      new Date(subscription.current_period_end).getTime() + 259200000 > Date.now());
 } 

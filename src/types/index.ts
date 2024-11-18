@@ -103,3 +103,15 @@ export interface Division {
     member_id: number;
   }> | null;
 }
+
+// Add shared types
+export interface BaseContentProps {
+  isActive?: boolean;
+  readOnly?: boolean;
+  hasReachedLimit?: boolean;
+}
+
+export interface VoteHandlers {
+  onVote: (num: number, vote: boolean) => void;
+  onSkip: (num: number) => void;
+}

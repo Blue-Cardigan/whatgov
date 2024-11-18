@@ -121,7 +121,8 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ 
           opacity: isActive ? 1 : 0.5, 
-          y: isActive ? 0 : 10 
+          y: isActive ? 0 : 10,
+          height: 'auto'
         }}
         transition={{ duration: 0.3 }}
       >

@@ -10,13 +10,14 @@ import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
+import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
   const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, isEngagedCitizen } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
@@ -30,7 +31,7 @@ export function MPProfile() {
       try {
         const [mpData, points] = await Promise.all([
           getMPData(profile.mp_id),
-          getMPKeyPoints(profile.mp_id.toString())
+          getMPKeyPoints(profile.mp.toString())
         ]);
         
         if (mpData) setMPData(mpData);
@@ -44,7 +45,7 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [profile?.mp_id, authLoading]);
+  }, [profile?.mp_id, profile?.mp, authLoading]);
 
   if (authLoading || loading) {
     return (
@@ -90,7 +91,19 @@ export function MPProfile() {
       <div className="space-y-8">
         <MPProfileCard mpData={mpData} />
         <MPLinks mpData={mpData} />
-        {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
+        {isEngagedCitizen ? (
+          keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />
+        ) : (
+          <SubscriptionCTA
+            title="Upgrade to track your MP's activity"
+            description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
+            features={[
+              "View your MP's recent points",
+              "Track their voting patterns",
+              "Get alerts when they speak in debates"
+            ]}
+          />
+        )}
       </div>
     </Card>
   );

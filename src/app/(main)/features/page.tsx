@@ -151,7 +151,7 @@ const plans = [
         "Service level agreement"
       ]}
     ],
-    cta: { text: "Contact Enterprise Sales", href: "mailto:jethro@civita.co.uk" }
+    cta: { text: "Contact Enterprise Sales", href: "mailto:enterprise@whatgov.co.uk" }
   }
 ];
 

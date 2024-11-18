@@ -81,21 +81,35 @@ function VerificationHandler() {
     try {
       const supabase = createClient();
       
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/accounts/callback`,
+      // First, get a new confirmation token
+      const { data: tokenData, error: tokenError } = await supabase.rpc(
+        'generate_confirmation_token',
+        { user_email: email }
+      );
+
+      if (tokenError) throw tokenError;
+      if (!tokenData?.confirmation_token) {
+        throw new Error('Failed to generate confirmation token');
+      }
+
+      // Create confirmation link with the new token
+      const encodedToken = encodeURIComponent(tokenData.confirmation_token);
+      const confirmationLink = `${window.location.origin}/accounts/verify?token=${encodedToken}`;
+      
+      // Send the verification email through our API route
+      const emailResponse = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email,
+          confirmationLink,
+        }),
       });
 
-      if (error) {
-        console.error('Supabase resend error details:', {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
-        throw error;
+      if (!emailResponse.ok) {
+        throw new Error('Failed to send verification email');
       }
       
       setResendStatus('success');
@@ -103,7 +117,7 @@ function VerificationHandler() {
       console.error('Error resending verification email:', err);
       setError(
         err instanceof Error 
-          ? `${err.message} (This might be due to email sending limits)` 
+          ? err.message 
           : 'Failed to resend verification email'
       );
       setResendStatus('error');

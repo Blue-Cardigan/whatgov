@@ -26,7 +26,7 @@ async function checkExistingSubscription(supabase: SupabaseClient<Database>, use
     }
 
     return {
-      hasActiveSubscription: subscription?.status === 'active',
+      hasActiveSubscription: subscription?.status === 'active' || subscription?.status === 'trialing',
       stripeCustomerId: subscription?.stripe_customer_id
     };
   } catch (error) {

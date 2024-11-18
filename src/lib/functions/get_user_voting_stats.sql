@@ -119,9 +119,9 @@ begin
     from vote_stats
   )
   select json_build_object(
-    'total_votes', vc.total_votes,
-    'aye_votes', vc.aye_votes,
-    'no_votes', vc.no_votes,
+    'total_votes', COALESCE(vc.total_votes, 0),
+    'aye_votes', COALESCE(vc.aye_votes, 0),
+    'no_votes', COALESCE(vc.no_votes, 0),
     'topic_stats', coalesce(ts.stats, '{}'::jsonb),
     'vote_stats', coalesce(vs.stats, '[]'::json)
   ) into result

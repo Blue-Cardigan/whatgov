@@ -158,7 +158,7 @@ You have the right to:
 - Lodge complaints
 
 ### 7.2 How to Exercise Your Rights
-Email: privacy@whatgov.uk
+Email: legal@whatgov.uk
 Response time: Within one month
 ID verification may be required
 

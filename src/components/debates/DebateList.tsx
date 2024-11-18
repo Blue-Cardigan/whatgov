@@ -18,6 +18,7 @@ interface DebateListProps {
   isFetchingNextPage: boolean;
   onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
   readOnly?: boolean;
+  hasMore?: boolean;
 }
 
 export function DebateList({ 
@@ -26,7 +27,8 @@ export function DebateList({
   loadMoreRef, 
   isFetchingNextPage,
   onVote,
-  readOnly = false
+  readOnly = false,
+  hasMore = true
 }: DebateListProps) {
   const { submitVote, hasVoted } = useVotes();
   const { user } = useAuth();
@@ -292,8 +294,13 @@ export function DebateList({
       
       <div ref={loadMoreRef} className="h-4">
         {isFetchingNextPage && (
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          <div className="space-y-px">
+            <DebateSkeleton />
+          </div>
+        )}
+        {!hasMore && items.length > 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No more debates to show
           </div>
         )}
       </div>

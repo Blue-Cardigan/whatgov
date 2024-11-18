@@ -247,7 +247,7 @@ function PricingContent() {
                     <DialogHeader>
                       <DialogTitle>Enterprise Inquiry</DialogTitle>
                       <DialogDescription>
-                        Please email enterprise@whatgov.uk for custom pricing and features.
+                        Please email enterprise@whatgov.co.uk for custom pricing and features.
                       </DialogDescription>
                     </DialogHeader>
                   </DialogContent>

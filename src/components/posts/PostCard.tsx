@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Users2, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';
 import { DivisionContent } from './DivisionContent';
@@ -20,19 +20,27 @@ interface PostCardProps {
 }
 
 export function PostCard({ item, ...props }: PostCardProps) {
-  // Group key points by speaker
-  const pointsBySpeaker = useMemo(() => {
-    const grouped: Record<string, KeyPoint[]> = {};
-    (item.ai_key_points as KeyPoint[]).forEach(point => {
-      if (!grouped[point.speaker]) {
-        grouped[point.speaker] = [];
-      }
-      grouped[point.speaker].push(point);
+  // Create consolidated cards of key points
+  const keyPointCards = useMemo(() => {
+    const POINTS_PER_CARD = 3; // Adjust based on desired density
+    
+    // First, sort all points by engagement
+    const sortedPoints = [...(item.ai_key_points || [])].sort((a, b) => {
+      const engagementA = a.support.length + a.opposition.length;
+      const engagementB = b.support.length + b.opposition.length;
+      return engagementB - engagementA;
     });
-    return grouped;
-  }, [item.ai_key_points]);
 
-  const speakers = useMemo(() => Object.keys(pointsBySpeaker), [pointsBySpeaker]);
+    // Split into cards
+    return sortedPoints.reduce((acc, point, index) => {
+      const cardIndex = Math.floor(index / POINTS_PER_CARD);
+      if (!acc[cardIndex]) {
+        acc[cardIndex] = [];
+      }
+      acc[cardIndex].push(point);
+      return acc;
+    }, [] as KeyPoint[][]);
+  }, [item.ai_key_points]);
 
   const hasDivisions = useMemo(() => 
     item.divisions && item.divisions.length > 0
@@ -43,6 +51,29 @@ export function PostCard({ item, ...props }: PostCardProps) {
   );
   const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Update height management
+  const [contentHeight, setContentHeight] = useState<number>(0);
+  const firstContentRef = useRef<HTMLDivElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  // Use ResizeObserver for more reliable height updates
+  useEffect(() => {
+    if (!firstContentRef.current) return;
+
+    resizeObserverRef.current = new ResizeObserver(entries => {
+      const height = entries[0]?.contentRect.height;
+      if (height && height !== contentHeight) {
+        setContentHeight(height);
+      }
+    });
+
+    resizeObserverRef.current.observe(firstContentRef.current);
+
+    return () => {
+      resizeObserverRef.current?.disconnect();
+    };
+  }, [activeSlide]);
 
   // Updated slide change handler
   const handleSlideChange = useCallback((type: string, index?: number) => {
@@ -67,7 +98,7 @@ export function PostCard({ item, ...props }: PostCardProps) {
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
       const currentIndex = getSlideIndex(activeSlide);
-      const maxIndex = (hasDivisions ? 1 : 0) + speakers.length;
+      const maxIndex = (hasDivisions ? 1 : 0) + keyPointCards.length;
       if (currentIndex < maxIndex) {
         const nextSlide = getSlideType(currentIndex + 1);
         handleSlideChange(nextSlide);
@@ -89,22 +120,22 @@ export function PostCard({ item, ...props }: PostCardProps) {
   const getSlideIndex = (slide: string): number => {
     if (slide === 'division') return 0;
     if (slide === 'debate') return hasDivisions ? 1 : 0;
-    const speakerIndex = parseInt(slide.split('-')[1]);
-    return (hasDivisions ? 2 : 1) + speakerIndex;
+    const cardIndex = parseInt(slide.split('-')[1]);
+    return (hasDivisions ? 2 : 1) + cardIndex;
   };
 
   const getSlideType = (index: number): string => {
     if (index === 0 && hasDivisions) return 'division';
     if (index === (hasDivisions ? 1 : 0)) return 'debate';
-    const speakerIndex = index - (hasDivisions ? 2 : 1);
-    return `keyPoints-${speakerIndex}`;
+    const cardIndex = index - (hasDivisions ? 2 : 1);
+    return `keyPoints-${cardIndex}`;
   };
 
   return (
     <Card className="overflow-hidden relative w-full">
       <CardHeader className="space-y-4">
         <MetaInformation item={item} />
-        <CardTitle className="text-xl font-bold">{item.title}</CardTitle>
+        <CardTitle className="text-xl font-bold">{item.ai_title}</CardTitle>
       </CardHeader>
 
       <div 
@@ -113,12 +144,18 @@ export function PostCard({ item, ...props }: PostCardProps) {
         className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-none"
         style={{ 
           scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          height: contentHeight || 'auto',
+          transition: 'height 0.3s ease-in-out'
         }}
       >
-        {/* Division Content - Only show if divisions exist */}
+        {/* Division Content */}
         {hasDivisions && (
-          <motion.div key="division" className="w-full flex-none snap-center">
+          <motion.div 
+            key="division" 
+            className="w-full flex-none snap-center"
+            ref={activeSlide === 'division' ? firstContentRef : undefined}
+          >
             <DivisionContent 
               division={item.divisions![currentDivisionIndex]}
               isActive={activeSlide === 'division'}
@@ -127,31 +164,44 @@ export function PostCard({ item, ...props }: PostCardProps) {
         )}
         
         {/* Debate Content */}
-        <motion.div key="debate" className="w-full flex-none snap-center">
+        <motion.div 
+          key="debate" 
+          className="w-full flex-none snap-center"
+          ref={!hasDivisions && activeSlide === 'debate' ? firstContentRef : undefined}
+        >
           <DebateContent 
             debate={item}
-            {...props}
+            onVote={props.onVote}
+            readOnly={props.readOnly}
+            hasReachedLimit={props.hasReachedLimit}
           />
         </motion.div>
 
-        {/* Key Points Content - One per speaker */}
-        {speakers.map(speaker => (
-          <motion.div key={`keyPoints-${speakers.indexOf(speaker)}`} className="w-full flex-none snap-center">
+        {/* Key Points Content */}
+        {keyPointCards.map((points, cardIndex) => (
+          <motion.div 
+            key={`keyPoints-${cardIndex}`} 
+            className="w-full flex-none snap-center"
+            ref={!hasDivisions && activeSlide === `keyPoints-${cardIndex}` ? firstContentRef : undefined}
+          >
             <KeyPointsContent 
-              speaker={speaker}
-              points={pointsBySpeaker[speaker]}
-              isActive={activeSlide === `keyPoints-${speakers.indexOf(speaker)}`}
+              points={points}
+              isActive={activeSlide === `keyPoints-${cardIndex}`}
+              cardIndex={cardIndex}
+              totalCards={keyPointCards.length}
             />
           </motion.div>
         ))}
       </div>
 
-      {/* Swipe hint for mobile */}
+      {/* Update slide indicators */}
       <div className="absolute bottom-4 right-4 md:hidden">
         <Badge variant="secondary" className="text-xs animate-pulse">
           {activeSlide === 'division' && hasDivisions ? 'Swipe for debate' : 
            activeSlide === 'debate' ? 'Swipe for key points' : 
-           hasDivisions ? 'Swipe for division' : 'Swipe for debate'}
+           getSlideIndex(activeSlide) < keyPointCards.length + (hasDivisions ? 2 : 1) - 1 
+             ? 'Swipe for more points' 
+             : hasDivisions ? 'Swipe for division' : 'Swipe for debate'}
         </Badge>
       </div>
     </Card>
