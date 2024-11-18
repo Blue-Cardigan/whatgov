@@ -11,6 +11,7 @@ deprioritize Lords, prioritize bill discussion
 Align questions/key points with ideology so users can tag themselves over time
 
 #Optimizations
+Don't let key points stretch cards out tall
 Load more virtualized debates at once/ slow down scroll/ skeletons 
 - problem: looks janky when scrolling fast
 Reduce middleware build size for edge runtime

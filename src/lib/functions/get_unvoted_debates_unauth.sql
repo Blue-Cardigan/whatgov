@@ -30,7 +30,8 @@ RETURNS TABLE (
   location TEXT,
   party_count TEXT,
   speaker_count INTEGER,
-  title TEXT
+  title TEXT,
+  total_score FLOAT
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -80,13 +81,13 @@ BEGIN
         COALESCE(d.ai_question_2_noes, 0) +
         COALESCE(d.ai_question_3_ayes, 0) + 
         COALESCE(d.ai_question_3_noes, 0)
-      )::float / NULLIF(100, 0) * 0.3 AS total_score  -- Engagement (30%)
+      )::float * 0.3 AS total_score  -- Engagement (30%)
     FROM debates d
-    WHERE d.date > NOW() - INTERVAL '3 days'  -- Only show debates from last 3 days
+    WHERE d.date > NOW() - INTERVAL '7 days'  -- Extended to 7 days
     AND (p_cursor IS NULL OR d.id > p_cursor::uuid)
   )
   SELECT 
-    scored_debates.id,
+    scored_debates.id as result_id,
     scored_debates.ai_key_points,
     scored_debates.ai_question_1,
     scored_debates.ai_question_1_ayes,
@@ -113,7 +114,8 @@ BEGIN
     scored_debates.location,
     scored_debates.party_count,
     scored_debates.speaker_count,
-    scored_debates.title
+    scored_debates.title,
+    scored_debates.total_score
   FROM scored_debates
   ORDER BY 
     scored_debates.total_score DESC,

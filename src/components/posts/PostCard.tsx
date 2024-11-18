@@ -34,8 +34,12 @@ export function PostCard({ item, ...props }: PostCardProps) {
 
   const speakers = useMemo(() => Object.keys(pointsBySpeaker), [pointsBySpeaker]);
 
+  const hasDivisions = useMemo(() => 
+    item.divisions && item.divisions.length > 0
+  , [item.divisions]);
+
   const [activeSlide, setActiveSlide] = useState<string>(
-    item.divisions && item.divisions.length > 0 ? 'division' : 'debate'
+    hasDivisions ? 'division' : 'debate'
   );
   const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,10 +50,10 @@ export function PostCard({ item, ...props }: PostCardProps) {
     
     let targetIndex = 0;
     if (type === 'debate') {
-      targetIndex = item.divisions ? 1 : 0;
+      targetIndex = hasDivisions ? 1 : 0;
     } else if (type.startsWith('keyPoints-')) {
       const speakerIndex = parseInt(type.split('-')[1]);
-      targetIndex = (item.divisions ? 2 : 1) + speakerIndex;
+      targetIndex = (hasDivisions ? 2 : 1) + speakerIndex;
     }
     
     const target = scrollRef.current.offsetWidth * targetIndex;
@@ -57,13 +61,13 @@ export function PostCard({ item, ...props }: PostCardProps) {
     
     setActiveSlide(type);
     if (typeof index === 'number') setCurrentDivisionIndex(index);
-  }, [item.divisions]);
+  }, [hasDivisions]);
 
   // Updated swipe handlers
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
       const currentIndex = getSlideIndex(activeSlide);
-      const maxIndex = (item.divisions ? 1 : 0) + speakers.length;
+      const maxIndex = (hasDivisions ? 1 : 0) + speakers.length;
       if (currentIndex < maxIndex) {
         const nextSlide = getSlideType(currentIndex + 1);
         handleSlideChange(nextSlide);
@@ -84,15 +88,15 @@ export function PostCard({ item, ...props }: PostCardProps) {
   // Helper functions
   const getSlideIndex = (slide: string): number => {
     if (slide === 'division') return 0;
-    if (slide === 'debate') return item.divisions ? 1 : 0;
+    if (slide === 'debate') return hasDivisions ? 1 : 0;
     const speakerIndex = parseInt(slide.split('-')[1]);
-    return (item.divisions ? 2 : 1) + speakerIndex;
+    return (hasDivisions ? 2 : 1) + speakerIndex;
   };
 
   const getSlideType = (index: number): string => {
-    if (index === 0 && item.divisions) return 'division';
-    if (index === (item.divisions ? 1 : 0)) return 'debate';
-    const speakerIndex = index - (item.divisions ? 2 : 1);
+    if (index === 0 && hasDivisions) return 'division';
+    if (index === (hasDivisions ? 1 : 0)) return 'debate';
+    const speakerIndex = index - (hasDivisions ? 2 : 1);
     return `keyPoints-${speakerIndex}`;
   };
 
@@ -112,11 +116,11 @@ export function PostCard({ item, ...props }: PostCardProps) {
           WebkitOverflowScrolling: 'touch'
         }}
       >
-        {/* Division Content */}
-        {item.divisions && (
+        {/* Division Content - Only show if divisions exist */}
+        {hasDivisions && (
           <motion.div key="division" className="w-full flex-none snap-center">
             <DivisionContent 
-              division={item.divisions[currentDivisionIndex]}
+              division={item.divisions![currentDivisionIndex]}
               isActive={activeSlide === 'division'}
             />
           </motion.div>
@@ -145,9 +149,9 @@ export function PostCard({ item, ...props }: PostCardProps) {
       {/* Swipe hint for mobile */}
       <div className="absolute bottom-4 right-4 md:hidden">
         <Badge variant="secondary" className="text-xs animate-pulse">
-          {activeSlide === 'division' ? 'Swipe for debate' : 
+          {activeSlide === 'division' && hasDivisions ? 'Swipe for debate' : 
            activeSlide === 'debate' ? 'Swipe for key points' : 
-           'Swipe for division'}
+           hasDivisions ? 'Swipe for division' : 'Swipe for debate'}
         </Badge>
       </div>
     </Card>

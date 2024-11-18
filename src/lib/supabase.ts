@@ -231,6 +231,7 @@ export async function getFeedItems(
 
       if (error) throw error;
       if (!debates) return { items: [] };
+      console.log(debates);
 
       return processDebates(debates, pageSize, userTopics);
     }
