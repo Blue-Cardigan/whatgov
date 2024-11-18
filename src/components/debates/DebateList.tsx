@@ -1,5 +1,5 @@
 import { FeedItem } from '@/types';
-import { DebateCard } from './DebateCard';
+import { PostCard } from '@/components/posts/PostCard';
 import { useVotes } from '@/hooks/useVotes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ export function DebateList({
   readOnly = false
 }: DebateListProps) {
   const { submitVote, hasVoted } = useVotes();
-  const { user, subscription } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { 
     recordVote, 
@@ -43,7 +43,7 @@ export function DebateList({
   // Track which cards have key points expanded
   const expandedStatesRef = useRef(new Map<string, boolean>());
 
-  // 1. Add memoized measurement cache
+  // Measurement cache for virtualization
   const measurementCache = useRef<{
     compact: Map<string, number>;
     expanded: Map<string, number>;
@@ -52,20 +52,19 @@ export function DebateList({
     expanded: new Map()
   });
 
-  // 2. Improve size estimation logic
+  // Size estimation for virtualization
   const estimateSize = useCallback((index: number) => {
     const item = items[index];
     const isExpanded = expandedStatesRef.current.get(item.id);
     
-    // Return cached measurement based on expansion state
     if (isExpanded && measurementCache.current.expanded.has(item.id)) {
       return measurementCache.current.expanded.get(item.id)!;
     } else if (!isExpanded && measurementCache.current.compact.has(item.id)) {
       return measurementCache.current.compact.get(item.id)!;
     }
 
-    // Estimate based on content
-    const baseHeight = 250; // Base card height
+    // Base estimation
+    const baseHeight = 250;
     const questionsHeight = (item.ai_question_1 ? 150 : 0) + 
                           (item.ai_question_2 ? 150 : 0) + 
                           (item.ai_question_3 ? 150 : 0);
@@ -73,7 +72,7 @@ export function DebateList({
     return isExpanded ? baseHeight + questionsHeight + 300 : baseHeight + questionsHeight;
   }, [items]);
 
-  // 4. Optimized virtualizer configuration
+  // Virtualizer configuration
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
@@ -137,15 +136,6 @@ export function DebateList({
     return () => observer.disconnect();
   }, [items, virtualizer]);
 
-  // Handle expanded state changes
-  const handleExpandChange = useCallback((debateId: string, isExpanded: boolean) => {
-    expandedStatesRef.current.set(debateId, isExpanded);
-    // Force a re-measure after animation completes
-    setTimeout(() => {
-      virtualizer.measure();
-    }, 300); // Match your animation duration
-  }, [virtualizer]);
-
   const handleVote = useCallback(async (
     debateId: string, 
     questionNumber: number, 
@@ -161,7 +151,6 @@ export function DebateList({
       return;
     }
 
-    // Only check vote limits for unauthenticated users
     if (!user && hasReachedVoteLimit()) {
       toast({
         title: "Daily vote limit reached",
@@ -180,19 +169,16 @@ export function DebateList({
     }
 
     try {
-      // Only record anonymous vote if unauthenticated
       if (!user) {
         recordVote();
       }
       
-      // Handle vote submission
       if (onVote) {
         onVote(debateId, questionNumber, vote);
       } else {
         await submitVote({ debate_id: debateId, question_number: questionNumber, vote });
       }
 
-      // Only show remaining votes toast for unauthenticated users
       if (!user) {
         toast({
           title: "Vote recorded",
@@ -219,7 +205,6 @@ export function DebateList({
   }, [
     hasVoted,
     user,
-    subscription,
     hasReachedVoteLimit,
     recordVote,
     onVote,
@@ -275,12 +260,12 @@ export function DebateList({
         }}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
-          const debate = items[virtualRow.index];
+          const item = items[virtualRow.index];
           return (
             <div
               key={virtualRow.key}
               data-index={virtualRow.index}
-              data-debate-id={debate.id}
+              data-debate-id={item.id}
               ref={virtualizer.measureElement}
               style={{
                 position: 'absolute',
@@ -290,12 +275,14 @@ export function DebateList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <DebateCard
-                debate={debate}
+              <PostCard
+                item={item}
                 onVote={handleVote}
                 readOnly={readOnly}
-                onExpandChange={(isExpanded) => handleExpandChange(debate.id, isExpanded)}
-                isExpanded={expandedStatesRef.current.get(debate.id)}
+                onExpandChange={(isExpanded) => {
+                  expandedStatesRef.current.set(item.id, isExpanded);
+                  setTimeout(() => virtualizer.measure(), 300);
+                }}
                 hasReachedLimit={hasReachedVoteLimit()}
               />
             </div>

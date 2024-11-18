@@ -110,4 +110,6 @@ export const partyColours: PartyColoursType = {
   'Independent/Labour': { color: '#DC241f' }, //red
   'Independent/Liberal Democrat': { color: '#FDBB30' }, //yellow
   'Labour (Co-op)': { color: '#DC241f' }, //lighter red
+  'Ulster Unionist Party': { color: '#0087DC' }, //blue
+  'Democratic Unionist Party': { color: '#19283F' }, //darker blue
 }

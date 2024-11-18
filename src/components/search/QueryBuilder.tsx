@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useReducer, useRef } from 'react';
 import { QueryPartInput } from './QueryPartInput';
-import { QueryControls } from './QueryControls';
 import { QueryExamples } from './QueryExamples';
 import { Button } from '@/components/ui/button';
 import { X, Search } from 'lucide-react';
@@ -64,7 +63,7 @@ export function QueryBuilder({
         dispatch({ type: 'SET_PARTS', payload: parseInitialValue(value) });
       }
     }
-  }, [value, buildQueryString]);
+  }, [value, buildQueryString, state.parts]);
 
   // Handlers with proper memoization
   const handleUpdatePart = useCallback((index: number, partValue: string) => {

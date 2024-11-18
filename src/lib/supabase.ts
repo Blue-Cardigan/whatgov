@@ -3,7 +3,7 @@
 import { Session } from '@supabase/supabase-js';
 import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
-import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount } from '@/types'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division } from '@/types'
 import type { Database, Json } from '@/types/supabase';
 import type { UserVotingStats, TopicStats, TopicStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
 export type AuthError = {
@@ -24,6 +24,7 @@ export type UserProfile = {
   postcode: string;
   constituency: string;
   mp: string;
+  mp_id?: number;
   selected_topics: string[];
   email: string;
   email_verified?: boolean;
@@ -37,7 +38,7 @@ export type MPData = {
   party: string;
   constituency: string;
   house_start_date: string;
-  constituency_country: string;
+  constituency_country: string | null;
   twfy_image_url: string | null;
   email: string | null;
   age: number | null;
@@ -78,6 +79,7 @@ export const signUpWithEmail = async (
         user_postcode: profile.postcode,
         user_constituency: profile.constituency,
         user_mp: profile.mp,
+        user_mp_id: profile.mp_id,
         user_selected_topics: profile.selected_topics
       }
     );
@@ -332,6 +334,9 @@ function processDebates(
     ai_question_3_topic: debate.ai_question_3_topic ?? '',
     ai_question_3_ayes: debate.ai_question_3_ayes ?? 0,
     ai_question_3_noes: debate.ai_question_3_noes ?? 0,
+    divisions: Array.isArray(debate.divisions) 
+      ? debate.divisions 
+      : (JSON.parse(debate.divisions || '[]') as Division[]),
   }));
 
   return {
@@ -493,44 +498,17 @@ export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' =
   };
 }
 
-export async function getMPData(mpName: string, constituency: string): Promise<MPData | null> {
+export async function getMPData(mpId: number): Promise<MPData | null> {
   const supabase = getSupabase();
-  
-  // Clean up the MP name by removing titles and extra spaces
-  let cleanMpName = mpName
-    .replace(/^(Sir|Dame|Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Miss\.?)\s+/i, '')
-    .trim();
   
   const { data, error } = await supabase
     .from('members')
     .select('*')
-    .ilike('display_as', `%${cleanMpName}%`)
-    .eq('constituency', constituency)
+    .eq('member_id', mpId)
     .is('house_end_date', null)
-    .order('house_start_date', { ascending: false })
-    .limit(1)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // Try again with just the last name
-      const lastName = cleanMpName.split(' ').pop() || '';
-      const { data: retryData, error: retryError } = await supabase
-        .from('members')
-        .select('*')
-        .ilike('display_as', `%${lastName}%`)
-        .eq('constituency', constituency)
-        .is('house_end_date', null)
-        .order('house_start_date', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (retryError) {
-        console.error('Error fetching MP data:', retryError);
-        return null;
-      }
-      return transformMPData(retryData);
-    }
     console.error('Error fetching MP data:', error);
     return null;
   }
@@ -538,7 +516,25 @@ export async function getMPData(mpName: string, constituency: string): Promise<M
   return transformMPData(data);
 }
 
-function transformMPData(data: any): MPData {
+// Add this type definition for the raw MP data
+type RawMPData = {
+  member_id: number;
+  display_as: string;
+  full_title: string;
+  gender: string;
+  party: string;
+  constituency: string;
+  house_start_date: string;
+  constituency_country: string;
+  twfy_image_url: string | null;
+  email: string | null;
+  age: number | null;
+  department: string | null;
+  ministerial_ranking: number | null;
+  media: string | Record<string, unknown> | null;
+};
+
+function transformMPData(data: RawMPData): MPData {
   let parsedMedia = null;
   if (data.media) {
     try {

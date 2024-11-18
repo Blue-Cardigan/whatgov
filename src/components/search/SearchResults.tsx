@@ -178,7 +178,7 @@ function EmptyState({ searchTerm }: { searchTerm?: string }) {
       <CardContent className="p-6 text-center">
         {searchTerm ? (
           <p className="text-muted-foreground">
-            No results found for "{searchTerm}"
+            No results found for &quot;{searchTerm}&quot;
           </p>
         ) : (
           <p className="text-muted-foreground">

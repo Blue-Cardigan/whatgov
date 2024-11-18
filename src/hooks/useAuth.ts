@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Subscription, setSubscriptionCache, isSubscriptionActive } from '@/lib/subscription';
 
 interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
-  // Required properties from UserProfile minus email & email_verified
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
+  mp_id?: number;
 }
 
 export function useAuth() {
@@ -59,7 +59,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase.auth]);
 
   // Fetch subscription data whenever user changes
   useEffect(() => {
@@ -89,7 +89,7 @@ export function useAuth() {
     };
 
     fetchSubscription();
-  }, [user]);
+  }, [user, supabase.auth, supabase]);
 
   // Add profile fetching when user changes
   useEffect(() => {
@@ -113,6 +113,7 @@ export function useAuth() {
           postcode: data.postcode || '',
           constituency: data.constituency || '',
           mp: data.mp || '',
+          mp_id: data.mp_id || null,
           gender: data.gender || '',
           age: data.age || '',
           selected_topics: data.selected_topics || [],
@@ -124,7 +125,7 @@ export function useAuth() {
     }
 
     fetchProfile();
-  }, [user]);
+  }, [user, supabase.auth, supabase]);
 
   const signIn = async (email: string, password: string) => {
     setAuthError(null);

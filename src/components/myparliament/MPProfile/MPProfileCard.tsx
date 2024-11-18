@@ -3,7 +3,7 @@ import type { MPData } from "@/lib/supabase";
 import { partyColours } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Building2, MapPin, Calendar, User } from "lucide-react";
+import { MapPin, Calendar, User } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,

@@ -34,7 +34,7 @@ export function MPLinks({ mpData }: MPLinksProps) {
           <Button 
             variant="outline"
             size="icon"
-            onClick={() => window.open(mpData.media?.twitter!, '_blank')}
+            onClick={() => mpData.media?.twitter && window.open(mpData.media.twitter, '_blank')}
             title="Twitter Profile"
           >
             <Twitter className="h-4 w-4" />
@@ -45,7 +45,7 @@ export function MPLinks({ mpData }: MPLinksProps) {
           <Button 
             variant="outline"
             size="icon"
-            onClick={() => window.open(mpData.media?.facebook!, '_blank')}
+            onClick={() => mpData.media?.facebook && window.open(mpData.media.facebook, '_blank')}
             title="Facebook Profile"
           >
             <Facebook className="h-4 w-4" />

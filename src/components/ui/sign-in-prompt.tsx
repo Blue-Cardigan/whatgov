@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogIn } from 'lucide-react';
+import { useRouter } from "next/navigation";
 
 interface SignInPromptProps {
   title: string;
@@ -9,6 +10,8 @@ interface SignInPromptProps {
 }
 
 export function SignInPrompt({ title, description, className }: SignInPromptProps) {
+  const router = useRouter();
+
   return (
     <Card className={className || "p-6"}>
       <div className="flex flex-col items-center justify-center space-y-4 py-8">
@@ -22,7 +25,7 @@ export function SignInPrompt({ title, description, className }: SignInPromptProp
           </p>
         </div>
         <Button 
-          onClick={() => window.location.href = '/accounts/signin'}
+          onClick={() => router.push('/accounts/signin')}
           className="mt-2"
         >
           Sign in

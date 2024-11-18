@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { SearchResults } from "@/components/search/SearchResults";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge"
-import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { QueryBuilder } from '@/components/search/QueryBuilder';
 
 export default function Search() {
@@ -21,7 +20,6 @@ export default function Search() {
   } = searchHook;
 
   const [localSearchTerm, setLocalSearchTerm] = useState(currentSearchTerm);
-  const filterOptions = useFilterOptions();
 
   // Handle filter changes
   const handleSpokenByChange = useCallback((value?: string) => {

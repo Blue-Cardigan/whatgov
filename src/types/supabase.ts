@@ -1,3 +1,5 @@
+import { Division } from "."
+
 export type Json =
   | string
   | number
@@ -129,6 +131,7 @@ export type Database = {
           speaker_count?: number
           title?: string
           type?: string
+          divisions?: Division[]
         }
         Relationships: []
       }
@@ -407,6 +410,7 @@ export type Database = {
           speaker_count: number
           title: string
           type: string
+          divisions: string
           engagement_count?: number
           total_score?: number
         }[]

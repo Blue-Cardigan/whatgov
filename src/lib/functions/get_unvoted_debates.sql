@@ -41,7 +41,9 @@ RETURNS TABLE (
   search_vector tsvector,
   speaker_count INTEGER,
   title TEXT,
-  type TEXT
+  type TEXT,
+  total_score FLOAT,
+  divisions JSONB
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -54,6 +56,29 @@ BEGIN
     SELECT DISTINCT debate_id 
     FROM debate_votes 
     WHERE user_id = p_user_id
+  ),
+  debate_divisions AS (
+    SELECT 
+      d.debate_section_ext_id,
+      jsonb_agg(
+        jsonb_build_object(
+          'division_id', d.division_id,
+          'external_id', d.external_id,
+          'date', d.date,
+          'time', d.time,
+          'ayes_count', d.ayes_count,
+          'noes_count', d.noes_count,
+          'division_number', d.division_number,
+          'text_before_vote', d.text_before_vote,
+          'text_after_vote', d.text_after_vote,
+          'ai_question', d.ai_question,
+          'ai_topic', d.ai_topic,
+          'ai_context', d.ai_context,
+          'ai_key_arguments', d.ai_key_arguments
+        )
+      ) as divisions_data
+    FROM divisions d
+    GROUP BY d.debate_section_ext_id
   ),
   scored_debates AS (
     SELECT 
@@ -114,13 +139,14 @@ BEGIN
         COALESCE(d.ai_question_3_noes, 0)
       )::float / NULLIF(100, 0) * 0.3 +
       CASE 
-        WHEN DATE(d.date) = CURRENT_DATE THEN 2.0  -- Today's debates get highest priority
+        WHEN DATE(d.date) = CURRENT_DATE THEN 2.0
         WHEN d.date > NOW() - INTERVAL '1 day' THEN 1.0
         WHEN d.date > NOW() - INTERVAL '2 days' THEN 0.4
         WHEN d.date > NOW() - INTERVAL '3 days' THEN 0.2
-        ELSE 0.1
-      END * 0.4 +  -- Increased time weight to 40%
-      COALESCE(d.interest_score, 0) * 0.2 +  -- Reduced base interest score to 20%
+        WHEN d.date > NOW() - INTERVAL '7 days' THEN 0.1
+        ELSE 0.0
+      END * 0.4 +
+      COALESCE(d.interest_score, 0) * 0.2 +
       CASE 
         WHEN d.ai_topics IS NULL THEN 0
         ELSE (
@@ -128,7 +154,7 @@ BEGIN
           FROM jsonb_array_elements_text(d.ai_topics::jsonb) AS topic
           WHERE topic = ANY(COALESCE(ut.selected_topics, ARRAY[]::text[]))
         )
-      END * 0.2 +  -- Topic matching reduced to 20%
+      END * 0.2 +
       (
         COALESCE(d.ai_question_1_ayes, 0) + 
         COALESCE(d.ai_question_1_noes, 0) +
@@ -136,7 +162,7 @@ BEGIN
         COALESCE(d.ai_question_2_noes, 0) +
         COALESCE(d.ai_question_3_ayes, 0) + 
         COALESCE(d.ai_question_3_noes, 0)
-      )::float / NULLIF(100, 0) * 0.1 AS total_score  -- Engagement reduced to 10%
+      )::float / NULLIF(100, 0) * 0.1 AS total_score
       
     FROM debates d
     CROSS JOIN user_topics ut
@@ -145,51 +171,55 @@ BEGIN
       NOT EXISTS (SELECT 1 FROM voted_debates)
       OR d.id NOT IN (SELECT debate_id FROM voted_debates)
     )
+    AND d.date > NOW() - INTERVAL '7 days'
     AND (p_cursor IS NULL OR d.id > p_cursor::uuid)
   )
   SELECT 
-    scored_debates.id,
-    scored_debates.ai_key_points,
-    scored_debates.ai_question_1,
-    scored_debates.ai_question_1_ayes,
-    scored_debates.ai_question_1_noes,
-    scored_debates.ai_question_1_topic,
-    scored_debates.ai_question_2,
-    scored_debates.ai_question_2_ayes,
-    scored_debates.ai_question_2_noes,
-    scored_debates.ai_question_2_topic,
-    scored_debates.ai_question_3,
-    scored_debates.ai_question_3_ayes,
-    scored_debates.ai_question_3_noes,
-    scored_debates.ai_question_3_topic,
-    scored_debates.ai_summary,
-    scored_debates.ai_tags,
-    scored_debates.ai_title,
-    scored_debates.ai_tone,
-    scored_debates.ai_topics,
-    scored_debates.contribution_count,
-    scored_debates.created_at,
-    scored_debates.date,
-    scored_debates.ext_id,
-    scored_debates.house,
-    scored_debates.interest_factors,
-    scored_debates.interest_score,
-    scored_debates.last_updated,
-    scored_debates.location,
-    scored_debates.next_ext_id,
-    scored_debates.parent_ext_id,
-    scored_debates.parent_title,
-    scored_debates.party_count,
-    scored_debates.prev_ext_id,
-    scored_debates.search_text,
-    scored_debates.search_vector,
-    scored_debates.speaker_count,
-    scored_debates.title,
-    scored_debates.type
-  FROM scored_debates
+    d.id as result_id,
+    d.ai_key_points::text,
+    d.ai_question_1,
+    d.ai_question_1_ayes,
+    d.ai_question_1_noes,
+    d.ai_question_1_topic,
+    d.ai_question_2,
+    d.ai_question_2_ayes,
+    d.ai_question_2_noes,
+    d.ai_question_2_topic,
+    d.ai_question_3,
+    d.ai_question_3_ayes,
+    d.ai_question_3_noes,
+    d.ai_question_3_topic,
+    d.ai_summary,
+    d.ai_tags::text,
+    d.ai_title,
+    d.ai_tone,
+    d.ai_topics::text,
+    d.contribution_count,
+    d.created_at,
+    d.date,
+    d.ext_id,
+    d.house,
+    d.interest_factors::text,
+    d.interest_score,
+    d.last_updated,
+    d.location,
+    d.next_ext_id,
+    d.parent_ext_id,
+    d.parent_title,
+    d.party_count::text,
+    d.prev_ext_id,
+    d.search_text,
+    d.search_vector,
+    d.speaker_count,
+    d.title,
+    d.type,
+    d.total_score,
+    COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
+  FROM scored_debates d
+  LEFT JOIN debate_divisions dd ON d.ext_id = dd.debate_section_ext_id
   ORDER BY 
-    scored_debates.total_score DESC,
-    scored_debates.id ASC
+    d.total_score DESC,
+    d.id ASC
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;

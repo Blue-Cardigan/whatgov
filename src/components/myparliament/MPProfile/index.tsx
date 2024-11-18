@@ -22,15 +22,15 @@ export function MPProfile() {
     if (authLoading) return;
     
     async function fetchData() {
-      if (!profile?.mp) {
+      if (!profile?.mp_id) {
         setLoading(false);
         return;
       }
       
       try {
         const [mpData, points] = await Promise.all([
-          getMPData(profile.mp, profile.constituency!),
-          getMPKeyPoints(profile.mp)
+          getMPData(profile.mp_id),
+          getMPKeyPoints(profile.mp_id.toString())
         ]);
         
         if (mpData) setMPData(mpData);
@@ -44,9 +44,9 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [profile?.mp, profile?.constituency, authLoading]);
+  }, [profile?.mp_id, authLoading]);
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <Card className="p-6">
         <div className="space-y-4 animate-pulse">
@@ -72,7 +72,7 @@ export function MPProfile() {
       <Card className="p-6">
         <div className="space-y-4">
           <p className="text-muted-foreground">{error || 'Unable to load MP data'}</p>
-          {(!profile?.mp || !profile?.constituency) && (
+          {(!profile?.mp_id) && (
             <Button 
               variant="outline" 
               onClick={() => window.location.href = '/settings'}

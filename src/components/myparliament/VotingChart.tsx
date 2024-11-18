@@ -11,8 +11,6 @@ import {
 import { format } from 'date-fns';
 import { TooltipProps } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { SignInPrompt } from "@/components/ui/sign-in-prompt";
-import { useAuth } from "@/hooks/useAuth";
 
 interface ChartData {
   timestamp: string;

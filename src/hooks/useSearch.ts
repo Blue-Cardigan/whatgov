@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { HansardAPI, SearchParams, Contribution } from '@/lib/hansard-api';
-import { useDebounce } from './useDebounce';
 import { SearchDirectives } from '@/types/hansard';
 
 interface SearchFilters {
@@ -73,6 +72,14 @@ export function useSearch(): SearchHook {
     };
   }, []);
 
+  const updateSearch = useCallback((updates: Partial<SearchQuery>) => {
+    setQuery(prev => ({
+      ...prev,
+      ...updates,
+      page: (updates.term !== undefined || updates.filters !== undefined) ? 1 : prev.page
+    }));
+  }, []);
+
   const performSearch = useCallback(async (reset = true) => {
     const { term, filters, page, sortOrder } = query;
     
@@ -94,7 +101,7 @@ export function useSearch(): SearchHook {
       };
 
       const cleanParams = Object.fromEntries(
-        Object.entries(searchParams).filter(([_, value]) => value !== undefined)
+        Object.entries(searchParams).filter(([, value]) => value !== undefined)
       ) as SearchParams;
 
       const response = await HansardAPI.searchWithFilters(cleanParams);
@@ -109,26 +116,7 @@ export function useSearch(): SearchHook {
     } finally {
       setIsLoading(false);
     }
-  }, [query, parseSearchDirectives]);
-
-  const debouncedSearch = useDebounce(performSearch, 300);
-
-  const updateSearch = useCallback((updates: Partial<SearchQuery>) => {
-    setQuery(prev => ({
-      ...prev,
-      ...updates,
-      page: (updates.term !== undefined || updates.filters !== undefined) ? 1 : prev.page
-    }));
-  }, []);
-
-  const handleSearchUpdate = useCallback((updates: Partial<SearchQuery>) => {
-    setQuery(prev => ({
-      ...prev,
-      ...updates,
-      page: (updates.term !== undefined || updates.filters !== undefined) ? 1 : prev.page
-    }));
-    performSearch(true);
-  }, [performSearch]);
+  }, [query, parseSearchDirectives, updateSearch]);
 
   const loadMore = useCallback(() => {
     performSearch(false);
