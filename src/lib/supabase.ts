@@ -303,24 +303,47 @@ function processDebates(
     title: debate.title,
     date: debate.date,
     location: debate.location,
+    type: debate.type,
     ai_title: debate.ai_title ?? '',
     ai_summary: debate.ai_summary ?? '',
     ai_tone: (debate.ai_tone ?? 'neutral') as FeedItem['ai_tone'],
-    ai_tags: Array.isArray(debate.ai_tags) 
-      ? (JSON.parse(debate.ai_tags) as string[]).filter((tag): tag is string => typeof tag === 'string')
-      : [],
-    ai_key_points: parseKeyPoints(JSON.parse(debate.ai_key_points)),
-    ai_topics: JSON.parse(debate.ai_topics) as AiTopics,
+    ai_tags: debate.ai_tags ? 
+      (typeof debate.ai_tags === 'string' ? 
+        JSON.parse(debate.ai_tags) : 
+        debate.ai_tags) as string[] : 
+      [],
+    ai_key_points: debate.ai_key_points ? 
+      (typeof debate.ai_key_points === 'string' ? 
+        parseKeyPoints(JSON.parse(debate.ai_key_points)) : 
+        parseKeyPoints(debate.ai_key_points)) : 
+      [],
+    ai_topics: debate.ai_topics ? 
+      (typeof debate.ai_topics === 'string' ? 
+        JSON.parse(debate.ai_topics) : 
+        debate.ai_topics) as AiTopics : 
+      {},
     speaker_count: debate.speaker_count,
     contribution_count: debate.contribution_count,
-    party_count: JSON.parse(debate.party_count ?? '{}') as PartyCount,
+    party_count: debate.party_count ? 
+      (typeof debate.party_count === 'string' ? 
+        JSON.parse(debate.party_count) : 
+        debate.party_count) as PartyCount : 
+      {},
     interest_score: calculateFinalScore(
       debate.interest_score ?? 0,
       userTopics,
-      debate.ai_topics ? Object.keys(JSON.parse(debate.ai_topics) as AiTopics) : [],
+      debate.ai_topics ? 
+        Object.keys(typeof debate.ai_topics === 'string' ? 
+          JSON.parse(debate.ai_topics) : 
+          debate.ai_topics as AiTopics) : 
+        [],
       debate.engagement_count ?? 0
     ),
-    interest_factors: parseInterestFactors(JSON.parse(debate.interest_factors ?? '{}')),
+    interest_factors: debate.interest_factors ? 
+      (typeof debate.interest_factors === 'string' ? 
+        parseInterestFactors(JSON.parse(debate.interest_factors)) : 
+        parseInterestFactors(debate.interest_factors)) : 
+      parseInterestFactors({}),
     engagement_count: debate.engagement_count ?? 0,
     ai_question_1: debate.ai_question_1 ?? '',
     ai_question_1_topic: debate.ai_question_1_topic ?? '',

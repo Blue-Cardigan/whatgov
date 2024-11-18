@@ -1,7 +1,7 @@
 import { FeedItem, PartyCount, KeyPoint } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, Building2 } from 'lucide-react';
+import { CalendarIcon, Users2, Building2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -10,6 +10,7 @@ import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
 import { KeyPointsContent } from './KeyPointsContent';
 import { useSwipeable } from 'react-swipeable';
+import { locationColors, VALID_TYPES } from '@/lib/utils';
 
 interface PostCardProps {
   item: FeedItem;
@@ -17,6 +18,16 @@ interface PostCardProps {
   readOnly?: boolean;
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
+}
+
+// Helper function to format the URL
+function constructDebateUrl(debateExtId: string, title: string, date: string) {
+  // Format the title for URL (lowercase, hyphens)
+  const formattedTitle = title
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '');
+
+  return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 }
 
 export function PostCard({ item, ...props }: PostCardProps) {
@@ -132,10 +143,28 @@ export function PostCard({ item, ...props }: PostCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden relative w-full">
-      <CardHeader className="space-y-4">
-        <MetaInformation item={item} />
-        <CardTitle className="text-xl font-bold">{item.ai_title}</CardTitle>
+    <Card 
+      className="overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md" 
+      style={{ 
+        borderLeftColor: locationColors[item.location] || '#2b2b2b',
+        borderLeftStyle: 'solid',
+        backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
+      }}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start gap-4">
+          <CardTitle className="text-xl font-bold">{item.ai_title}</CardTitle>
+          {item.ext_id && (
+            <a
+              href={constructDebateUrl(item.ext_id, item.title, item.date)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
       </CardHeader>
 
       <div 
@@ -194,8 +223,8 @@ export function PostCard({ item, ...props }: PostCardProps) {
         ))}
       </div>
 
-      {/* Update slide indicators */}
-      <div className="absolute bottom-4 right-4 md:hidden">
+      {/* Swipe indicator */}
+      <div className="absolute bottom-16 right-4 md:hidden">
         <Badge variant="secondary" className="text-xs animate-pulse">
           {activeSlide === 'division' && hasDivisions ? 'Swipe for debate' : 
            activeSlide === 'debate' ? 'Swipe for key points' : 
@@ -204,6 +233,11 @@ export function PostCard({ item, ...props }: PostCardProps) {
              : hasDivisions ? 'Swipe for division' : 'Swipe for debate'}
         </Badge>
       </div>
+
+      {/* Meta information at the bottom */}
+      <div className="px-6 py-4 border-t bg-muted/5">
+        <MetaInformation item={item} />
+      </div>
     </Card>
   );
 }
@@ -211,20 +245,31 @@ export function PostCard({ item, ...props }: PostCardProps) {
 // Extracted components for better organization
 function MetaInformation({ item }: { item: FeedItem }) {
   const partyCount = item.party_count as PartyCount;
+  const isValidType = VALID_TYPES.includes(item.type);
   
   return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
-          <CalendarIcon className="h-4 w-4" />
-          {format(new Date(item.date), 'dd MMM yyyy')}
+    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
+            <CalendarIcon className="h-4 w-4" />
+            {format(new Date(item.date), 'dd MMM yyyy')}
+          </div>
+          <div className="flex items-center gap-1">
+            <Building2 className="h-4 w-4" />
+            {item.location}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Building2 className="h-4 w-4" />
-          {item.location}
-        </div>
+        <PartyDistribution partyCount={partyCount} />
       </div>
-      <PartyDistribution partyCount={partyCount} />
+      {isValidType && (
+        <Badge 
+          variant="secondary" 
+          className="text-xs font-normal w-fit"
+        >
+          {item.type}
+        </Badge>
+      )}
     </div>
   );
 }

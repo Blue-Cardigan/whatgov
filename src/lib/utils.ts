@@ -113,3 +113,39 @@ export const partyColours: PartyColoursType = {
   'Ulster Unionist Party': { color: '#0087DC' }, //blue
   'Democratic Unionist Party': { color: '#19283F' }, //darker blue
 }
+
+export const locationColors: Record<string, string> = {
+  // House of Commons - using the official Parliamentary green
+  'Commons Chamber': '#006E46',        // official Commons green
+  
+  // Committee rooms - warm professional tones
+  'General Committees': '#855438',     // refined brown
+  
+  // House of Lords - official red tones
+  'Grand Committee': '#A3243B',        // official Lords red
+  'Lords Chamber': '#9C1A39',          // deep Lords crimson
+  
+  // Written content - professional blues
+  'Written Statements': '#234E66',     // steel blue
+  'Written Corrections': '#193C5D',    // navy blue
+  
+  // Secondary locations
+  'Westminster Hall': '#4B4B4D',       // stone grey
+  'Public Bill Committees': '#2D6E45', // forest green
+  'Petitions': '#505A5F',             // neutral grey
+};
+
+// Add this constant at the top of the file
+export const VALID_TYPES = [
+  "Bill Procedure",
+  "Business Without Debate",
+  "Debated Motion",
+  "Debated Bill",
+  "Department",
+  "Opposition Day",
+  "Petition",
+  "Question",
+  "Statement",
+  "Urgent Question",
+  "Westminster Hall Debate",
+];

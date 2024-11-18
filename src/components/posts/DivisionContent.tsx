@@ -210,6 +210,15 @@ function VoteSection({
   const colorClass = isAye ? 'text-emerald-500' : 'text-rose-500';
   const bgClass = isAye ? 'bg-emerald-500/10 dark:bg-emerald-500/5' : 'bg-rose-500/10 dark:bg-rose-500/5';
 
+  // Sort parties by vote count for better visualization
+  const sortedParties = Object.entries(partyVotes)
+    .filter(([_, votes]) => isAye ? votes.ayes > 0 : votes.noes > 0)
+    .sort(([_, a], [__, b]) => {
+      const countA = isAye ? a.ayes : a.noes;
+      const countB = isAye ? b.ayes : b.noes;
+      return countB - countA;
+    });
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium">
@@ -217,21 +226,21 @@ function VoteSection({
         <span>{isAye ? 'Aye' : 'No'} ({count})</span>
       </div>
       <div className="flex flex-wrap gap-1">
-        {Object.entries(partyVotes).map(([party, votes]) => {
-          const voteCount = isAye ? votes.ayes : votes.noes;
-          return voteCount > 0 ? (
-            <div key={`${type}-${party}`} className="flex flex-wrap gap-1">
-              {Array.from({ length: voteCount }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: votes.color }}
-                  title={`${party}: ${voteCount} votes`}
-                />
-              ))}
-            </div>
-          ) : null;
-        })}
+        {sortedParties.map(([party, votes]) => (
+          <div 
+            key={`${type}-${party}`} 
+            className="flex items-center gap-1"
+            title={`${party}: ${isAye ? votes.ayes : votes.noes} votes`}
+          >
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: votes.color }}
+            />
+            <span className="text-xs text-muted-foreground">
+              {isAye ? votes.ayes : votes.noes}
+            </span>
+          </div>
+        ))}
       </div>
       {argument && (
         <div className={cn("text-xs p-2 rounded-md", bgClass)}>

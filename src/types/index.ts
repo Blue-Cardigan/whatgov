@@ -4,6 +4,7 @@ export interface FeedItem {
     title: string;
     date: string;
     location: string;
+    type: string;
     ai_title: string;
     ai_summary: string;
     ai_tone: 'neutral' | 'contentious' | 'collaborative';
