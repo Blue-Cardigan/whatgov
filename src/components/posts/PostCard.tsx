@@ -84,7 +84,7 @@ export function PostCard({ item, ...props }: PostCardProps) {
     return () => {
       resizeObserverRef.current?.disconnect();
     };
-  }, [activeSlide]);
+  }, [contentHeight,activeSlide]);
 
   // Updated slide change handler
   const handleSlideChange = useCallback((type: string, index?: number) => {

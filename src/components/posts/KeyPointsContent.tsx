@@ -1,7 +1,7 @@
 import type { KeyPoint } from '@/types';
 import { CardContent } from "@/components/ui/card";
 import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { CircleDot, CircleSlash, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ interface KeyPointsContentProps {
   totalCards: number;
 }
 
-export function KeyPointsContent({ points, isActive, cardIndex, totalCards }: KeyPointsContentProps) {
+export function KeyPointsContent({ points, cardIndex, totalCards }: KeyPointsContentProps) {
   const [expandedPoint, setExpandedPoint] = useState<number | null>(null);
 
   return (

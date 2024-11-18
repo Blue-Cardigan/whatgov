@@ -49,7 +49,7 @@ export function useFeed({
         return getFeedItems(pageSize, pageParam, votedOnly, userTopics);
       }
     },
-    getNextPageParam: (lastPage, allPages) => {
+    getNextPageParam: (lastPage) => {
       // Don't return a next cursor if we got fewer items than requested
       if (!lastPage.items.length || lastPage.items.length < pageSize) {
         return undefined;
@@ -59,7 +59,7 @@ export function useFeed({
     select: (data) => {
       // Deduplicate items across pages
       const seenIds = new Set<string>();
-      const deduplicatedPages = data.pages.map((page, pageIndex) => {
+      const deduplicatedPages = data.pages.map((page) => {
         const uniqueItems = page.items.filter(item => {
           if (seenIds.has(item.id)) {
             return false;

@@ -212,10 +212,10 @@ function VoteSection({
 
   // Sort parties by vote count for better visualization
   const sortedParties = Object.entries(partyVotes)
-    .filter(([_, votes]) => isAye ? votes.ayes > 0 : votes.noes > 0)
-    .sort(([_, a], [__, b]) => {
-      const countA = isAye ? a.ayes : a.noes;
-      const countB = isAye ? b.ayes : b.noes;
+    .filter((entry) => isAye ? entry[1].ayes > 0 : entry[1].noes > 0)
+    .sort((a, b) => {
+      const countA = isAye ? a[1].ayes : a[1].noes;
+      const countB = isAye ? b[1].ayes : b[1].noes;
       return countB - countA;
     });
 

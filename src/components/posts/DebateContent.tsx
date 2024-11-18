@@ -5,17 +5,11 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useMemo } from 'react';
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface BaseContentProps {
   isActive?: boolean;
   readOnly?: boolean;
   hasReachedLimit?: boolean;
-}
-
-interface VoteHandlers {
-  onVote: (num: number, vote: boolean) => void;
-  onSkip: (num: number) => void;
 }
 
 interface DebateContentProps extends BaseContentProps {
@@ -116,7 +110,7 @@ export function DebateContent({
     }
 
     return contentBlocks;
-  }, [debate.ai_summary, debate, currentQuestion, votedQuestions]);
+  }, [debate, currentQuestion, votedQuestions]);
 
   const handleVote = useCallback(async (questionNum: number, vote: boolean) => {
     try {
@@ -205,8 +199,7 @@ function Question({
   onVote,
   onSkip,
   readOnly,
-  hasReachedLimit,
-  totalQuestions
+  hasReachedLimit
 }: {
   number: number;
   question: string;
