@@ -42,8 +42,8 @@ const colorSchemes = [
 ];
 
 export async function sendConfirmationEmail(email: string, confirmationLink: string) {
-  if (!process.env.SENDGRID_VERIFIED_SENDER) {
-    throw new Error('SENDGRID_VERIFIED_SENDER is not set');
+  if (!process.env.SENDGRID_VERIFICATION_LINK_SENDER) {
+    throw new Error('SENDGRID_VERIFICATION_LINK_SENDER is not set');
   }
 
   // Randomly select a color scheme
@@ -51,7 +51,7 @@ export async function sendConfirmationEmail(email: string, confirmationLink: str
 
   const msg = {
     to: email,
-    from: process.env.SENDGRID_VERIFIED_SENDER,
+    from: process.env.SENDGRID_VERIFICATION_LINK_SENDER,
     subject: 'Verify your WhatGov account',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: hsl(0, 0%, 100%); color: hsl(240, 10%, 3.9%); padding: 32px;">
