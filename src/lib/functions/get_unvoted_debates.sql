@@ -1,7 +1,9 @@
 CREATE OR REPLACE FUNCTION get_unvoted_debates(
   p_user_id UUID,
   p_limit INTEGER DEFAULT 8,
-  p_cursor UUID DEFAULT NULL
+  p_cursor UUID DEFAULT NULL,
+  p_cursor_date DATE DEFAULT NULL,
+  p_cursor_score FLOAT DEFAULT NULL
 )
 RETURNS TABLE (
   result_id UUID,
@@ -42,7 +44,9 @@ RETURNS TABLE (
   speaker_count INTEGER,
   title TEXT,
   type TEXT,
-  divisions JSONB
+  divisions JSONB,
+  engagement_score FLOAT,
+  ai_comment_thread JSONB
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -80,6 +84,61 @@ BEGIN
       ) as divisions_data
     FROM divisions d
     GROUP BY d.debate_section_ext_id
+  ),
+  filtered_debates AS (
+    SELECT 
+      d.*,
+      COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
+    FROM debates d
+    CROSS JOIN user_topics ut
+    LEFT JOIN debate_divisions dd ON d.ext_id = dd.debate_section_ext_id
+    WHERE (
+      NOT EXISTS (SELECT 1 FROM voted_debates)
+      OR d.id NOT IN (SELECT debate_id FROM voted_debates)
+    )
+    AND (
+      EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(d.ai_topics) AS topic_obj
+        WHERE (topic_obj->>'name')::text = ANY(ut.selected_topics)
+      )
+      OR d.interest_score >= 0.2
+    )
+  ),
+  scored_debates AS (
+    SELECT 
+      fd.*,
+      (
+        COALESCE(fd.ai_question_1_ayes, 0) + 
+        COALESCE(fd.ai_question_1_noes, 0) +
+        COALESCE(fd.ai_question_2_ayes, 0) + 
+        COALESCE(fd.ai_question_2_noes, 0) +
+        COALESCE(fd.ai_question_3_ayes, 0) + 
+        COALESCE(fd.ai_question_3_noes, 0)
+      )::float AS engagement_score
+    FROM filtered_debates fd
+    WHERE (
+      p_cursor IS NULL 
+      OR (
+        fd.date::date < p_cursor_date
+        OR (fd.date::date = p_cursor_date AND (
+          COALESCE(fd.ai_question_1_ayes, 0) + 
+          COALESCE(fd.ai_question_1_noes, 0) +
+          COALESCE(fd.ai_question_2_ayes, 0) + 
+          COALESCE(fd.ai_question_2_noes, 0) +
+          COALESCE(fd.ai_question_3_ayes, 0) + 
+          COALESCE(fd.ai_question_3_noes, 0)
+        )::float < p_cursor_score)
+        OR (fd.date::date = p_cursor_date AND (
+          COALESCE(fd.ai_question_1_ayes, 0) + 
+          COALESCE(fd.ai_question_1_noes, 0) +
+          COALESCE(fd.ai_question_2_ayes, 0) + 
+          COALESCE(fd.ai_question_2_noes, 0) +
+          COALESCE(fd.ai_question_3_ayes, 0) + 
+          COALESCE(fd.ai_question_3_noes, 0)
+        )::float = p_cursor_score AND fd.id > p_cursor)
+      )
+    )
   )
   SELECT 
     d.id as result_id,
@@ -120,25 +179,13 @@ BEGIN
     d.speaker_count,
     d.title,
     d.type,
-    COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
-  FROM debates d
-  CROSS JOIN user_topics ut
-  LEFT JOIN debate_divisions dd ON d.ext_id = dd.debate_section_ext_id
-  WHERE (
-    NOT EXISTS (SELECT 1 FROM voted_debates)
-    OR d.id NOT IN (SELECT debate_id FROM voted_debates)
-  )
-  AND (p_cursor IS NULL OR d.id > p_cursor::uuid)
-  AND (
-    EXISTS (
-      SELECT 1
-      FROM jsonb_array_elements_text(d.ai_topics) AS topic
-      WHERE topic = ANY(ut.selected_topics)
-    )
-    OR d.interest_score >= 0.7
-  )
+    d.divisions,
+    d.engagement_score,
+    COALESCE(d.ai_comment_thread, '[]'::jsonb) as ai_comment_thread
+  FROM scored_debates d
   ORDER BY 
-    d.start_time DESC NULLS LAST,
+    d.date::date DESC,
+    d.engagement_score DESC,
     d.id ASC
   LIMIT p_limit;
 END;

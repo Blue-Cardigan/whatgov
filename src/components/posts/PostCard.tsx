@@ -1,16 +1,17 @@
-import { FeedItem, PartyCount, KeyPoint } from '@/types';
+import { FeedItem, PartyCount, CommentThread } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, Building2, ExternalLink } from 'lucide-react';
+import { CalendarIcon, Users2, Building2, ExternalLink, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';
 import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
-import { KeyPointsContent } from './KeyPointsContent';
+import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
 import { locationColors, VALID_TYPES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface PostCardProps {
   item: FeedItem;
@@ -31,28 +32,6 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
 }
 
 export function PostCard({ item, ...props }: PostCardProps) {
-  // Create consolidated cards of key points
-  const keyPointCards = useMemo(() => {
-    const POINTS_PER_CARD = 3; // Adjust based on desired density
-    
-    // First, sort all points by engagement
-    const sortedPoints = [...(item.ai_key_points || [])].sort((a, b) => {
-      const engagementA = a.support.length + a.opposition.length;
-      const engagementB = b.support.length + b.opposition.length;
-      return engagementB - engagementA;
-    });
-
-    // Split into cards
-    return sortedPoints.reduce((acc, point, index) => {
-      const cardIndex = Math.floor(index / POINTS_PER_CARD);
-      if (!acc[cardIndex]) {
-        acc[cardIndex] = [];
-      }
-      acc[cardIndex].push(point);
-      return acc;
-    }, [] as KeyPoint[][]);
-  }, [item.ai_key_points]);
-
   const hasDivisions = useMemo(() => 
     item.divisions && item.divisions.length > 0
   , [item.divisions]);
@@ -109,7 +88,8 @@ export function PostCard({ item, ...props }: PostCardProps) {
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => {
       const currentIndex = getSlideIndex(activeSlide);
-      const maxIndex = (hasDivisions ? 1 : 0) + keyPointCards.length;
+      const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
+      console.log(item.ai_comment_thread);
       if (currentIndex < maxIndex) {
         const nextSlide = getSlideType(currentIndex + 1);
         handleSlideChange(nextSlide);
@@ -141,6 +121,8 @@ export function PostCard({ item, ...props }: PostCardProps) {
     const cardIndex = index - (hasDivisions ? 2 : 1);
     return `keyPoints-${cardIndex}`;
   };
+
+  const [showComments, setShowComments] = useState(false);
 
   return (
     <Card 
@@ -205,39 +187,55 @@ export function PostCard({ item, ...props }: PostCardProps) {
             hasReachedLimit={props.hasReachedLimit}
           />
         </motion.div>
-
-        {/* Key Points Content */}
-        {keyPointCards.map((points, cardIndex) => (
-          <motion.div 
-            key={`keyPoints-${cardIndex}`} 
-            className="w-full flex-none snap-center"
-            ref={!hasDivisions && activeSlide === `keyPoints-${cardIndex}` ? firstContentRef : undefined}
-          >
-            <KeyPointsContent 
-              points={points}
-              isActive={activeSlide === `keyPoints-${cardIndex}`}
-              cardIndex={cardIndex}
-              totalCards={keyPointCards.length}
-            />
-          </motion.div>
-        ))}
       </div>
 
-      {/* Swipe indicator */}
-      <div className="absolute bottom-16 right-4 md:hidden">
-        <Badge variant="secondary" className="text-xs animate-pulse">
-          {activeSlide === 'division' && hasDivisions ? 'Swipe for debate' : 
-           activeSlide === 'debate' ? 'Swipe for key points' : 
-           getSlideIndex(activeSlide) < keyPointCards.length + (hasDivisions ? 2 : 1) - 1 
-             ? 'Swipe for more points' 
-             : hasDivisions ? 'Swipe for division' : 'Swipe for debate'}
-        </Badge>
-      </div>
-
-      {/* Meta information at the bottom */}
+      {/* Meta information */}
       <div className="px-6 py-4 border-t bg-muted/5">
         <MetaInformation item={item} />
       </div>
+
+      {/* Key Points Preview */}
+      {item.ai_comment_thread && item.ai_comment_thread.length > 0 && (
+        <div className="border-t">
+          <div className="px-6 py-3">
+            {!showComments ? (
+              <button
+                onClick={() => setShowComments(true)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                View all {item.ai_comment_thread.length} comments
+              </button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Comments</h3>
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Hide comments
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Preview two most relevant comments when collapsed */}
+          {!showComments && (
+            <div className="px-6 pb-3">
+              {item.ai_comment_thread.slice(0, 2).map((comment) => (
+                <PreviewComment key={comment.id} comment={comment} />
+              ))}
+            </div>
+          )}
+
+          {/* Full comments section when expanded */}
+          {showComments && (
+            <CommentsContent 
+              comments={item.ai_comment_thread}
+              isActive={true}
+            />
+          )}
+        </div>
+      )}
     </Card>
   );
 }
@@ -341,6 +339,29 @@ function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// New component for preview comments
+function PreviewComment({ comment }: { comment: CommentThread }) {
+  return (
+    <div className="flex gap-2 py-1">
+      <User className={cn(
+        "h-6 w-6 p-1 rounded-full shrink-0",
+        comment.party === "Conservative" 
+          ? "bg-blue-500/10" 
+          : "bg-muted"
+      )} />
+      <div className="text-sm">
+        <span className="font-semibold">
+          {comment.author}
+        </span>
+        {' '}
+        <span className="text-muted-foreground line-clamp-1">
+          {comment.content}
+        </span>
       </div>
     </div>
   );

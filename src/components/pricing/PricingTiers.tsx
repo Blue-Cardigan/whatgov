@@ -116,7 +116,7 @@ function PricingContent() {
         description: "Please sign in to subscribe to a plan",
         variant: "destructive",
       });
-      router.push('/accounts/signin');
+      router.push('/login');
       return;
     }
 
@@ -133,7 +133,7 @@ function PricingContent() {
           variant: "destructive",
         });
         await supabase.auth.signOut();
-        router.push('/accounts/signin');
+        router.push('/login');
         return;
       }
 

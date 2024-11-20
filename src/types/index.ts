@@ -11,6 +11,7 @@ export interface FeedItem {
     ai_tags: string[];
     ai_key_points: KeyPoint[];
     ai_topics: AiTopics;
+    ai_comment_thread: CommentThread[]; 
     speaker_count: number;
     contribution_count: number;
     party_count: PartyCount;
@@ -78,6 +79,10 @@ export interface DebateVote {
   vote: boolean;
 }
 
+export interface EngagementCount {
+  engagement_count: number | null;
+}
+
 export interface Division {
   division_id: number;
   external_id: string;
@@ -115,4 +120,21 @@ export interface BaseContentProps {
 export interface VoteHandlers {
   onVote: (num: number, vote: boolean) => void;
   onSkip: (num: number) => void;
+}
+
+export interface CommentVotes {
+  upvotes: number;
+  downvotes: number;
+  upvotes_speakers: string[];
+  downvotes_speakers: string[];
+}
+
+export interface CommentThread {
+  id: string;
+  tags: string[];
+  party: string;
+  votes: CommentVotes;
+  author: string;
+  content: string;
+  parent_id: string | null;
 }

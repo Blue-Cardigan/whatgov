@@ -16,6 +16,8 @@ import { Loader2 } from "lucide-react";
 import { lookupPostcode } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
 import type { UserProfile } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-client';
+import { useRouter } from 'next/navigation';
 
 export function ProfileSettings() {
   const { user, profile: originalProfile, updateProfile } = useAuth();
@@ -24,7 +26,9 @@ export function ProfileSettings() {
   const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
   const [postcodeError, setPostcodeError] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
-
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
   // Initialize profile from useAuth
   useEffect(() => {
     if (originalProfile) {
@@ -95,6 +99,46 @@ export function ProfileSettings() {
       setPostcodeError("Please enter a valid UK postcode");
     } else {
       setPostcodeError("");
+    }
+  };
+
+  // Add delete account handler
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you absolutely sure? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const supabase = createClient();
+      
+      // Call the RPC function to delete the account
+      const { data, error } = await supabase.rpc('delete_user_account');
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to delete account');
+
+      // Sign out after successful deletion
+      await supabase.auth.signOut();
+      
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been successfully deleted.",
+      });
+
+      // Redirect to home page
+      router.push('/');
+      
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -362,6 +406,63 @@ export function ProfileSettings() {
           >
             {isLoading ? "Saving..." : hasChanges ? "Save Changes" : "No Changes"}
           </Button>
+        </CardContent>
+        <CardContent className="border-t pt-6 mt-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium text-destructive">Delete Account</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+            </div>
+            
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full sm:w-auto"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Account'
+              )}
+            </Button>
+
+            {showDeleteConfirm && (
+              <div className="p-4 border border-destructive/50 rounded-lg bg-destructive/5">
+                <h4 className="font-medium text-destructive mb-2">Are you absolutely sure?</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  This will permanently delete your account, all your votes, and personal data. 
+                  This action cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isDeleting}
+                    onClick={handleDeleteAccount}
+                    className="w-full sm:w-auto"
+                  >
+                    Yes, Delete My Account
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isDeleting}
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </form>

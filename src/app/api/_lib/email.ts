@@ -78,7 +78,7 @@ export async function sendConfirmationEmail(email: string, confirmationLink: str
                          background-color: ${colors.badge.background};
                          padding: 4px 8px;
                          border-radius: 4px;">
-              Verify Email
+              Click to Verify Email
             </span>
             <span style="font-size: 12px; color: hsl(240, 3.8%, 46.1%);">
               Get Started

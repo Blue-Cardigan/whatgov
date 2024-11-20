@@ -6,6 +6,9 @@ import { motion } from "framer-motion";
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { resendVerificationEmail } from "@/lib/supabase";
 
 // Create a separate component for the verification logic
 function VerificationHandler() {
@@ -18,36 +21,74 @@ function VerificationHandler() {
   const [countdown, setCountdown] = useState(60);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Get email from URL params or localStorage on mount
+  // Get email from URL params, localStorage, or token
   useEffect(() => {
+    const getEmailFromToken = async (token: string) => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.rpc('get_email_from_token', {
+          verification_token: token
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error);
+
+        setEmail(data.email);
+      } catch (err) {
+        console.error('Error getting email from token:', err);
+        // Don't set error state here as the token verification will handle that
+      }
+    };
+
     const emailFromStorage = localStorage.getItem('verification_email');
+    const token = searchParams.get('token');
     
     if (emailFromStorage) {
       setEmail(emailFromStorage);
+    } else if (token) {
+      getEmailFromToken(token);
     }
-  }, []);
+  }, [searchParams]);
 
   // Handle token verification
   useEffect(() => {
-    const verifyToken = async (token: string) => {
+    const verifyToken = async (token: string, type: string) => {
       setIsVerifying(true);
       try {
         const supabase = createClient();
         
-        const { data, error } = await supabase.rpc('verify_user_email', {
-          token: token
-        });
+        if (type === 'email_change') {
+          // Handle email change confirmation
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'email_change'
+          });
+          
+          if (error) throw error;
+          
+          toast({
+            title: "Email updated",
+            description: "Your email has been successfully updated.",
+          });
+          
+          // Redirect to profile page after successful email change
+          router.push('/accounts/profile');
+        } else {
+          // Handle initial email verification
+          const { data, error } = await supabase.rpc('verify_user_email', {
+            token: token
+          });
 
-        if (error) throw error;
-        if (!data.success) throw new Error(data.error || 'Verification failed');
+          if (error) throw error;
+          if (!data.success) throw new Error(data.error || 'Verification failed');
 
-        setVerificationStatus('success');
-        localStorage.removeItem('verification_email');
-        
-        setTimeout(() => {
-          router.push('/accounts/signin');
-        }, 2000);
-
+          setVerificationStatus('success');
+          localStorage.removeItem('verification_email');
+          
+          setTimeout(() => {
+            router.push('/login');
+          }, 2000);
+        }
       } catch (err) {
         console.error('Error verifying email:', err);
         setVerificationStatus('error');
@@ -61,12 +102,15 @@ function VerificationHandler() {
       }
     };
 
-    const token = searchParams.get('token');
+    // Parse URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const type = params.get('type');
     
     if (token) {
-      verifyToken(token);
+      verifyToken(token, type || 'signup');
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   const handleResendEmail = async () => {
     setResendStatus('loading');
@@ -79,40 +123,17 @@ function VerificationHandler() {
     }
 
     try {
-      const supabase = createClient();
+      const { success, error } = await resendVerificationEmail(email);
       
-      // First, get a new confirmation token
-      const { data: tokenData, error: tokenError } = await supabase.rpc(
-        'generate_confirmation_token',
-        { user_email: email }
-      );
-
-      if (tokenError) throw tokenError;
-      if (!tokenData?.confirmation_token) {
-        throw new Error('Failed to generate confirmation token');
-      }
-
-      // Create confirmation link with the new token
-      const encodedToken = encodeURIComponent(tokenData.confirmation_token);
-      const confirmationLink = `${window.location.origin}/accounts/verify?token=${encodedToken}`;
-      
-      // Send the verification email through our API route
-      const emailResponse = await fetch('/api/auth/send-verification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          confirmationLink,
-        }),
-      });
-
-      if (!emailResponse.ok) {
-        throw new Error('Failed to send verification email');
+      if (!success) {
+        throw new Error(error);
       }
       
       setResendStatus('success');
+      toast({
+        title: "Verification email sent",
+        description: "Please check your inbox for the verification link.",
+      });
     } catch (err) {
       console.error('Error resending verification email:', err);
       setError(
@@ -121,6 +142,11 @@ function VerificationHandler() {
           : 'Failed to resend verification email'
       );
       setResendStatus('error');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to resend verification email. Please try again.",
+      });
     }
   };
 
@@ -133,7 +159,7 @@ function VerificationHandler() {
       return () => clearInterval(timer);
     } else if (countdown === 0) {
       setResendStatus('idle');
-      setCountdown(60);
+      setCountdown(10);
     }
   }, [countdown, resendStatus]);
 
@@ -146,6 +172,10 @@ function VerificationHandler() {
 
   // Render different content based on verification status
   const renderContent = () => {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type');
+    const isEmailChange = type === 'email_change';
+
     switch (verificationStatus) {
       case 'success':
         return (
@@ -154,15 +184,34 @@ function VerificationHandler() {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
             <h1 className="text-2xl font-semibold mb-2">
-              Email Verified!
+              {isEmailChange ? 'Email Updated!' : 'Email Verified!'}
             </h1>
             <p className="text-muted-foreground">
-              Your email has been successfully verified. Redirecting you to sign in...
+              {isEmailChange 
+                ? 'Your email has been successfully updated. Redirecting to your profile...'
+                : 'Your email has been successfully verified. Redirecting you to sign in...'}
             </p>
           </div>
         );
 
       case 'error':
+        return (
+          <div className="text-center mb-6">
+            <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <h1 className="text-2xl font-semibold mb-2">Verification Failed</h1>
+            <p className="text-destructive">{error}</p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => router.push('/login')}
+            >
+              Return to login
+            </Button>
+          </div>
+        );
+
       case 'pending':
         return (
           <div className="text-center mb-6">
@@ -170,59 +219,34 @@ function VerificationHandler() {
               <Mail className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-2xl font-semibold mb-2">
-              Check your email
+              {isEmailChange ? 'Confirming Email Change' : 'Verifying Email'}
             </h1>
-            <p className="text-muted-foreground">
-              We&apos;ve sent you a verification link. Please check your email to continue.
-            </p>
-            {email && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Verification email sent to <span className="font-medium">{email}</span>
-              </p>
-            )}
-            
-            {/* Add loading indicator during verification */}
-            {isVerifying && (
-              <div className="mt-4">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"
-                />
-                <p className="text-sm text-muted-foreground mt-2">Verifying your email...</p>
-              </div>
-            )}
-
-            {/* Add resend button section */}
             {!isVerifying && (
-              <div className="mt-6">
-                <button
+              <div className="mt-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Didn&apos;t receive the email? Check your spam folder or try resending.
+                </p>
+                <Button
                   onClick={handleResendEmail}
                   disabled={resendStatus === 'loading' || resendStatus === 'success'}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                    ${resendStatus === 'loading' || resendStatus === 'success'
-                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                      : 'bg-primary/10 text-primary hover:bg-primary/20'
-                    }`}
+                  className="w-full max-w-xs"
                 >
-                  {resendStatus === 'loading' && 'Sending...'}
-                  {resendStatus === 'success' && `Resend available in ${countdown}s`}
-                  {resendStatus === 'idle' && 'Resend verification email'}
-                </button>
+                  {resendStatus === 'loading' ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                    />
+                  ) : resendStatus === 'success' ? (
+                    `Resend available in ${countdown}s`
+                  ) : (
+                    'Resend verification email'
+                  )}
+                </Button>
+                {error && (
+                  <p className="text-sm text-destructive mt-2">{error}</p>
+                )}
               </div>
-            )}
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-lg mb-6"
-              >
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{error}</span>
-                </div>
-              </motion.div>
             )}
           </div>
         );

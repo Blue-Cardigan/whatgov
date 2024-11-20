@@ -3,7 +3,7 @@
 import { Session } from '@supabase/supabase-js';
 import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
-import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division } from '@/types'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread } from '@/types'
 import type { Database, Json } from '@/types/supabase';
 import type { UserVotingStats, TopicStats, TopicStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
 export type AuthError = {
@@ -181,13 +181,22 @@ export const signInWithEmail = async (email: string, password: string): Promise<
   }
 };
 
-// Update getFeedItems function
+// First, define a type for the cursor
+export type FeedCursor = {
+  id: string;
+  date: string;
+  score: number;
+};
+
+// Update getFeedItems function signature
 export async function getFeedItems(
   pageSize: number = 8,
-  cursor?: string,
+  cursor?: FeedCursor,
   votedOnly: boolean = false,
-  userTopics: string[] = []
-): Promise<{ items: FeedItem[]; nextCursor?: string }> {
+): Promise<{ 
+  items: FeedItem[]; 
+  nextCursor?: FeedCursor 
+}> {
   const supabase = getSupabase()
   
   try {
@@ -209,30 +218,34 @@ export async function getFeedItems(
         if (error) throw error;
         if (!debates) return { items: [] };
         
-        return processDebates(debates, pageSize, userTopics);
+        return processDebates(debates, pageSize);
       } else {
         const { data: debates, error } = await supabase.rpc('get_unvoted_debates', {
           p_user_id: user.id,
           p_limit: pageSize + 1,
-          p_cursor: cursor || undefined
+          p_cursor: cursor?.id,
+          p_cursor_date: cursor?.date,
+          p_cursor_score: cursor?.score
         });
         
         if (error) throw error;
         if (!debates) return { items: [] };
         
-        return processDebates(debates, pageSize, userTopics);
+        return processDebates(debates, pageSize);
       }
     } else {
       // Unauthenticated user flow - fetch using get_unvoted_debates_unauth
       const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
         p_limit: pageSize + 1,
-        p_cursor: cursor || undefined
+        p_cursor: cursor?.id,
+        p_cursor_date: cursor?.date,
+        p_cursor_score: cursor?.score
       });
 
       if (error) throw error;
       if (!debates) return { items: [] };
 
-      return processDebates(debates, pageSize, userTopics);
+      return processDebates(debates, pageSize);
     }
   } catch (error) {
     console.error('getFeedItems error:', error);
@@ -291,76 +304,117 @@ function parseInterestFactors(json: Json): InterestFactors {
 function processDebates(
   debates: Database['public']['Functions']['get_unvoted_debates']['Returns'],
   pageSize: number,
-  userTopics: string[]
-): { items: FeedItem[]; nextCursor?: string } {
+): { items: FeedItem[]; nextCursor?: FeedCursor } {
   const hasMore = debates.length > pageSize;
   const items = hasMore ? debates.slice(0, -1) : debates;
-  const nextCursor = hasMore ? items[items.length - 1].result_id : undefined;
+  const nextCursor = hasMore ? {
+    id: items[items.length - 1].result_id,
+    date: items[items.length - 1].date,
+    score: items[items.length - 1].engagement_count || 0
+  } : undefined;
 
-  const processedItems: FeedItem[] = items.map(debate => ({
-    id: debate.result_id,
-    ext_id: debate.ext_id,
-    title: debate.title,
-    date: debate.date,
-    location: debate.location,
-    type: debate.type,
-    ai_title: debate.ai_title ?? '',
-    ai_summary: debate.ai_summary ?? '',
-    ai_tone: (debate.ai_tone ?? 'neutral') as FeedItem['ai_tone'],
-    ai_tags: debate.ai_tags ? 
-      (typeof debate.ai_tags === 'string' ? 
-        JSON.parse(debate.ai_tags) : 
-        debate.ai_tags) as string[] : 
-      [],
-    ai_key_points: debate.ai_key_points ? 
-      (typeof debate.ai_key_points === 'string' ? 
-        parseKeyPoints(JSON.parse(debate.ai_key_points)) : 
-        parseKeyPoints(debate.ai_key_points)) : 
-      [],
-    ai_topics: debate.ai_topics ? 
-      (typeof debate.ai_topics === 'string' ? 
-        JSON.parse(debate.ai_topics) : 
-        debate.ai_topics) as AiTopics : 
-      {},
-    speaker_count: debate.speaker_count,
-    contribution_count: debate.contribution_count,
-    party_count: debate.party_count ? 
-      (typeof debate.party_count === 'string' ? 
-        JSON.parse(debate.party_count) : 
-        debate.party_count) as PartyCount : 
-      {},
-    interest_score: calculateFinalScore(
-      debate.interest_score ?? 0,
-      userTopics,
-      debate.ai_topics ? 
-        Object.keys(typeof debate.ai_topics === 'string' ? 
-          JSON.parse(debate.ai_topics) : 
-          debate.ai_topics as AiTopics) : 
-        [],
-      debate.engagement_count ?? 0
-    ),
-    interest_factors: debate.interest_factors ? 
-      (typeof debate.interest_factors === 'string' ? 
-        parseInterestFactors(JSON.parse(debate.interest_factors)) : 
-        parseInterestFactors(debate.interest_factors)) : 
-      parseInterestFactors({}),
-    engagement_count: debate.engagement_count ?? 0,
-    ai_question_1: debate.ai_question_1 ?? '',
-    ai_question_1_topic: debate.ai_question_1_topic ?? '',
-    ai_question_1_ayes: debate.ai_question_1_ayes ?? 0,
-    ai_question_1_noes: debate.ai_question_1_noes ?? 0,
-    ai_question_2: debate.ai_question_2 ?? '',
-    ai_question_2_topic: debate.ai_question_2_topic ?? '',
-    ai_question_2_ayes: debate.ai_question_2_ayes ?? 0,
-    ai_question_2_noes: debate.ai_question_2_noes ?? 0,
-    ai_question_3: debate.ai_question_3 ?? '',
-    ai_question_3_topic: debate.ai_question_3_topic ?? '',
-    ai_question_3_ayes: debate.ai_question_3_ayes ?? 0,
-    ai_question_3_noes: debate.ai_question_3_noes ?? 0,
-    divisions: Array.isArray(debate.divisions) 
-      ? debate.divisions 
-      : (JSON.parse(debate.divisions || '[]') as Division[]),
-  }));
+  function parseCommentThread(value: unknown): CommentThread[] {
+    if (!value) return [];
+    
+    let parsed: unknown;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch (e) {
+        console.error('Error parsing comment thread:', e);
+        return [];
+      }
+    } else {
+      parsed = value;
+    }
+
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map(comment => {
+      if (typeof comment !== 'object' || !comment) return null;
+      
+      const votes = typeof comment.votes === 'object' && comment.votes 
+        ? comment.votes 
+        : { upvotes: 0, downvotes: 0, upvotes_speakers: [], downvotes_speakers: [] };
+
+      return {
+        id: String(comment.id || ''),
+        tags: Array.isArray(comment.tags) 
+          ? comment.tags.filter((tag: string): tag is string => typeof tag === 'string')
+          : [],
+        party: String(comment.party || ''),
+        votes: {
+          upvotes: Number(votes.upvotes) || 0,
+          downvotes: Number(votes.downvotes) || 0,
+          upvotes_speakers: Array.isArray(votes.upvotes_speakers)
+            ? votes.upvotes_speakers.filter((s: string): s is string => typeof s === 'string')
+            : [],
+          downvotes_speakers: Array.isArray(votes.downvotes_speakers)
+            ? votes.downvotes_speakers.filter((s: string): s is string => typeof s === 'string')
+            : []
+        },
+        author: String(comment.author || ''),
+        content: String(comment.content || ''),
+        parent_id: comment.parent_id ? String(comment.parent_id) : null
+      };
+    }).filter((comment): comment is CommentThread => comment !== null);
+  }
+
+  const processedItems: FeedItem[] = items.map(debate => {
+    // Helper to validate ai_tone
+    const validateAiTone = (tone: string | null): FeedItem['ai_tone'] => {
+      switch (tone) {
+        case 'contentious':
+        case 'collaborative':
+          return tone;
+        default:
+          return 'neutral';
+      }
+    };
+
+    return {
+      id: debate.result_id,
+      ext_id: debate.ext_id || '',
+      title: debate.title || '',
+      date: debate.date || '',
+      location: debate.location || '',
+      type: debate.type || '',
+      ai_title: debate.ai_title || '',
+      ai_summary: debate.ai_summary || '',
+      ai_tone: validateAiTone(debate.ai_tone),
+      ai_tags: Array.isArray(debate.ai_tags) 
+        ? debate.ai_tags.filter((tag): tag is string => typeof tag === 'string')
+        : [],
+      ai_key_points: parseKeyPoints(debate.ai_key_points),
+      ai_topics: typeof debate.ai_topics === 'object' && debate.ai_topics 
+        ? debate.ai_topics as AiTopics 
+        : {},
+      speaker_count: debate.speaker_count || 0,
+      contribution_count: debate.contribution_count || 0,
+      party_count: typeof debate.party_count === 'object' && debate.party_count
+        ? debate.party_count as PartyCount
+        : {},
+      interest_score: debate.interest_score || 0,
+      interest_factors: parseInterestFactors(debate.interest_factors),
+      engagement_count: debate.engagement_count || 0,
+      ai_question_1: debate.ai_question_1 || '',
+      ai_question_1_topic: debate.ai_question_1_topic || '',
+      ai_question_1_ayes: debate.ai_question_1_ayes || 0,
+      ai_question_1_noes: debate.ai_question_1_noes || 0,
+      ai_question_2: debate.ai_question_2 || '',
+      ai_question_2_topic: debate.ai_question_2_topic || '',
+      ai_question_2_ayes: debate.ai_question_2_ayes || 0,
+      ai_question_2_noes: debate.ai_question_2_noes || 0,
+      ai_question_3: debate.ai_question_3 || '',
+      ai_question_3_topic: debate.ai_question_3_topic || '',
+      ai_question_3_ayes: debate.ai_question_3_ayes || 0,
+      ai_question_3_noes: debate.ai_question_3_noes || 0,
+      ai_comment_thread: parseCommentThread(debate.ai_comment_thread),
+      divisions: Array.isArray(debate.divisions) 
+        ? debate.divisions as Division[]
+        : []
+    };
+  });
 
   return {
     items: processedItems,
@@ -406,31 +460,6 @@ export async function lookupPostcode(postcode: string) {
   }
   
   return data;
-}
-
-function calculateFinalScore(
-  baseScore: number, 
-  userTopics: string[],
-  debateTopics: string[],
-  engagement: number
-): number {
-  // Topic match bonus (0.1 per matching topic, max 0.3)
-  const matchingTopics = debateTopics.filter(topic => 
-    userTopics.includes(topic)
-  ).length;
-  const topicBonus = Math.min(matchingTopics * 0.1, 0.3);
-
-  // Engagement bonus (normalized to 0-0.2)
-  const engagementBonus = Math.min(engagement / 100, 0.2);
-
-  // Calculate weighted score
-  const finalScore = (
-    baseScore * 0.5 +          // Base interest score (50%)
-    topicBonus * 0.3 +         // Topic matching (30%)
-    engagementBonus * 0.2      // Engagement level (20%)
-  );
-
-  return finalScore;
 }
 
 export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' = 'weekly'): Promise<UserVotingStats> {
@@ -597,3 +626,48 @@ export async function getMPKeyPoints(mpName: string, limit: number = 10): Promis
   if (error) throw error;
   return data || [];
 }
+
+export const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  const supabase = getSupabase();
+  
+  try {
+    // Generate a new verification token
+    const { data: tokenData, error: tokenError } = await supabase.rpc(
+      'generate_verification_token',
+      { user_email: email }
+    );
+
+    if (tokenError) throw tokenError;
+    if (!tokenData?.success) {
+      throw new Error(tokenData?.error || 'Failed to generate verification token');
+    }
+
+    // Create confirmation link with the new token
+    const encodedToken = encodeURIComponent(tokenData.confirmation_token);
+    const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify?token=${encodedToken}`;
+    
+    // Send the verification email
+    const emailResponse = await fetch('/api/auth/send-verification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        confirmationLink,
+      }),
+    });
+
+    if (!emailResponse.ok) {
+      throw new Error('Failed to send verification email');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to resend verification email'
+    };
+  }
+};

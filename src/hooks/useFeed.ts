@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { getFeedItems } from '@/lib/supabase';
+import { getFeedItems, type FeedCursor } from '@/lib/supabase';
 import { useCache } from './useCache';
-import { toast } from 'react-hot-toast';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
 interface UseFeedOptions {
@@ -20,9 +20,11 @@ export function useFeed({
 
   return useInfiniteQuery({
     queryKey: ['feed', { votedOnly, pageSize, userTopics, isAuthenticated: !!user }],
-    queryFn: async ({ pageParam = null }) => {
+    queryFn: async ({ pageParam = null as FeedCursor | null }) => {
       const cacheKey = CACHE_KEYS.debates.key(
-        `${votedOnly}:${pageSize}:${pageParam || 'initial'}:${!!user}:${userTopics.join(',')}`
+        `${votedOnly}:${pageSize}:${
+          pageParam ? `${pageParam.id}:${pageParam.date}:${pageParam.score}` : 'initial'
+        }:${!!user}:${userTopics.join(',')}`
       );
       
       const VERSION = "v2";
@@ -49,7 +51,7 @@ export function useFeed({
         return getFeedItems(pageSize, pageParam, votedOnly, userTopics);
       }
     },
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: (lastPage): FeedCursor | undefined => {
       // Don't return a next cursor if we got fewer items than requested
       if (!lastPage.items.length || lastPage.items.length < pageSize) {
         return undefined;
@@ -91,7 +93,10 @@ export function useFeed({
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     onError: (error) => {
       console.error('Feed error:', error);
-      toast.error("Error loading debates");
+      toast({
+        title: "Error loading debates",
+        description: "Please try again later.",
+      });
     },
   });
 } 

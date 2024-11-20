@@ -25,7 +25,7 @@ export function SignInPrompt({ title, description, className }: SignInPromptProp
           </p>
         </div>
         <Button 
-          onClick={() => router.push('/accounts/signin')}
+          onClick={() => router.push('/login')}
           className="mt-2"
         >
           Sign in

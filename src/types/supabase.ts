@@ -51,6 +51,9 @@ export type Database = {
           speaker_count: number
           title: string
           type: string
+          engagement_count: number | null
+          divisions: Division[]
+          ai_comment_thread: Json | null
         }
         Insert: {
           ai_key_points?: Json
@@ -91,6 +94,9 @@ export type Database = {
           speaker_count?: number
           title: string
           type: string
+          ai_comment_thread?: Json | null
+          divisions?: Division[]
+          engagement_count?: number | null
         }
         Update: {
           ai_key_points?: Json
@@ -131,7 +137,9 @@ export type Database = {
           speaker_count?: number
           title?: string
           type?: string
+          ai_comment_thread?: Json | null
           divisions?: Division[]
+          engagement_count?: number | null
         }
         Relationships: []
       }
@@ -410,9 +418,9 @@ export type Database = {
           speaker_count: number
           title: string
           type: string
+          ai_comment_thread: string
           divisions: string
-          engagement_count?: number
-          total_score?: number
+          engagement_count: number | null
         }[]
       }
       get_voted_debates: {

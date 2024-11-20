@@ -1,6 +1,8 @@
 CREATE OR REPLACE FUNCTION get_unvoted_debates_unauth(
   p_limit INTEGER DEFAULT 8,
-  p_cursor UUID DEFAULT NULL
+  p_cursor UUID DEFAULT NULL,
+  p_cursor_date DATE DEFAULT NULL,
+  p_cursor_score FLOAT DEFAULT NULL
 )
 RETURNS TABLE (
   result_id UUID,
@@ -35,7 +37,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   RETURN QUERY
-  WITH scored_debates AS (
+  WITH base_debates AS (
     SELECT 
       d.id,
       d.ai_key_points::text,
@@ -57,7 +59,7 @@ BEGIN
       d.ai_tone,
       d.ai_topics::text,
       d.contribution_count,
-      d.date,
+      d.date::date as debate_date,
       d.ext_id,
       d.interest_factors::text,
       d.interest_score,
@@ -65,15 +67,6 @@ BEGIN
       d.party_count::text,
       d.speaker_count,
       d.title,
-      -- Calculate public score
-      CASE 
-        WHEN DATE(d.date) = CURRENT_DATE THEN 2.0
-        WHEN d.date > NOW() - INTERVAL '1 day' THEN 1.0
-        WHEN d.date > NOW() - INTERVAL '2 days' THEN 0.4
-        WHEN d.date > NOW() - INTERVAL '3 days' THEN 0.2
-        ELSE 0.1
-      END * 0.5 +  -- Time relevance (50%)
-      COALESCE(d.interest_score, 0) * 0.2 +  -- Base interest score (20%)
       (
         COALESCE(d.ai_question_1_ayes, 0) + 
         COALESCE(d.ai_question_1_noes, 0) +
@@ -81,10 +74,20 @@ BEGIN
         COALESCE(d.ai_question_2_noes, 0) +
         COALESCE(d.ai_question_3_ayes, 0) + 
         COALESCE(d.ai_question_3_noes, 0)
-      )::float * 0.3 AS total_score  -- Engagement (30%)
+      )::float AS engagement_score
     FROM debates d
-    WHERE d.date > NOW() - INTERVAL '7 days'  -- Extended to 7 days
-    AND (p_cursor IS NULL OR d.id > p_cursor::uuid)
+  ),
+  scored_debates AS (
+    SELECT *
+    FROM base_debates
+    WHERE (
+      p_cursor IS NULL 
+      OR (
+        debate_date < p_cursor_date
+        OR (debate_date = p_cursor_date AND engagement_score < p_cursor_score)
+        OR (debate_date = p_cursor_date AND engagement_score = p_cursor_score AND id > p_cursor)
+      )
+    )
   )
   SELECT 
     scored_debates.id as result_id,
@@ -107,7 +110,7 @@ BEGIN
     scored_debates.ai_tone,
     scored_debates.ai_topics,
     scored_debates.contribution_count,
-    scored_debates.date,
+    scored_debates.debate_date as date,
     scored_debates.ext_id,
     scored_debates.interest_factors,
     scored_debates.interest_score,
@@ -115,10 +118,11 @@ BEGIN
     scored_debates.party_count,
     scored_debates.speaker_count,
     scored_debates.title,
-    scored_debates.total_score
+    scored_debates.engagement_score
   FROM scored_debates
   ORDER BY 
-    scored_debates.total_score DESC,
+    scored_debates.debate_date DESC,
+    scored_debates.engagement_score DESC,
     scored_debates.id ASC
   LIMIT p_limit;
 END;

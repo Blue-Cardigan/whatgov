@@ -54,6 +54,13 @@ export default function Steps({
     }));
   };
 
+  const handleSelectAllTopics = () => {
+    setFormData((prev: FormData) => ({
+      ...prev,
+      selectedTopics: prev.selectedTopics.length === TOPICS.length ? [] : TOPICS.map(t => t.id)
+    }));
+  };
+
   const handlePostcodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const formatted = formatPostcode(value);
@@ -308,12 +315,33 @@ export default function Steps({
             exit={{ opacity: 0, x: -20 }}
             className="space-y-8"
           >
-            {/* Topics Selection */}
             <div>
               <h2 className="text-3xl font-semibold mb-3">Choose your interests</h2>
               <p className="text-muted-foreground mb-6 text-lg">
                 Select topics you want to follow
               </p>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="mb-4 w-full py-6 text-lg border-dashed"
+                onClick={handleSelectAllTopics}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  {formData.selectedTopics.length === TOPICS.length ? (
+                    <>
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span>Deselect All Topics</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span>Select All Topics</span>
+                    </>
+                  )}
+                </div>
+              </Button>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {TOPICS.map((topic) => {
                   const isSelected = formData.selectedTopics.includes(topic.id);
@@ -358,7 +386,6 @@ export default function Steps({
               )}
             </div>
 
-            {/* Optional Demographics */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -375,7 +402,6 @@ export default function Steps({
                   </div>
                 </div>
 
-                {/* Age Selection */}
                 <div>
                   <label className="text-sm font-medium mb-3 block">Age group</label>
                   <div className="grid grid-cols-4 gap-2">
@@ -408,7 +434,6 @@ export default function Steps({
                   </div>
                 </div>
 
-                {/* Gender Selection */}
                 <div>
                   <label className="text-sm font-medium mb-3 block">Gender</label>
                   <div className="flex gap-2">

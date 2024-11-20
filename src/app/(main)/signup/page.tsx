@@ -25,7 +25,7 @@ export default function SignUp() {
     gender: "",
     age: "",
     postcode: "",
-    selectedTopics: [] as string[],
+    selectedTopics: TOPICS.map(topic => topic.id),
   });
 
   const [postcodeError, setPostcodeError] = useState("");
@@ -301,7 +301,7 @@ export default function SignUp() {
 
         <p className="mt-8 text-center text-sm">
           Already have an account?{" "}
-          <Link href="/accounts/signin" className="text-primary hover:underline font-medium">
+          <Link href='/login' className="text-primary hover:underline font-medium">
             Sign in
           </Link>
         </p>
