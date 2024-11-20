@@ -194,7 +194,7 @@ export default function BillingPage({ className }: BillingPageProps) {
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         Your subscription will remain active until the end of your current billing period. 
-                        After that, you'll lose access to premium features.
+                        After that, you&apos;ll lose access to premium features.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

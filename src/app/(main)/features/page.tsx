@@ -7,8 +7,6 @@ import Link from "next/link";
 import {
   Target,
   Calendar,
-  Vote,
-  Bell,
   Clock,
   BarChart2,
   Search,

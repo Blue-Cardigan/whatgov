@@ -120,4 +120,4 @@ We work with:
 
 *WhatGov is committed to promoting democratic engagement through better understanding of parliamentary processes. We believe that an informed citizenry is essential for a healthy democracy.*
 
-[Start Using WhatGov - It's Free] {Primary CTA}
+[Start Using WhatGov](/)
