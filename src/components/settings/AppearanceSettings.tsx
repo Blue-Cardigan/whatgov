@@ -41,7 +41,7 @@ export function AppearanceSettings() {
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
           <CardDescription>
-            Customize how WhatGov looks on your device.
+            customise how WhatGov looks on your device.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -63,7 +63,7 @@ export function AppearanceSettings() {
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
         <CardDescription>
-          Customize how WhatGov looks on your device.
+          customise how WhatGov looks on your device.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

@@ -110,7 +110,7 @@ const plans = [
   {
     name: "Enterprise",
     price: "Custom pricing",
-    description: "Custom solutions for organizations and teams",
+    description: "Custom solutions for organisations and teams",
     features: [
       { icon: <Users />, title: "Team Features", items: [
         "Everything in Professional, plus:",

@@ -240,7 +240,7 @@ export function PostCard({ item, ...props }: PostCardProps) {
   );
 }
 
-// Extracted components for better organization
+// Extracted components for better organisation
 function MetaInformation({ item }: { item: FeedItem }) {
   const partyCount = item.party_count as PartyCount;
   const isValidType = VALID_TYPES.includes(item.type);

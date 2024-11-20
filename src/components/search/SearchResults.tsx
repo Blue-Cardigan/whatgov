@@ -143,7 +143,7 @@ export function SearchResults({ searchHook }: SearchResultsProps) {
   );
 }
 
-// Subcomponents for better organization
+// Subcomponents for better organisation
 function ResultsSkeleton() {
   return (
     <>
