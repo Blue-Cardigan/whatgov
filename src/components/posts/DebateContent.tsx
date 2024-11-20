@@ -55,9 +55,9 @@ export function DebateContent({
     }).filter(Boolean);
 
     const summaryPoints = debate.ai_summary
-      .match(/(?<!\d)[^.!?]+(?:\.\d+[^.!?]*|[^.!?]*)[.!?]+/g)
-      ?.map(s => s.trim())
-      ?.filter(s => s.length > 0) ?? [];
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
 
     if (currentQuestion === null && questions.length > 0) {
       const firstQuestion = questions.find(q => !votedQuestions.has(q!.number));

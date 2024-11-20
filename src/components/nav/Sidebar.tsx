@@ -286,8 +286,8 @@ export function Sidebar({ className }: SidebarProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex flex-col items-center p-2 text-muted-foreground">
-                <Menu className="h-5 w-5" />
-                <span className="text-xs mt-1">More</span>
+                <Menu className="h-6 w-6" />
+                <span className="text-sm mt-1.5">More</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

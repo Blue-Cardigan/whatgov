@@ -67,6 +67,7 @@ export interface InterestFactors {
 
 export interface AiTopics {
     [key: string]: {
+        name: string;
         speakers: string[];
         frequency: number;
         subtopics: string[];

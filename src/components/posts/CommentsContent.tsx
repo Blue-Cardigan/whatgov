@@ -12,7 +12,6 @@ interface CommentsContentProps {
 
 export function CommentsContent({ comments }: CommentsContentProps) {
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
-  console.log(comments);
 
   return (
     <div className="divide-y">

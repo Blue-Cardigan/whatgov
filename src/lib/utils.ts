@@ -135,18 +135,46 @@ export const locationColors: Record<string, string> = {
   'Petitions': '#505A5F',             // neutral grey
 };
 
-// Add this constant at the top of the file
+export type DebateType = {
+  type: string;
+  label: string;
+  house: 'Commons' | 'Lords';
+};
+
+export const DEBATE_TYPES = {
+  Commons: [
+    { type: "Main", label: "Main Debate", house: "Commons" },
+    { type: "Urgent Question", label: "Urgent Question", house: "Commons" },
+    { type: "Westminster Hall Debate", label: "Westminster Hall", house: "Commons" },
+    { type: "Bill Procedure", label: "Bill Procedure", house: "Commons" },
+    { type: "Petition", label: "Petition", house: "Commons" },
+    { type: "Opposition Day", label: "Opposition Day", house: "Commons" },
+    { type: "Question", label: "Question Time", house: "Commons" },
+    { type: "Debated Motion", label: "Motion", house: "Commons" },
+    { type: "Debated Bill", label: "Bill Debate", house: "Commons" },
+    { type: "Statement", label: "Statement", house: "Commons" },
+  ],
+  Lords: [
+    { type: "Venue", label: "Lords Venue", house: "Lords" },
+    { type: "New Debate", label: "New Debate", house: "Lords" },
+  ],
+  Other: {
+    type: "Other",
+    label: "Other Debate",
+    house: "Commons"
+  }
+} as const;
+
 export const VALID_TYPES = [
-  "Bill Procedure",
-  "Business Without Debate",
-  "Debated Motion",
-  "Debated Bill",
-  "Department",
-  "Opposition Day",
-  "Petition",
-  "Question",
-  "Statement",
-  "Urgent Question",
-  "Westminster Hall Debate",
-  "New Debate",
+  ...DEBATE_TYPES.Commons,
+  ...DEBATE_TYPES.Lords,
+  DEBATE_TYPES.Other
 ];
+
+export const DAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+]

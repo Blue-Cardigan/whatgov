@@ -188,11 +188,20 @@ export type FeedCursor = {
   score: number;
 };
 
-// Update getFeedItems function signature
+// First, add the filter types
+export interface FeedFilters {
+  type?: string[];
+  location?: string[];
+  days?: string[];
+  topics?: string[];
+}
+
+// Update getFeedItems signature to accept filters
 export async function getFeedItems(
   pageSize: number = 8,
   cursor?: FeedCursor,
   votedOnly: boolean = false,
+  filters?: FeedFilters
 ): Promise<{ 
   items: FeedItem[]; 
   nextCursor?: FeedCursor 
@@ -207,12 +216,21 @@ export async function getFeedItems(
       return { items: [] };
     }
 
+    // Prepare filter parameters
+    const filterParams = {
+      p_type: filters?.type?.length ? filters.type : null,
+      p_location: filters?.location?.length ? filters.location : null,
+      p_days: filters?.days?.length ? filters.days : null,
+      p_topics: filters?.topics?.length ? filters.topics : null
+    };
+
     if (user) {
-      // Authenticated user flow - same as before
+      // Authenticated user flow
       if (votedOnly) {
         const { data: debates, error } = await supabase.rpc('get_voted_debates', {
           p_limit: pageSize + 1,
-          p_cursor: cursor || undefined
+          p_cursor: cursor || undefined,
+          ...filterParams
         });
         
         if (error) throw error;
@@ -225,7 +243,8 @@ export async function getFeedItems(
           p_limit: pageSize + 1,
           p_cursor: cursor?.id,
           p_cursor_date: cursor?.date,
-          p_cursor_score: cursor?.score
+          p_cursor_score: cursor?.score,
+          ...filterParams
         });
         
         if (error) throw error;
@@ -234,12 +253,13 @@ export async function getFeedItems(
         return processDebates(debates, pageSize);
       }
     } else {
-      // Unauthenticated user flow - fetch using get_unvoted_debates_unauth
+      // Unauthenticated user flow
       const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
         p_limit: pageSize + 1,
         p_cursor: cursor?.id,
         p_cursor_date: cursor?.date,
-        p_cursor_score: cursor?.score
+        p_cursor_score: cursor?.score,
+        ...filterParams
       });
 
       if (error) throw error;

@@ -2,12 +2,8 @@ My Parliament
 - Integrate schedule
 
 Voting analytics - ayes/noes by topic
-noe not no
-
-Feed
-- Add filters
-- More schedule-like UX (TopBar)
-- Highlight bill discussion in UI
+Add 'frequent topics/subtopics' to MP Profile view
+Identify 'your mp spoke' for each debate
 
 Align questions/key points with ideology so users can tag themselves over time
 

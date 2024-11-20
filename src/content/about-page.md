@@ -7,7 +7,7 @@ To make parliamentary democracy more accessible, understandable, and engaging fo
 
 WhatGov was founded in 2024 by a team of democracy advocates and technologists who believed that understanding Parliament shouldn't require specialist knowledge.
 
-We're an independent organisation, not affiliated with any political party or government body. Our commitment is to transparent, non-partisan information that helps citizens engage with their democracy.
+We're an independent organisation, not affiliated with any political party or government body. Our commitment is to transparent, non-partisan information that helps the British public engage with their democracy.
 
 ## What We Do
 

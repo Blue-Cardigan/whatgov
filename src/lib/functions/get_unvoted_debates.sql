@@ -3,7 +3,11 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates(
   p_limit INTEGER DEFAULT 8,
   p_cursor UUID DEFAULT NULL,
   p_cursor_date DATE DEFAULT NULL,
-  p_cursor_score FLOAT DEFAULT NULL
+  p_cursor_score FLOAT DEFAULT NULL,
+  p_type TEXT[] DEFAULT NULL,
+  p_location TEXT[] DEFAULT NULL,
+  p_days TEXT[] DEFAULT NULL,
+  p_topics TEXT[] DEFAULT NULL
 )
 RETURNS TABLE (
   result_id UUID,
@@ -97,13 +101,25 @@ BEGIN
       OR d.id NOT IN (SELECT debate_id FROM voted_debates)
     )
     AND (
-      EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements(d.ai_topics) AS topic_obj
-        WHERE (topic_obj->>'name')::text = ANY(ut.selected_topics)
-      )
-      OR d.interest_score >= 0.2
+      CASE 
+        WHEN p_topics IS NOT NULL AND array_length(p_topics, 1) > 0 THEN
+          EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(d.ai_topics) AS topic_obj
+            WHERE (topic_obj->>'name')::text = ANY(p_topics)
+          )
+        ELSE
+          EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(d.ai_topics) AS topic_obj
+            WHERE (topic_obj->>'name')::text = ANY(ut.selected_topics)
+          )
+          OR d.interest_score >= 0.2
+      END
     )
+    AND (p_type IS NULL OR d.type = ANY(p_type))
+    AND (p_location IS NULL OR d.location = ANY(p_location))
+    AND (p_days IS NULL OR d.day_of_week = ANY(p_days))
   ),
   scored_debates AS (
     SELECT 

@@ -184,7 +184,7 @@ export function DebateList({
       if (!user) {
         toast({
           title: "Vote recorded",
-          description: `${getRemainingVotes()} votes remaining today. Sign up for more!`,
+          description: `${getRemainingVotes()-1}/${FREE_LIMITS.DAILY_VOTES} votes remaining today. Sign up for more!`,
           action: (
             <Button 
               variant="default" 

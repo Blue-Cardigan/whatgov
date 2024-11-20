@@ -6,11 +6,11 @@ import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 
 export const metadata = {
   title: 'WhatGov | Have Your Say',
-  description: 'Engage with complex parliamentary debates as short posts. Track issues you care about, and understand how Parliament\'s decisions affect your community.',
+  description: 'Parliament in your feed. Vote on issues you care about, and understand how Parliament\'s decisions affect your community.',
   keywords: 'parliament, hansard, parliamentary debates, democracy, UK politics, MP voting records, legislative process',
   openGraph: {
     title: 'WhatGov | Have Your Say',
-    description: 'Engage with complex parliamentary debates as short posts. Track issues you care about, and understand how Parliament\'s decisions affect your community.',
+    description: 'Parliament in your feed. Vote on issues you care about, and understand how Parliament\'s decisions affect your community.',
     type: 'website',
     locale: 'en_GB',
     url: 'https://whatgov.co.uk',

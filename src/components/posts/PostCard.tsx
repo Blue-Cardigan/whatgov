@@ -10,7 +10,7 @@ import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
 import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
-import { locationColors, VALID_TYPES } from '@/lib/utils';
+import { locationColors, DEBATE_TYPES, TOPICS } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface PostCardProps {
@@ -89,7 +89,6 @@ export function PostCard({ item, ...props }: PostCardProps) {
     onSwipedLeft: () => {
       const currentIndex = getSlideIndex(activeSlide);
       const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
-      console.log(item.ai_comment_thread);
       if (currentIndex < maxIndex) {
         const nextSlide = getSlideType(currentIndex + 1);
         handleSlideChange(nextSlide);
@@ -243,7 +242,29 @@ export function PostCard({ item, ...props }: PostCardProps) {
 // Extracted components for better organisation
 function MetaInformation({ item }: { item: FeedItem }) {
   const partyCount = item.party_count as PartyCount;
-  const isValidType = VALID_TYPES.includes(item.type);
+  
+  // Get debate type details
+  const debateType = useMemo(() => {
+    // Check Commons types
+    const commonsType = DEBATE_TYPES.Commons.find(t => t.type === item.type);
+    if (commonsType) return commonsType;
+
+    // Check Lords types
+    const lordsType = DEBATE_TYPES.Lords.find(t => t.type === item.type);
+    if (lordsType) return lordsType;
+
+    // Return Other type if no match found
+    return DEBATE_TYPES.Other;
+  }, [item.type]);
+  
+  // Get topics from ai_topics array and match with TOPICS array
+  const topics = Object.entries(item.ai_topics || {})
+    .map(([, topicData]) => ({
+      topic: TOPICS.find(t => t.label === topicData.name),
+      frequency: topicData.frequency
+    }))
+    .filter(({ topic }) => topic)
+    .sort((a, b) => b.frequency - a.frequency);
   
   return (
     <div className="flex flex-col gap-2 text-sm text-muted-foreground">
@@ -260,14 +281,29 @@ function MetaInformation({ item }: { item: FeedItem }) {
         </div>
         <PartyDistribution partyCount={partyCount} />
       </div>
-      {isValidType && (
+      <div className="flex items-center gap-2 flex-wrap">
         <Badge 
-          variant="secondary" 
-          className="text-xs font-normal w-fit"
+          variant={debateType === DEBATE_TYPES.Other ? "outline" : "secondary"}
+          className={cn(
+            "text-xs font-normal w-fit",
+            debateType === DEBATE_TYPES.Other && "text-muted-foreground"
+          )}
         >
-          {item.type}
+          {debateType.label}
+          {debateType === DEBATE_TYPES.Other && item.type && `: ${item.type}`}
         </Badge>
-      )}
+        {topics.map(({ topic, frequency }) => topic && (
+          <Badge 
+            key={topic.id}
+            variant="outline" 
+            className="text-xs font-normal w-fit flex items-center gap-1"
+            title={`Mentioned ${frequency} times`}
+          >
+            <topic.icon className="h-3 w-3" />
+            {topic.label}
+          </Badge>
+        ))}
+      </div>
     </div>
   );
 }

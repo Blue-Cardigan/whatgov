@@ -38,7 +38,7 @@ function MPVoteIndicator({
       member => member.member_id === mpId
     );
     
-    return votedAye ? 'aye' : votedNo ? 'no' : null;
+    return votedAye ? 'aye' : votedNo ? 'noe' : null;
   }, [division, mpId]);
 
   if (!mpId || !mpVoted) return null;
@@ -67,7 +67,7 @@ function MPVoteIndicator({
           )}
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-medium">Your MP voted {isAye ? 'Aye' : 'No'}</p>
+          <p className="text-sm font-medium">Your MP voted {isAye ? 'Aye' : 'Noe'}</p>
           <p className="text-xs text-muted-foreground">{mpName}</p>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
           argument={division.ai_key_arguments?.for}
         />
         <VoteSection 
-          type="no"
+          type="noe"
           count={division.noes_count}
           partyVotes={partyVotes}
           argument={division.ai_key_arguments?.against}
@@ -200,7 +200,7 @@ function VoteSection({
   partyVotes, 
   argument 
 }: { 
-  type: 'aye' | 'no';
+  type: 'aye' | 'noe';
   count: number;
   partyVotes: PartyVotes;
   argument?: string;
@@ -223,7 +223,7 @@ function VoteSection({
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium">
         <Icon className={cn("h-3 w-3", colorClass)} />
-        <span>{isAye ? 'Aye' : 'No'} ({count})</span>
+        <span>{isAye ? 'Aye' : 'Noe'} ({count})</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {sortedParties.map(([party, votes]) => (
