@@ -33,7 +33,7 @@ export function useFeed({
       try {
         const cached = await getCache<ReturnType<typeof getFeedItems>>(versionedKey);
         if (cached) {
-          getFeedItems(pageSize, pageParam, votedOnly, userTopics)
+          getFeedItems(pageSize, pageParam, votedOnly)
             .then(fresh => {
               if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
                 setCache(versionedKey, fresh, CACHE_KEYS.debates.ttl);
@@ -43,12 +43,12 @@ export function useFeed({
           return cached;
         }
 
-        const data = await getFeedItems(pageSize, pageParam, votedOnly, userTopics);
+        const data = await getFeedItems(pageSize, pageParam, votedOnly);
         await setCache(versionedKey, data, CACHE_KEYS.debates.ttl);
         return data;
       } catch (error) {
         console.error('Cache error:', error);
-        return getFeedItems(pageSize, pageParam, votedOnly, userTopics);
+        return getFeedItems(pageSize, pageParam, votedOnly);
       }
     },
     getNextPageParam: (lastPage): FeedCursor | undefined => {

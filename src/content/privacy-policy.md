@@ -1,6 +1,6 @@
 # WhatGov Privacy Policy
 
-**Last Updated: 16 November 2024**
+**Last Updated: 20 November 2024**
 
 ## Our Commitment to Your Privacy
 
@@ -9,10 +9,8 @@ WhatGov is committed to protecting your privacy and personal data. This policy e
 ## 1. Important Information
 
 ### 1.1 Who We Are
-- **Data Controller**: WhatGov Ltd
-- **Registration**: [ICO Registration Number]
-- **Address**: [UK Address]
-- **Data Protection Officer**: dpo@whatgov.uk
+- **Registration**: [Pending]
+- **Data Protection Officer**: legal@whatgov.co.uk
 
 ### 1.2 Changes to This Policy
 We will notify you of any material changes to this policy through:
@@ -28,10 +26,11 @@ We will notify you of any material changes to this policy through:
   - Email address
   - Postcode (to identify your constituency)
   - Password (encrypted)
+  - Gender (optional)
+  - Age range (optional)
 
 - **Profile Information**
   - Topics of interest
-  - Saved searches
   - Notification preferences
 
 - **Subscription Data**
@@ -158,7 +157,7 @@ You have the right to:
 - Lodge complaints
 
 ### 7.2 How to Exercise Your Rights
-Email: legal@whatgov.uk
+Email: legal@whatgov.co.uk
 Response time: Within one month
 ID verification may be required
 
@@ -217,19 +216,16 @@ We use AI for:
 ## 12. Contact Us
 
 ### For Privacy Matters
-- Email: privacy@whatgov.co.uk
-- Post: [Address]
-- Phone: [Number]
+- Email: [legal@whatgov.co.uk]
 
 ### For Complaints
-- First contact: complaints@whatgov.uk
+- First contact: legal@whatgov.co.uk
 - ICO: www.ico.org.uk
 
 ## 13. Additional Information
 
 ### 13.1 Data Protection Registration
-- ICO Registration Number: [Number]
-- Renewal Date: [Date]
+- ICO Registration Number: [Pending]
 
 ### 13.2 Policy Updates
 - Check our website for the latest version
@@ -238,4 +234,4 @@ We use AI for:
 
 ---
 
-This policy was last reviewed and updated on 16 November 2024.
+This policy was last reviewed and updated on 20 November 2024.

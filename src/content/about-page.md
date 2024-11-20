@@ -15,8 +15,6 @@ We're an independent organization, not affiliated with any political party or go
 We transform complex parliamentary proceedings into clear, accessible information using:
 - Official Hansard records
 - Advanced AI technology
-- Expert analysis
-- Plain language principles
 
 ### Building Understanding
 Every day, we:
@@ -29,15 +27,11 @@ Every day, we:
 To ensure our independence and transparency:
 - We're funded through user subscriptions, not advertising
 - We don't accept political donations
-- We have a cross-party advisory board
-- We publish regular transparency reports
 
 ## Our Values
 
 ### Accuracy
 - Direct from official parliamentary sources
-- Verified by expert reviewers
-- Clear marking of AI-generated content
 - Regular accuracy audits
 
 ### Accessibility
@@ -56,20 +50,17 @@ To ensure our independence and transparency:
 - No political affiliations
 - Subscription-based model
 - Regular transparency reports
-- Independent advisory board
 
 ## How We Work
 
 ### Data Sources
 - Official Hansard records
 - Parliamentary data service
-- Official voting records
 - Public parliamentary documents
 
 ### Technology
 We use advanced technology responsibly:
 - AI for content processing
-- Machine learning for personalization
 - Natural language processing
 - Human oversight of all systems
 
@@ -78,40 +69,25 @@ Our content goes through:
 1. Automated processing
 2. AI analysis
 3. Expert review
-4. User feedback loop
 
 ## Impact
 
 ### Supporting Democracy
-- 100,000+ active users
 - Coverage of all parliamentary sessions
-- Thousands of simplified debates
+- Hundreds of simplified debates
 - Growing civic engagement
-
-### Educational Access
-- Free access for schools
-- Student discounts
-- Educational resources
-- Teacher training
 
 ## Get Involved
 
 ### Feedback
 We're constantly improving. Share your thoughts:
-- Email: feedback@whatgov.uk
+- Email: hi@whatgov.co.uk
 - Twitter: @WhatGov
 - User feedback form
-- Community forums
-
-### Careers
-We're always looking for people passionate about democracy:
-- [View open positions]
-- [Join our team]
 
 ### Partners
 We work with:
-- Educational institutions
-- Democracy organizations
+- Democracy organisations
 - Research institutions
 - Civic tech groups
 
@@ -119,9 +95,8 @@ We work with:
 
 ### Company Details
 - Registered in England and Wales
-- Company Number: [Number]
-- Registered Office: [Address]
-- VAT Number: [Number]
+- Company Number: [15864302]
+- [Companies House](/https://find-and-update.company-information.service.gov.uk/company/15864302)
 
 ### Important Documents
 - [Terms of Service](/terms)
@@ -130,29 +105,16 @@ We work with:
 - [Accessibility Statement](/accessibility)
 
 ### Data Protection
-- ICO Registration: [Number]
-- Data Protection Officer: dpo@whatgov.uk
-- [Data Processing Information](/data)
+- ICO Registration: Pending
+- Data Protection Officer: hi@whatgov.co.uk
 
 ## Support
 
-### Help & Resources
-- [Help Center](/help)
-- [FAQs](/faqs)
-- [Tutorial Videos](/tutorials)
-- [User Guides](/guides)
-
 ### Contact Us
-- General: hello@whatgov.uk
-- Support: support@whatgov.uk
-- Press: press@whatgov.uk
-- Legal: legal@whatgov.uk
-
-## Stay Updated
-- [Subscribe to our newsletter]
-- [Follow us on Twitter]
-- [Join our LinkedIn]
-- [Read our blog]
+- General: hi@whatgov.co.uk
+- Accounts: verify@whatgov.co.uk
+- Sales: enterprise@whatgov.co.uk
+- Legal: legal@whatgov.co.uk
 
 ---
 

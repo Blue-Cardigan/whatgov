@@ -148,4 +148,5 @@ export const VALID_TYPES = [
   "Statement",
   "Urgent Question",
   "Westminster Hall Debate",
+  "New Debate",
 ];

@@ -129,7 +129,7 @@ These terms are governed by:
 ## 13. Contact Information
 
 For questions about these terms:
-- Email: legal@whatgov.uk
+- Email: legal@whatgov.co.uk
 - Post: [Physical Address]
 - Support: [Support URL]
 

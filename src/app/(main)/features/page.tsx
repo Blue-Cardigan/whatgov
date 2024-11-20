@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -8,6 +9,7 @@ import {
   Calendar,
   Vote,
   Bell,
+  Clock,
   BarChart2,
   Search,
   Users,
@@ -53,22 +55,14 @@ const plans = [
     description: "For all citizens - because democracy should be accessible",
     features: [
       { icon: <Target />, title: "Follow What Matters", items: [
-        "Track key parliamentary debates in real time",
-        "Get clear, jargon-free summaries",
-        "See what's happening in your constituency",
-        "View basic MP profiles and voting records"
+        "Unlimited votes on key questions",
+        "See MPs battle it out in the comments",
+        "View basic MP profiles"
       ]},
       { icon: <Calendar />, title: "Stay Updated", items: [
-        "Daily digest of parliamentary activity",
         "Parliamentary calendar and upcoming debates",
         "Basic debate search and filtering",
-        "Follow up to 3 key topics"
-      ]},
-      { icon: <Vote />, title: "Engage", items: [
-        "Compare your views with parliamentary votes",
-        "See basic voting records",
-        "View debate transcripts",
-        "Access essential parliamentary information"
+        "Personalised feed based on your interests",
       ]}
     ],
     cta: { text: "Start Free", href: "/accounts/signup" }
@@ -78,23 +72,15 @@ const plans = [
     price: "£4.99/month",
     description: "For engaged citizens who want deeper insights",
     features: [
-      { icon: <Bell />, title: "Enhanced Tracking", items: [
-        "Follow unlimited topics",
-        "Get instant alerts for issues you care about",
-        "Save debates for later reading",
-        "Personalized feed based on your interests"
-      ]},
       { icon: <BarChart2 />, title: "Better Understanding", items: [
-        "Full AI-simplified debate versions",
-        "Detailed MP activity tracking",
-        "Advanced voting analytics",
-        "Custom topic alerts and notifications"
+        "See how MPs voted in Parliamentary Divisions",
+        "Track what your MP says in Parliament",
+        "View your voting analytics",
       ]},
       { icon: <Search />, title: "Deeper Access", items: [
-        "Advanced search capabilities",
-        "Personal debate notes and highlights",
-        "Ad-free experience",
-        "Premium debate insights"
+        "Filter your feed by day, type, and topic",
+        "Advanced Hansard search capabilities",
+        "See what's coming up in Parliament",
       ]}
     ],
     cta: { text: "Start Engaged Citizen Trial", href: "/pricing" }
@@ -103,28 +89,25 @@ const plans = [
     name: "Professional",
     price: "£15.99/month",
     description: "Advanced research and analysis tools for policy professionals",
+    comingSoon: true,
     features: [
       { icon: <Database />, title: "Research Power", items: [
         "Everything in Engaged Citizen, plus:",
-        "AI research assistant",
-        "Cross-debate analysis",
-        "Advanced Hansard search",
-        "Historical data access"
+        "AI research assistant with Hansard-wide analysis capabilities",
+        "Sophisticated Hansard search",
       ]},
       { icon: <Search />, title: "Smart Tools", items: [
-        "Search alerts and subscriptions",
+        "Track bills and their progress",
+        "Feed subscriptions for your site",
         "Data export in multiple formats",
-        "Citation tools",
-        "Batch processing"
       ]},
       { icon: <BarChart2 />, title: "Integration", items: [
         "Basic API access",
-        "Research collaboration tools",
-        "Advanced data filtering",
-        "Custom data views"
+        "View constituency-wide trends",
+        "Access parliamentary documents",
       ]}
     ],
-    cta: { text: "Start Professional Trial", href: "/pricing" }
+    cta: { text: "Coming Soon", href: "#" }
   },
   {
     name: "Enterprise",
@@ -133,25 +116,23 @@ const plans = [
     features: [
       { icon: <Users />, title: "Team Features", items: [
         "Everything in Professional, plus:",
-        "Multi-user accounts",
+        "Custom features for your organisation",
         "Team collaboration workspace",
-        "Shared research and notes",
+        "Shared research, notes, and report creation",
         "Usage analytics"
       ]},
       { icon: <BarChart2 />, title: "Analysis Tools", items: [
         "Custom report generation",
         "Constituency analysis",
-        "Presentation tools",
         "Bulk data export"
       ]},
       { icon: <Database />, title: "Enterprise Support", items: [
         "Advanced API access",
         "Priority support",
-        "Custom training",
         "Service level agreement"
       ]}
     ],
-    cta: { text: "Contact Enterprise Sales", href: "mailto:enterprise@whatgov.co.uk" }
+    cta: { text: "Contact Us", href: "mailto:enterprise@whatgov.co.uk" }
   }
 ];
 
@@ -167,8 +148,8 @@ export default function FeaturesPage() {
         <div className="text-center space-y-4">
           <h1 className="text-5xl font-bold">See Parliament Your Way</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            WhatGov gives you the tools to understand Parliament&apos;s work in a way that 
-            makes sense for you. Choose the access level that fits your needs.
+            Understand Parliament&apos;s work in a way that makes sense for you. 
+            Choose the access level that fits your needs.
           </p>
         </div>
 
@@ -192,8 +173,9 @@ export default function FeaturesPage() {
             Our team is here to help you find the right plan for your needs.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button variant="outline">Contact Support</Button>
-            <Button>Book a Demo</Button>
+            <Button asChild>
+              <Link href="mailto:hi@whatgov.co.uk">Contact Us</Link>
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -201,14 +183,22 @@ export default function FeaturesPage() {
   );
 }
 
-function PlanCard({ name, price, description, features, cta }: PlanProps) {
+function PlanCard({ name, price, description, features, cta, comingSoon }: PlanProps & { comingSoon?: boolean }) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
-      className="border rounded-lg p-6 space-y-6"
+      whileHover={{ y: comingSoon ? 0 : -5 }}
+      className={`border rounded-lg p-6 space-y-6 relative ${comingSoon ? 'opacity-75' : ''}`}
     >
       <div>
-        <h2 className="text-2xl font-bold">{name}</h2>
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold">{name}</h2>
+          {comingSoon && (
+            <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
+              <Clock className="w-3 h-3 mr-1" />
+              Coming Soon
+            </Badge>
+          )}
+        </div>
         <p className="text-xl font-semibold">{price}</p>
         <p className="text-muted-foreground">{description}</p>
       </div>
@@ -233,9 +223,21 @@ function PlanCard({ name, price, description, features, cta }: PlanProps) {
       </div>
 
       <div className="pt-6">
-        <Link href={cta.href}>
-          <Button className="w-full">{cta.text}</Button>
-        </Link>
+        <Button 
+          className="w-full" 
+          variant={comingSoon ? "secondary" : "default"}
+          disabled={comingSoon}
+          asChild={!comingSoon}
+        >
+          {comingSoon ? (
+            <span className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              {cta.text}
+            </span>
+          ) : (
+            <Link href={cta.href}>{cta.text}</Link>
+          )}
+        </Button>
       </div>
     </motion.div>
   );
@@ -243,19 +245,25 @@ function PlanCard({ name, price, description, features, cta }: PlanProps) {
 
 function ComparisonTable() {
   const features = [
-    { name: "Daily Digest", citizen: true, engaged: true, professional: true, enterprise: true },
-    { name: "Topic Following", citizen: "3 topics", engaged: "Unlimited", professional: "Unlimited", enterprise: "Unlimited" },
-    { name: "Debate Summaries", citizen: "Basic", engaged: "Full", professional: "Full + Analysis", enterprise: "Custom" },
-    { name: "MP Tracking", citizen: "Basic", engaged: "Detailed", professional: "Advanced", enterprise: "Custom" },
-    { name: "Search Capabilities", citizen: "Basic", engaged: "Advanced", professional: "Full", enterprise: "Enterprise" },
-    { name: "Alerts & Notifications", citizen: false, engaged: true, professional: true, enterprise: true },
-    { name: "Data Export", citizen: false, engaged: "Basic", professional: "Advanced", enterprise: "Custom" },
-    { name: "API Access", citizen: false, engaged: false, professional: "Limited", enterprise: "Full" },
-    { name: "Team Features", citizen: false, engaged: false, professional: false, enterprise: true },
-    { name: "Support", citizen: "Community", engaged: "Email", professional: "Priority", enterprise: "Dedicated" },
+    { name: "Daily Digest", citizen: true, engaged: true, professional: "Coming Soon", enterprise: true },
+    { name: "Debate Summaries", citizen: "Fun", engaged: "Fun", professional: "Coming Soon", enterprise: "Custom" },
+    { name: "MP Tracking", citizen: "Basic", engaged: "Detailed", professional: "Coming Soon", enterprise: "Custom" },
+    { name: "Search Capabilities", citizen: "Basic", engaged: "Advanced", professional: "Coming Soon", enterprise: "Enterprise" },
+    { name: "Alerts & Notifications", citizen: false, engaged: true, professional: "Coming Soon", enterprise: true },
+    { name: "Data Export", citizen: false, engaged: false, professional: "Coming Soon", enterprise: "Custom" },
+    { name: "API Access", citizen: false, engaged: false, professional: "Coming Soon", enterprise: "Full" },
+    { name: "Team Features", citizen: false, engaged: false, professional: "Coming Soon", enterprise: true },
+    { name: "Support", citizen: "Community", engaged: "Email", professional: "Coming Soon", enterprise: "Dedicated" },
   ];
 
   const renderCheck = (value: boolean | string) => {
+    if (value === "Coming Soon") {
+      return (
+        <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500">
+          Coming Soon
+        </Badge>
+      );
+    }
     if (typeof value === "boolean") {
       return value ? (
         <CheckCircle2 className="h-4 w-4 text-primary mx-auto" />

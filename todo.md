@@ -1,8 +1,8 @@
-Billing management (e.g upgrade, cancel)
-
 My Parliament
 - Integrate schedule
-- Track Bill progress
+
+Voting analytics - ayes/noes by topic
+noe not no
 
 Feed
 - Add filters
@@ -17,31 +17,31 @@ Load more virtualized debates at once/ slow down scroll/ skeletons
 Reduce middleware build size for edge runtime
 Preload myparliament content (shows sign in briefly before loading)
 
-- Signup/in 
-- - make routes guessable (/login instead of /accounts/signin)
-
 
 Free Features for Signed in Users
 - Feed and unlimited votes
-- Basic Feed filters
 - Basic voting record view
 - Basic search
-- Parliamentary schedule
-- View debate key points
-- *View general trends after info provided
-- - ONS data?
+- View debate comments
+- View trends by locaiton, gender and age after info provided
 
-Premium Features
-- View Your MP's activity
+Engaged Citizen Features
+- See Divisions
+- Feed filters
+- Track Your MP's activity
+- Parliamentary schedule
 - View your voting analytics
-- Read rewritten debates
+- Advanced search
 
 Professional Features
 - AI Research Assistant
+- Track Bill progress
+- Subscribe to Hansard searches
+- Site integrations
 - Analysis with coverage
 - Advanced Hansard search
-- Subscribe to Hansard searches
 - Access parliamentary documents
+- View gender and age normalized across ONS data
 
 Enterprise Features
 - View constituency voting trends
