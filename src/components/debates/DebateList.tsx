@@ -31,7 +31,7 @@ export function DebateList({
   hasMore = true
 }: DebateListProps) {
   const { submitVote, hasVoted } = useVotes();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const { 
     recordVote, 
@@ -279,6 +279,7 @@ export function DebateList({
             >
               <PostCard
                 item={item}
+                userMp={profile?.mp}
                 onVote={handleVote}
                 readOnly={readOnly}
                 onExpandChange={(isExpanded) => {

@@ -34,11 +34,11 @@ function MPVoteIndicator({
     const votedAye = division.aye_members?.some(
       member => member.member_id === mpId
     );
-    const votedNo = division.noe_members?.some(
+    const votedNoe = division.noe_members?.some(
       member => member.member_id === mpId
     );
     
-    return votedAye ? 'aye' : votedNo ? 'noe' : null;
+    return votedAye ? 'aye' : votedNoe ? 'noe' : null;
   }, [division, mpId]);
 
   if (!mpId || !mpVoted) return null;

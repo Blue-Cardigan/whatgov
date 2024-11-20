@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { submitVote } from '@/lib/supabase';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { submitVote, getTopicVoteStats, getUserTopicVotes } from '@/lib/supabase';
 import { FeedItem } from '@/types';
 import { useAuth } from './useAuth';
+import { VoteData } from '@/types/VoteStats';
 
 const ANON_VOTES_KEY = 'whatgov_anon_votes';
 
@@ -11,16 +12,21 @@ interface QueryData {
   }>;
 }
 
-interface VoteData {
-  debate_id: string;
-  question_number: number;
-  vote: boolean;
-  timestamp: string;
-}
-
 export function useVotes() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Query hooks for vote statistics
+  const topicVoteStats = useQuery({
+    queryKey: ['topicVoteStats'],
+    queryFn: getTopicVoteStats
+  });
+
+  const userTopicVotes = useQuery({
+    queryKey: ['userTopicVotes', user?.id],
+    queryFn: getUserTopicVotes,
+    enabled: !!user
+  });
 
   // Helper functions for anonymous votes
   const getAnonVotes = (): VoteData[] => {
@@ -35,7 +41,6 @@ export function useVotes() {
   const saveAnonVote = (voteData: VoteData) => {
     if (typeof window === 'undefined') return;
     const votes = getAnonVotes();
-    // Check if already voted on this question
     const exists = votes.some(v => 
       v.debate_id === voteData.debate_id && 
       v.question_number === voteData.question_number
@@ -48,11 +53,9 @@ export function useVotes() {
 
   const hasVoted = (debate_id: string, question_number: number): boolean => {
     if (user) {
-      // Check server-side votes cache
       const existingVotes = queryClient.getQueryData<Map<string, Map<number, boolean>>>(['votes']);
       return !!existingVotes?.get(debate_id)?.has(question_number);
     } else {
-      // Check local storage votes
       const votes = getAnonVotes();
       return votes.some(v => 
         v.debate_id === debate_id && 
@@ -64,15 +67,16 @@ export function useVotes() {
   const { mutate: submitVoteMutation } = useMutation({
     mutationFn: async (voteData: Parameters<typeof submitVote>[0]) => {
       if (user) {
-        return submitVote(voteData);
+        await submitVote(voteData);
+        // Invalidate topic stats queries after successful vote
+        queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] });
+        queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] });
       } else {
-        // For anonymous users, just store locally
         const anonVoteData: VoteData = {
           ...voteData,
           timestamp: new Date().toISOString()
         };
         saveAnonVote(anonVoteData);
-        return Promise.resolve();
       }
     },
     onMutate: async ({ debate_id, question_number, vote }) => {
@@ -157,6 +161,9 @@ export function useVotes() {
 
   return {
     submitVote: submitVoteMutation,
-    hasVoted
+    hasVoted,
+    topicVoteStats: topicVoteStats.data,
+    userTopicVotes: userTopicVotes.data,
+    isLoading: topicVoteStats.isLoading || userTopicVotes.isLoading
   };
 } 

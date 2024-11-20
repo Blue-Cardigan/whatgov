@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { UserVotingStats, TopicStats, TopicStatsRaw, VoteStatsEntry } from '@/types/VoteStats';
+import type { UserTopicVotes, TopicVoteStats } from '@/types/VoteStats';
 export type AuthError = {
   message: string;
 }
@@ -57,6 +57,7 @@ export type MPKeyPoint = {
   point: string;
   point_type: 'made' | 'supported' | 'opposed';
   original_speaker: string | null;
+  ai_topics: AiTopics;
 };
 
 const getSupabase = () => createClient()
@@ -194,6 +195,7 @@ export interface FeedFilters {
   location?: string[];
   days?: string[];
   topics?: string[];
+  mpOnly?: boolean;
 }
 
 // Update getFeedItems signature to accept filters
@@ -221,7 +223,8 @@ export async function getFeedItems(
       p_type: filters?.type?.length ? filters.type : null,
       p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
-      p_topics: filters?.topics?.length ? filters.topics : null
+      p_topics: filters?.topics?.length ? filters.topics : null,
+      p_mp_only: filters?.mpOnly || false
     };
 
     if (user) {
@@ -392,6 +395,26 @@ function processDebates(
       }
     };
 
+    // Transform ai_topics from Json to AiTopics type
+    const aiTopics: AiTopics = Array.isArray(debate.ai_topics) 
+      ? debate.ai_topics.map((topic: unknown) => {
+          if (typeof topic !== 'object' || !topic) return {
+            name: '',
+            speakers: [],
+            frequency: 1,
+            subtopics: []
+          };
+          
+          const t = topic as Record<string, unknown>;
+          return {
+            name: typeof t.name === 'string' ? t.name : '',
+            speakers: Array.isArray(t.speakers) ? t.speakers : [],
+            frequency: typeof t.frequency === 'number' ? t.frequency : 1,
+            subtopics: Array.isArray(t.subtopics) ? t.subtopics : []
+          };
+        })
+      : [];
+
     return {
       id: debate.result_id,
       ext_id: debate.ext_id || '',
@@ -406,9 +429,7 @@ function processDebates(
         ? debate.ai_tags.filter((tag): tag is string => typeof tag === 'string')
         : [],
       ai_key_points: parseKeyPoints(debate.ai_key_points),
-      ai_topics: typeof debate.ai_topics === 'object' && debate.ai_topics 
-        ? debate.ai_topics as AiTopics 
-        : {},
+      ai_topics: aiTopics,
       speaker_count: debate.speaker_count || 0,
       contribution_count: debate.contribution_count || 0,
       party_count: typeof debate.party_count === 'object' && debate.party_count
@@ -432,7 +453,10 @@ function processDebates(
       ai_comment_thread: parseCommentThread(debate.ai_comment_thread),
       divisions: Array.isArray(debate.divisions) 
         ? debate.divisions as Division[]
-        : []
+        : [],
+      speakers: Array.isArray(debate.speakers) 
+        ? debate.speakers.filter((speaker): speaker is string => typeof speaker === 'string')
+        : [],
     };
   });
 
@@ -480,94 +504,6 @@ export async function lookupPostcode(postcode: string) {
   }
   
   return data;
-}
-
-export async function getUserVotingStats(timeframe: 'daily' | 'weekly' | 'all' = 'weekly'): Promise<UserVotingStats> {
-  const supabase = getSupabase();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    throw new Error('Authentication required');
-  }
-
-  // Calculate date range based on timeframe
-  const now = new Date();
-  const startDate = new Date();
-  let interval: 'hour' | 'day';
-
-  switch (timeframe) {
-    case 'daily':
-      startDate.setDate(now.getDate() - 1);
-      interval = 'hour';
-      break;
-    case 'weekly':
-      startDate.setDate(now.getDate() - 7);
-      interval = 'day';
-      break;
-    case 'all':
-      // Use a reasonable default for "all time" - e.g., 6 months
-      startDate.setMonth(now.getMonth() - 6);
-      interval = 'day';
-      break;
-  }
-
-  const { data, error } = await supabase.rpc('get_user_voting_stats', {
-    p_user_id: user.id,
-    p_start_date: startDate.toISOString(),
-    p_end_date: now.toISOString(),
-    p_interval: interval
-  });
-
-  if (error) throw error;
-
-  // Transform the raw data to match our interface
-  const transformedTopicStats: { [topic: string]: TopicStats } = {};
-
-  // Process each topic's stats
-  for (const [topic, stats] of Object.entries(data.topic_stats)) {
-    const topicStats = stats as TopicStatsRaw;
-    transformedTopicStats[topic] = {
-      total: topicStats.total,
-      ayes: topicStats.ayes,
-      noes: topicStats.noes,
-      subtopics: topicStats.subtopics || [],
-      details: (topicStats.details || []).map((detail) => ({
-        tags: detail.tags || [],
-        question_1: {
-          text: detail.question_1?.text || '',
-          topic: detail.question_1?.topic || '',
-          ayes: detail.question_1?.ayes || 0,
-          noes: detail.question_1?.noes || 0,
-        },
-        question_2: {
-          text: detail.question_2?.text || '',
-          topic: detail.question_2?.topic || '',
-          ayes: detail.question_2?.ayes || 0,
-          noes: detail.question_2?.noes || 0,
-        },
-        question_3: {
-          text: detail.question_3?.text || '',
-          topic: detail.question_3?.topic || '',
-          ayes: detail.question_3?.ayes || 0,
-          noes: detail.question_3?.noes || 0,
-        },
-        speakers: detail.speakers || [],
-      })),
-      frequency: topicStats.frequency?.[0] || 0,
-    };
-  }
-
-  return {
-    totalVotes: data.total_votes,
-    ayeVotes: data.aye_votes,
-    noVotes: data.no_votes,
-    topicStats: transformedTopicStats,
-    weeklyStats: data.vote_stats.map((stat: VoteStatsEntry) => ({
-      timestamp: stat.timestamp,
-      ayes: stat.ayes,
-      noes: stat.noes,
-    })),
-  };
 }
 
 export async function getMPData(mpId: number): Promise<MPData | null> {
@@ -644,7 +580,42 @@ export async function getMPKeyPoints(mpName: string, limit: number = 10): Promis
   });
 
   if (error) throw error;
-  return data || [];
+
+  // Transform the data to ensure ai_topics is properly typed
+  return (data || []).map((item: unknown) => {
+    if (typeof item !== 'object' || !item) return {
+      debate_id: '',
+      debate_title: '',
+      debate_date: '',
+      point: '',
+      point_type: 'made' as const,
+      original_speaker: null,
+      ai_topics: []
+    };
+
+    const mpPoint = item as Record<string, unknown>;
+    return {
+      ...mpPoint,
+      ai_topics: Array.isArray(mpPoint.ai_topics) 
+        ? mpPoint.ai_topics.map((topic: unknown) => {
+            if (typeof topic !== 'object' || !topic) return {
+              name: '',
+              speakers: [],
+              frequency: 1,
+              subtopics: []
+            };
+            
+            const t = topic as Record<string, unknown>;
+            return {
+              name: typeof t.name === 'string' ? t.name : '',
+              speakers: Array.isArray(t.speakers) ? t.speakers : [],
+              frequency: typeof t.frequency === 'number' ? t.frequency : 1,
+              subtopics: Array.isArray(t.subtopics) ? t.subtopics : []
+            };
+          })
+        : []
+    };
+  });
 }
 
 export const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -691,3 +662,29 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
     };
   }
 };
+
+// Add new functions after existing functions
+export async function getTopicVoteStats(): Promise<TopicVoteStats> {
+  const supabase = getSupabase();
+  
+  const { data, error } = await supabase.rpc('get_topic_vote_stats');
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserTopicVotes(): Promise<UserTopicVotes> {
+  const supabase = getSupabase();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    throw new Error('Authentication required');
+  }
+
+  const { data, error } = await supabase.rpc('get_user_topic_votes', {
+    p_user_id: user.id
+  });
+  
+  if (error) throw error;
+  return data;
+}

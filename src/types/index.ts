@@ -13,6 +13,7 @@ export interface FeedItem {
     ai_topics: AiTopics;
     ai_comment_thread: CommentThread[]; 
     speaker_count: number;
+    speakers: string[];
     contribution_count: number;
     party_count: PartyCount;
 
@@ -65,14 +66,14 @@ export interface InterestFactors {
   participation: number;
 }
 
-export interface AiTopics {
-    [key: string]: {
-        name: string;
-        speakers: string[];
-        frequency: number;
-        subtopics: string[];
-    }
+export interface AiTopic {
+  name: string;
+  speakers: string[];
+  frequency: number;
+  subtopics: string[];
 }
+
+export type AiTopics = AiTopic[];
 
 export interface DebateVote {
   debate_id: string;

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, UserIcon } from "lucide-react";
 import { locationColors, TOPICS, DAYS, DEBATE_TYPES } from '@/lib/utils';
 
 interface FiltersProps {
@@ -14,19 +14,15 @@ interface FiltersProps {
     location: string[];
     days: string[];
     topics: string[];
+    mpOnly: boolean;
   };
   onChange: (filters: FiltersProps['filters']) => void;
   filterItems: readonly {
-    id: keyof FiltersProps['filters'];
+    id: keyof Omit<FiltersProps['filters'], 'mpOnly'>;
     icon: LucideIcon;
     label: string;
   }[];
 }
-
-const HOUSE_COLORS = {
-  Commons: "rgb(0, 110, 70)", // Commons green
-  Lords: "rgb(163, 36, 59)",  // Lords red
-} as const;
 
 export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -60,7 +56,12 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
     };
 
     const renderFilterItem = (
-      { value, label, icon: Icon, color }: any,
+      { value, label, icon: Icon, color }: {
+        value: string;
+        label: string;
+        icon?: LucideIcon;
+        color?: string;
+      },
       selectedValues: string[],
       onChange: (values: string[]) => void,
       house?: 'Commons' | 'Lords'
@@ -103,6 +104,27 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
         </button>
       );
     };
+
+    if (activeFilter === 'mpOnly') {
+      return (
+        <button 
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2",
+            "transition-colors text-md relative text-left",
+            filters.mpOnly 
+              ? "bg-primary/10 text-primary hover:bg-primary/15" 
+              : "hover:bg-muted text-foreground"
+          )}
+          onClick={() => onChange({ ...filters, mpOnly: !filters.mpOnly })}
+        >
+          <div className="flex-1 flex items-center gap-2">
+            <UserIcon className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium">Show only my MP&apos;s debates</span>
+          </div>
+          {filters.mpOnly && <Check className="w-4 h-4 shrink-0" />}
+        </button>
+      );
+    }
 
     switch (activeFilter) {
       case 'type':
@@ -148,9 +170,39 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
 
   return (
     <div className={cn(
-      "w-full grid grid-cols-4 px-4 py-3",
-      "md:grid-cols-1 md:pt-6 md:px-0 md:gap-y-6"
+      "w-full grid grid-cols-5",
+      "md:grid-cols-1 md:gap-y-6 px-4 py-3 md:pt-6 md:px-0"
     )}>
+      <button
+        className={cn(
+          "group flex flex-col items-center gap-1.5",
+          "justify-self-center relative",
+          "after:content-[''] after:absolute after:bottom-0 after:left-1/2",
+          "after:w-1 after:h-1 after:rounded-full after:bg-primary",
+          "after:transform after:-translate-x-1/2 after:translate-y-3",
+          "after:opacity-0 after:transition-opacity"
+        )}
+        onClick={() => onChange({ ...filters, mpOnly: !filters.mpOnly })}
+      >
+        <div className={cn(
+          "relative rounded-full p-3.5 transition-all duration-200",
+          "border-2",
+          filters.mpOnly 
+            ? "border-primary bg-primary/5" 
+            : "border-muted group-hover:border-muted-foreground/50 bg-background"
+        )}>
+          <UserIcon className={cn(
+            "w-6 h-6 transition-colors",
+            filters.mpOnly 
+              ? "text-primary" 
+              : "text-muted-foreground group-hover:text-foreground"
+          )} />
+        </div>
+        <span className="text-md font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+          My MP
+        </span>
+      </button>
+
       {filterItems.map(({ id, icon: Icon, label }) => {
         const hasActiveFilters = filters[id].length > 0;
         const items = getItemsForFilter(id);
@@ -197,7 +249,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
                   )} />
                   {hasActiveFilters && (
                     <span className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-primary text-[11px] flex items-center justify-center text-primary-foreground font-medium">
-                      {filters[id].length}
+                      {Array.isArray(filters[id]) ? filters[id].length : 0}
                     </span>
                   )}
                 </div>
@@ -218,7 +270,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
                   <h4 className="font-medium text-md">{label}</h4>
                   {hasActiveFilters && (
                     <Badge variant="secondary" className="ml-2">
-                      {filters[id].length}
+                      {Array.isArray(filters[id]) ? filters[id].length : 0}
                     </Badge>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 import { FeedItem, PartyCount, CommentThread } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, Building2, ExternalLink, User } from 'lucide-react';
+import { CalendarIcon, Users2, Building2, ExternalLink, User, UserIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 interface PostCardProps {
   item: FeedItem;
+  userMp?: string | null;
   onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
   readOnly?: boolean;
   onExpandChange?: (isExpanded: boolean) => void;
@@ -31,7 +32,7 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 }
 
-export function PostCard({ item, ...props }: PostCardProps) {
+export function PostCard({ item, userMp, ...props }: PostCardProps) {
   const hasDivisions = useMemo(() => 
     item.divisions && item.divisions.length > 0
   , [item.divisions]);
@@ -123,6 +124,11 @@ export function PostCard({ item, ...props }: PostCardProps) {
 
   const [showComments, setShowComments] = useState(false);
 
+  // Check if MP spoke in the debate
+  const mpSpoke = useMemo(() => 
+    userMp && item.speakers?.includes(userMp)
+  , [userMp, item.speakers]);
+
   return (
     <Card 
       className="overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md" 
@@ -133,6 +139,15 @@ export function PostCard({ item, ...props }: PostCardProps) {
       }}
     >
       <CardHeader className="pb-2">
+        {/* Only show MP indicator if we have both an MP and they spoke */}
+        {userMp && mpSpoke && (
+          <div className="flex items-center gap-2 text-primary mb-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              <UserIcon className="h-3.5 w-3.5" />
+              Your MP spoke in this debate
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-start gap-4">
           <CardTitle className="text-xl font-bold">{item.ai_title}</CardTitle>
           {item.ext_id && (

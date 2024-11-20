@@ -6,7 +6,7 @@ import {
   Calendar, 
   MapPin, 
   Tags, 
-  BookText,
+  LayoutList,
 } from "lucide-react";
 
 interface TopBarProps {
@@ -15,32 +15,33 @@ interface TopBarProps {
     location: string[];
     days: string[];
     topics: string[];
+    mpOnly: boolean;
   };
   onChange: (filters: TopBarProps['filters']) => void;
   className?: string;
 }
 
-const FILTER_ITEMS = [
+export const filterItems = [
   {
-    id: 'type',
-    icon: BookText,
-    label: 'Type',
+    id: 'type' as const,
+    icon: LayoutList,
+    label: "Type"
   },
   {
-    id: 'location',
+    id: 'location' as const,
     icon: MapPin,
-    label: 'Location',
+    label: "Location"
   },
   {
-    id: 'days',
+    id: 'days' as const,
     icon: Calendar,
-    label: 'Days',
+    label: "Days"
   },
   {
-    id: 'topics',
+    id: 'topics' as const,
     icon: Tags,
-    label: 'Topics',
-  },
+    label: "Topics"
+  }
 ] as const;
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
@@ -54,7 +55,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
       <DebateFilters 
         filters={filters} 
         onChange={onChange} 
-        filterItems={FILTER_ITEMS}
+        filterItems={filterItems}
       />
     </div>
   );

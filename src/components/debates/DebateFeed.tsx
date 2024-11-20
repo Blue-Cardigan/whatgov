@@ -3,7 +3,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFeed } from '@/hooks/useFeed';
 import { DebateList } from './DebateList';
-import { DebateFilters } from './DebateFilters';
 import { TopBar } from '@/components/nav/TopBar';
 
 interface Filters {
@@ -11,6 +10,7 @@ interface Filters {
   location: string[];
   days: string[];
   topics: string[];
+  mpOnly: boolean;
 }
 
 export function DebateFeed() {
@@ -19,7 +19,8 @@ export function DebateFeed() {
     type: [],
     location: [],
     days: [],
-    topics: []
+    topics: [],
+    mpOnly: false
   });
 
   const { 
@@ -35,7 +36,8 @@ export function DebateFeed() {
       type: filters.type.length ? filters.type : undefined,
       location: filters.location.length ? filters.location : undefined,
       days: filters.days.length ? filters.days : undefined,
-      topics: filters.topics.length ? filters.topics : undefined
+      topics: filters.topics.length ? filters.topics : undefined,
+      mpOnly: filters.mpOnly
     }
   });
 

@@ -135,6 +135,11 @@ export const locationColors: Record<string, string> = {
   'Petitions': '#505A5F',             // neutral grey
 };
 
+export const HOUSE_COLORS = {
+  Commons: "rgb(0, 110, 70)", // Commons green
+  Lords: "rgb(163, 36, 59)",  // Lords red
+} as const;
+
 export type DebateType = {
   type: string;
   label: string;

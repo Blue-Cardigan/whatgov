@@ -1,11 +1,9 @@
-import { Json } from "./supabase";
-
 // Update the interfaces
 export interface TopicQuestion {
   text: string;
   topic: string;
-  ayes: number;
-  noes: number;
+  aye_votes: number;
+  no_votes: number;
 }
 
 export interface TopicDetails {
@@ -17,64 +15,86 @@ export interface TopicDetails {
 }
 
 export interface TopicStats {
-  total: number;
-  ayes: number;
-  noes: number;
-  subtopics: string[];
-  details: TopicDetails[];
-  frequency: number;
-}
-
-export interface UserVotingStats {
-  totalVotes: number;
-  ayeVotes: number;
-  noVotes: number;
-  topicStats: {
-    [topic: string]: TopicStats;
-  };
-  weeklyStats: VoteStatsEntry[];
+  total_votes: number;
+  aye_votes: number;
+  no_votes: number;
+  top_questions?: TopQuestion[];
+  vote_history?: VoteHistoryEntry[];
+  speakers?: string[];
+  frequency?: number;
+  subtopics?: string[];
 }
 
 export interface VoteHistoryEntry {
-    vote: boolean;
-    created_at: string;
-    debates: {
-      ai_topics: Json;
-    };
-  }
-
-export interface TopicStatsRaw {
-  total: number;
-  ayes: number;
-  noes: number;
-  subtopics?: string[];
-  details?: Array<{
-        tags?: string[];
-        question_1?: {
-        text?: string;
-        topic?: string;
-        ayes?: number;
-        noes?: number;
-        };
-        question_2?: {
-        text?: string;
-        topic?: string;
-        ayes?: number;
-        noes?: number;
-        };
-        question_3?: {
-        text?: string;
-        topic?: string;
-        ayes?: number;
-        noes?: number;
-        };
-        speakers?: string[];
-    }>;
-    frequency?: number[];
+  vote: boolean;
+  title: string;
+  topic: string;
+  question: string;
+  debate_id: string;
+  created_at: string;
 }
 
-export interface VoteStatsEntry {
+export interface TopicVoteStats {
+  topics: {
+    [key: string]: TopicStats;
+  };
+}
+
+export interface UserTopicVotes {
+  user_topics: {
+    [topic: string]: TopicStats;
+  };
+}
+
+export interface TopicVotes {
+  [topic: string]: {
+    no_votes: number;
+    aye_votes: number;
+    total_votes: number;
+    vote_history?: VoteHistoryEntry[];
+  };
+}
+
+// Add these new interfaces
+export interface ChartData {
   timestamp: string;
+  Ayes: number;
+  Noes: number;
+}
+
+export interface VoteData {
+  debate_id: string;
+  question_number: number;
+  vote: boolean;
+  timestamp: string;
+}
+
+export interface TopicVoteStatsResponse {
+  topics: {
+    [topic: string]: TopicStats;
+  };
+}
+
+export interface UserTopicVotesResponse {
+  user_topics: {
+    [topic: string]: UserTopicStats;
+  };
+}
+
+export interface UserTopicStats extends TopicStats {
+  vote_history: VoteHistoryEntry[];
+}
+
+export interface TopicQuestionStats {
+  question: string;
+  aye_votes: number;
+  no_votes: number;
+  total_votes: number;
+}
+
+export interface TopQuestion {
+  question: string;  // This is now the debate title
   ayes: number;
   noes: number;
+  total_votes: number;
 }

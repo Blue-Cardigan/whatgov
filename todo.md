@@ -1,11 +1,7 @@
 My Parliament
 - Integrate schedule
 
-Voting analytics - ayes/noes by topic
 Add 'frequent topics/subtopics' to MP Profile view
-Identify 'your mp spoke' for each debate
-
-Align questions/key points with ideology so users can tag themselves over time
 
 #Optimizations
 Load more virtualized debates at once/ slow down scroll/ skeletons 

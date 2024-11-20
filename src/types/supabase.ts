@@ -54,6 +54,7 @@ export type Database = {
           engagement_count: number | null
           divisions: Division[]
           ai_comment_thread: Json | null
+          speakers: string[]
         }
         Insert: {
           ai_key_points?: Json
@@ -97,6 +98,7 @@ export type Database = {
           ai_comment_thread?: Json | null
           divisions?: Division[]
           engagement_count?: number | null
+          speakers?: string[]
         }
         Update: {
           ai_key_points?: Json
@@ -140,6 +142,7 @@ export type Database = {
           ai_comment_thread?: Json | null
           divisions?: Division[]
           engagement_count?: number | null
+          speakers?: string[]
         }
         Relationships: []
       }
@@ -375,9 +378,16 @@ export type Database = {
     Functions: {
       get_unvoted_debates: {
         Args: {
-          p_user_id: string  // UUID
+          p_user_id: string
           p_limit?: number
-          p_cursor?: string  // UUID
+          p_cursor?: string
+          p_cursor_date?: string
+          p_cursor_score?: number
+          p_type?: string[]
+          p_location?: string[]
+          p_days?: string[]
+          p_topics?: string[]
+          p_mp_only?: boolean
         }
         Returns: {
           result_id: string
@@ -421,6 +431,7 @@ export type Database = {
           ai_comment_thread: string
           divisions: string
           engagement_count: number | null
+          speakers: string[]
         }[]
       }
       get_voted_debates: {

@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates(
   p_type TEXT[] DEFAULT NULL,
   p_location TEXT[] DEFAULT NULL,
   p_days TEXT[] DEFAULT NULL,
-  p_topics TEXT[] DEFAULT NULL
+  p_topics TEXT[] DEFAULT NULL,
+  p_mp_only BOOLEAN DEFAULT FALSE
 )
 RETURNS TABLE (
   result_id UUID,
@@ -50,12 +51,15 @@ RETURNS TABLE (
   type TEXT,
   divisions JSONB,
   engagement_score FLOAT,
-  ai_comment_thread JSONB
+  ai_comment_thread JSONB,
+  speakers TEXT[]
 ) AS $$
 BEGIN
   RETURN QUERY
   WITH user_topics AS (
-    SELECT COALESCE(selected_topics, ARRAY[]::text[]) as selected_topics
+    SELECT 
+      COALESCE(selected_topics, ARRAY[]::text[]) as selected_topics,
+      mp as user_mp
     FROM user_profiles 
     WHERE id = p_user_id
   ),
@@ -120,6 +124,10 @@ BEGIN
     AND (p_type IS NULL OR d.type = ANY(p_type))
     AND (p_location IS NULL OR d.location = ANY(p_location))
     AND (p_days IS NULL OR d.day_of_week = ANY(p_days))
+    AND (
+      NOT p_mp_only
+      OR ut.user_mp = ANY(d.speakers)
+    )
   ),
   scored_debates AS (
     SELECT 
@@ -197,7 +205,8 @@ BEGIN
     d.type,
     d.divisions,
     d.engagement_score,
-    COALESCE(d.ai_comment_thread, '[]'::jsonb) as ai_comment_thread
+    COALESCE(d.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
+    d.speakers
   FROM scored_debates d
   ORDER BY 
     d.date::date DESC,

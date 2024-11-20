@@ -11,10 +11,13 @@ import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
+import { MPTopics } from "./MPTopics";
+import { AiTopic } from "@/types";
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
   const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
+  const [topics, setTopics] = useState<AiTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { profile, loading: authLoading, isEngagedCitizen } = useAuth();
@@ -34,7 +37,39 @@ export function MPProfile() {
           getMPKeyPoints(profile.mp.toString())
         ]);
         
-        if (mpData) setMPData(mpData);
+        if (mpData) {
+          setMPData(mpData);
+          const topicsMap = new Map<string, AiTopic>();
+          points.forEach(point => {
+            if (Array.isArray(point.ai_topics)) {
+              point.ai_topics.forEach(topic => {
+                const existingTopic = topicsMap.get(topic.name);
+                if (!existingTopic) {
+                  topicsMap.set(topic.name, {
+                    name: topic.name,
+                    speakers: Array.from(new Set([...topic.speakers])),
+                    frequency: 1,
+                    subtopics: Array.from(new Set([...topic.subtopics]))
+                  });
+                } else {
+                  existingTopic.frequency += 1;
+                  existingTopic.speakers = Array.from(new Set([
+                    ...existingTopic.speakers,
+                    ...topic.speakers
+                  ]));
+                  existingTopic.subtopics = Array.from(new Set([
+                    ...existingTopic.subtopics,
+                    ...topic.subtopics
+                  ]));
+                  topicsMap.set(topic.name, existingTopic);
+                }
+              });
+            }
+          });
+          const sortedTopics = Array.from(topicsMap.values())
+            .sort((a, b) => b.frequency - a.frequency);
+          setTopics(sortedTopics);
+        }
         setKeyPoints(points);
       } catch (e) {
         setError('Error loading MP data');
@@ -92,7 +127,10 @@ export function MPProfile() {
         <MPProfileCard mpData={mpData} />
         <MPLinks mpData={mpData} />
         {isEngagedCitizen ? (
-          keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />
+          <>
+            {topics.length > 0 && <MPTopics topics={topics} />}
+            {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
+          </>
         ) : (
           <SubscriptionCTA
             title="Upgrade to track your MP's activity"
