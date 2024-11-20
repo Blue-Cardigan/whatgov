@@ -56,9 +56,11 @@ export function DebateFeed() {
   }, [data?.pages]);
 
   useEffect(() => {
+    // Skip if we're not in the browser
+    if (typeof window === 'undefined') return;
+    
     let timeoutId: NodeJS.Timeout;
     
-    // Create intersection observer with more aggressive loading
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
@@ -68,17 +70,20 @@ export function DebateFeed() {
       },
       { 
         root: null,
-        threshold: 0.1, // Start loading when even 10% of the target is visible
-        rootMargin: '2000px 0px', // Increased from 1000px to 2000px (about 4-6 screens ahead)
+        threshold: 0.1,
+        rootMargin: '2000px 0px',
       }
     );
 
     // Define resize handler
-    const handleResize = (element: Element) => {
+    const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        observer.unobserve(element);
-        observer.observe(element);
+        const element = loadMoreRef.current;
+        if (element) {
+          observer.unobserve(element);
+          observer.observe(element);
+        }
       }, 100);
     };
 
@@ -86,14 +91,14 @@ export function DebateFeed() {
     const element = loadMoreRef.current;
     if (element) {
       observer.observe(element);
-      window.addEventListener('resize', () => handleResize(element));
+      window.addEventListener('resize', handleResize);
     }
 
     // Cleanup
     return () => {
       if (element) {
         observer.unobserve(element);
-        window.removeEventListener('resize', () => handleResize(element));
+        window.removeEventListener('resize', handleResize);
       }
       observer.disconnect();
       clearTimeout(timeoutId);
