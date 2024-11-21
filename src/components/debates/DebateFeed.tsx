@@ -56,51 +56,51 @@ export function DebateFeed() {
   }, [data?.pages]);
 
   useEffect(() => {
-    // Skip if we're not in the browser
+    // Move the entire IntersectionObserver logic inside this check
     if (typeof window === 'undefined') return;
-    
-    let timeoutId: NodeJS.Timeout;
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const target = entries[0];
-        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          void fetchNextPage();
+
+    // Create observer only on the client side
+    const createObserver = () => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const target = entries[0];
+          if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            void fetchNextPage();
+          }
+        },
+        { 
+          root: null,
+          threshold: 0.1,
+          rootMargin: '2000px 0px',
         }
-      },
-      { 
-        root: null,
-        threshold: 0.1,
-        rootMargin: '2000px 0px',
+      );
+
+      const element = loadMoreRef.current;
+      if (element) {
+        observer.observe(element);
       }
-    );
+      return observer;
+    };
+
+    let timeoutId: NodeJS.Timeout;
+    const observer = createObserver();
 
     // Define resize handler
     const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        const element = loadMoreRef.current;
-        if (element) {
-          observer.unobserve(element);
-          observer.observe(element);
-        }
+        observer.disconnect();
+        createObserver();
       }, 100);
     };
 
-    // Start observing
-    const element = loadMoreRef.current;
-    if (element) {
-      observer.observe(element);
-      window.addEventListener('resize', handleResize);
-    }
+    // Add resize listener
+    window.addEventListener('resize', handleResize);
 
     // Cleanup
     return () => {
-      if (element) {
-        observer.unobserve(element);
-        window.removeEventListener('resize', handleResize);
-      }
       observer.disconnect();
+      window.removeEventListener('resize', handleResize);
       clearTimeout(timeoutId);
     };
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);

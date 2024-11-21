@@ -10,6 +10,7 @@ import { useEngagement } from '@/hooks/useEngagement';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FREE_LIMITS } from '@/lib/utils';
+import dynamic from 'next/dynamic'
 
 interface DebateListProps {
   items: FeedItem[];
@@ -20,6 +21,78 @@ interface DebateListProps {
   readOnly?: boolean;
   hasMore?: boolean;
 }
+
+// Add these type definitions
+interface VirtualItem {
+  key: number;
+  index: number;
+  start: number;
+}
+
+interface VirtualizedDebateListProps {
+  items: FeedItem[];
+  virtualizer: {
+    getTotalSize: () => number;
+    getVirtualItems: () => VirtualItem[];
+    measureElement: (element: HTMLElement) => void;
+    measure: () => void;
+  };
+  expandedStatesRef: React.MutableRefObject<Map<string, boolean>>;
+  handleVote: (debateId: string, questionNumber: number, vote: boolean) => void;
+  profile: { mp?: string } | null;
+  readOnly: boolean;
+  hasReachedVoteLimit: () => boolean;
+}
+
+// Create a client-only version of the virtualized list
+const VirtualizedDebateList = dynamic(() => Promise.resolve(({ 
+  items, 
+  virtualizer, 
+  expandedStatesRef, 
+  handleVote, 
+  profile, 
+  readOnly, 
+  hasReachedVoteLimit 
+}: VirtualizedDebateListProps) => (
+  <div
+    style={{
+      height: `${virtualizer.getTotalSize()}px`,
+      width: '100%',
+      position: 'relative',
+    }}
+  >
+    {virtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
+      const item = items[virtualRow.index];
+      return (
+        <div
+          key={virtualRow.key}
+          data-index={virtualRow.index}
+          data-debate-id={item.id}
+          ref={virtualizer.measureElement as React.LegacyRef<HTMLDivElement>}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            transform: `translateY(${virtualRow.start}px)`,
+          }}
+        >
+          <PostCard
+            item={item}
+            userMp={profile?.mp}
+            onVote={handleVote}
+            readOnly={readOnly}
+            onExpandChange={(isExpanded) => {
+              expandedStatesRef.current.set(item.id, isExpanded);
+              setTimeout(() => virtualizer.measure(), 300);
+            }}
+            hasReachedLimit={hasReachedVoteLimit()}
+          />
+        </div>
+      );
+    })}
+  </div>
+)), { ssr: false })
 
 export function DebateList({ 
   items, 
@@ -102,6 +175,9 @@ export function DebateList({
 
   // 3. Improved ResizeObserver setup
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Setup ResizeObserver
     const observer = new ResizeObserver((entries) => {
       let needsRemeasure = false;
 
@@ -114,7 +190,6 @@ export function DebateList({
           const height = entry.borderBoxSize[0]?.blockSize || entry.contentRect.height;
           const isExpanded = expandedStatesRef.current.get(debateId);
           
-          // Store in appropriate cache
           if (isExpanded) {
             if (measurementCache.current.expanded.get(debateId) !== height) {
               measurementCache.current.expanded.set(debateId, height);
@@ -254,44 +329,22 @@ export function DebateList({
 
   return (
     <div ref={parentRef} className="w-full space-y-4">
-      <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: '100%',
-          position: 'relative',
-        }}
-      >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const item = items[virtualRow.index];
-          return (
-            <div
-              key={virtualRow.key}
-              data-index={virtualRow.index}
-              data-debate-id={item.id}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            >
-              <PostCard
-                item={item}
-                userMp={profile?.mp}
-                onVote={handleVote}
-                readOnly={readOnly}
-                onExpandChange={(isExpanded) => {
-                  expandedStatesRef.current.set(item.id, isExpanded);
-                  setTimeout(() => virtualizer.measure(), 300);
-                }}
-                hasReachedLimit={hasReachedVoteLimit()}
-              />
-            </div>
-          );
-        })}
-      </div>
+      {typeof window !== 'undefined' && (
+        <VirtualizedDebateList
+          items={items}
+          virtualizer={{
+            getTotalSize: virtualizer.getTotalSize,
+            getVirtualItems: virtualizer.getVirtualItems as () => VirtualItem[],
+            measureElement: virtualizer.measureElement,
+            measure: virtualizer.measure
+          }}
+          expandedStatesRef={expandedStatesRef}
+          handleVote={handleVote}
+          profile={profile}
+          readOnly={readOnly}
+          hasReachedVoteLimit={hasReachedVoteLimit}
+        />
+      )}
       
       <div ref={loadMoreRef} className="h-4">
         {isFetchingNextPage && (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,21 @@ interface FiltersProps {
 
 export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const checkWidth = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkWidth();
+
+    window.addEventListener('resize', checkWidth);
+    
+    return () => window.removeEventListener('resize', checkWidth);
+  }, []);
 
   const renderFilterContent = (activeFilter: keyof FiltersProps['filters']) => {
     const renderFilterList = (
@@ -261,7 +276,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
             <PopoverContent 
               className="w-64 p-0" 
               align="center"
-              side={window.innerWidth >= 768 ? "left" : "bottom"}
+              side={isMobile ? "bottom" : "left"}
               sideOffset={8}
             >
               <div className="flex items-center justify-between px-3 py-2 border-b">
