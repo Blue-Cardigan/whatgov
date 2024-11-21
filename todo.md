@@ -1,8 +1,6 @@
-Show skeletons or empty in myparliament, instead of sign in
 Move filters and schedule behind Paywall
 Ensure your MP division vote tip displays
-Implement 'how your constituency voted' 
-
+Advanced search
 
 #Optimizations
 Reduce middleware build size for edge runtime
@@ -10,16 +8,17 @@ Replace twfy image urls with hansard: https://members-api.parliament.uk/api/Memb
 
 Free Features for Signed in Users
 - Feed and unlimited votes
+- View upcoming Parliamentary questions
 - Basic voting record view
 - Basic search
 - View debate comments
-*- View trends by location, gender and age after info provided
+* - 'how your constituency voted' 
+* -- Trends by location, gender and age after info provided
 
 Engaged Citizen Features
 - See Divisions
 - Feed filters
 - Track Your MP's activity
-- Parliamentary schedule
 - View your voting analytics
 - Advanced search
 

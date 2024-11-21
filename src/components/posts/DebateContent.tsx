@@ -268,7 +268,7 @@ export function VoteButtons({ onVote, questionNumber }: {
         onClick={() => onVote(questionNumber, false)}
       >
         <XCircle className="mr-1 h-3 w-3 text-rose-500" />
-        No
+        Noe
       </Button>
     </div>
   );

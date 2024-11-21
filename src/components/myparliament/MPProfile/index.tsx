@@ -9,10 +9,44 @@ import { Button } from "@/components/ui/button";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
-import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { MPTopics } from "./MPTopics";
 import { AiTopic } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function MPProfileSkeleton() {
+  return (
+    <Card className="p-6">
+      <div className="space-y-8">
+        <div className="flex items-start gap-4">
+          <Skeleton className="h-24 w-24 rounded-lg" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <div className="grid grid-cols-2 gap-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
@@ -20,11 +54,9 @@ export function MPProfile() {
   const [topics, setTopics] = useState<AiTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { profile, loading: authLoading, isEngagedCitizen } = useAuth();
+  const { profile, isEngagedCitizen } = useAuth();
 
   useEffect(() => {
-    if (authLoading) return;
-    
     async function fetchData() {
       if (!profile?.mp_id) {
         setLoading(false);
@@ -80,27 +112,10 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [profile?.mp_id, profile?.mp, authLoading]);
+  }, [profile?.mp_id, profile?.mp]);
 
-  if (authLoading || loading) {
-    return (
-      <Card className="p-6">
-        <div className="space-y-4 animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="h-4 bg-muted rounded w-1/2" />
-          <div className="h-4 bg-muted rounded w-2/3" />
-        </div>
-      </Card>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <SignInPrompt
-        title="Sign in to view your MP"
-        description="Sign in to track your MP's activity and see how they represent your interests in Parliament"
-      />
-    );
+  if (loading) {
+    return <MPProfileSkeleton />;
   }
 
   if (error || !mpData) {

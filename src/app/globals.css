@@ -140,3 +140,15 @@ body {
 .snap-center {
   scroll-snap-align: center;
 }
+
+[data-state="active"].tabs-trigger {
+  @apply bg-background border-primary text-primary;
+}
+
+.topics-sort-select[data-state="visible"] {
+  @apply block;
+}
+
+.topics-sort-select[data-state="hidden"] {
+  @apply hidden;
+}

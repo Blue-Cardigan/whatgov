@@ -4,6 +4,10 @@ import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
+import { useAuth } from '../../hooks/useAuth';
+import { Card } from '@/components/ui/card';
+import { SignInPrompt } from '../ui/sign-in-prompt';
+import { Badge } from "@/components/ui/badge";
 
 const UserVoteHistory = dynamic(() => import("./YourStats").then(mod => mod.UserVoteHistory), {
   loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
@@ -14,6 +18,39 @@ const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mo
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("activity");
+  const { loading: authLoading, user } = useAuth();
+
+  // Show a loading state for the entire dashboard while auth initializes
+  if (authLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-4 animate-pulse">
+              <div className="flex flex-row items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-muted" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-24 bg-muted rounded" />
+                  <div className="h-3 w-32 bg-muted rounded" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+        <div className="bg-card border rounded-lg p-6 mt-8 h-[400px] animate-pulse" />
+      </div>
+    );
+  }
+
+  // If auth is done loading and there's no user, redirect to sign in
+  if (!user) {
+    return (
+      <SignInPrompt
+        title="Sign in to access your dashboard"
+        description="Track your voting patterns and see how they align with different topics and MPs"
+      />
+    );
+  }
 
   const menuItems = [
     {
@@ -28,8 +65,8 @@ export function MyParliament() {
     },
     {
       id: "stats",
-      title: "Your Statistics",
-      description: "Analyse your engagement",
+      title: "Voting Statistics",
+      description: "Your stats and popular topics",
       icon: <BarChart2 className="h-6 w-6" />,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
@@ -38,7 +75,7 @@ export function MyParliament() {
     },
     {
       id: "upcoming",
-      title: "Upcoming Votes",
+      title: "Upcoming Questions",
       description: "See what's coming up",
       icon: <CalendarClock className="h-6 w-6" />,
       color: "text-amber-500",
@@ -51,10 +88,12 @@ export function MyParliament() {
       title: "Search Alerts",
       description: "Subscribe to searches",
       icon: <AlertCircle className="h-6 w-6" />,
-      color: "text-teal-500",
-      bgColor: "bg-teal-50 dark:bg-teal-500/10",
-      borderColor: "group-hover:border-teal-200 dark:group-hover:border-teal-500/30",
-      isPremium: true,
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
+      borderColor: "group-hover:border-muted",
+      isPremium: false,
+      isDisabled: true,
+      badge: "Coming soon"
     }
   ];
 
@@ -68,7 +107,11 @@ export function MyParliament() {
             key={item.id}
             item={item}
             isActive={item.id === activeTab}
-            onSelect={() => item.isPremium ? window.location.href = '/pricing' : setActiveTab(item.id)}
+            onSelect={() => {
+              if (!item.isDisabled) {
+                item.isPremium ? window.location.href = '/pricing' : setActiveTab(item.id);
+              }
+            }}
           />
         ))}
       </div>
@@ -87,11 +130,6 @@ export function MyParliament() {
         {activeTab === "constituency" && (
           <div className="text-muted-foreground text-center py-8">
             Constituency insights coming soon
-          </div>
-        )}
-        {activeTab === "alerts" && (
-          <div className="text-muted-foreground text-center py-8">
-            Vote alerts feature coming soon
           </div>
         )}
       </div>
