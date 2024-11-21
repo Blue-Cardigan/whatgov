@@ -109,7 +109,7 @@ export function Sidebar({ className }: SidebarProps) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/accounts/signup" className="flex w-full items-center">
+              <Link href="/signup" className="flex w-full items-center">
                 <UserPlus className="h-4 w-4 mr-2.5" />
                 <span>Sign up</span>
               </Link>

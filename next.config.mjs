@@ -11,6 +11,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.theyworkforyou.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'members-api.parliament.uk',
+      },
     ],
   },
 };

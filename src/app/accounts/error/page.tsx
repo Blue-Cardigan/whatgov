@@ -17,7 +17,7 @@ export default function AuthError() {
             We couldn&apos;t verify your email. The link may have expired or is invalid.
           </p>
           <div className="space-y-4">
-            <Link href="/accounts/signup">
+            <Link href="/signup">
               <Button className="w-full">Try signing up again</Button>
             </Link>
             <Link href="/support">

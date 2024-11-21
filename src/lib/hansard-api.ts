@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { format } from 'date-fns';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -92,8 +93,49 @@ export interface MemberSearchResponse {
   Take: number;
 }
 
+// Add new interface for oral questions
+export interface OralQuestion {
+  Id: number;
+  QuestionText: string;
+  AnsweringWhen: string;
+  AnsweringBody: string;
+  AnsweringMinisterTitle: string;
+  AskingMember: {
+    Name: string;
+    Constituency: string;
+    Party: string;
+    PhotoUrl: string;
+  };
+  AnsweringMinister: {
+    MnisId: number;
+    PimsId: number;
+    Name: string;
+    ListAs: string;
+    Constituency: string;
+    Status: string;
+    Party: string;
+    PartyId: number;
+    PartyColour: string;
+    PhotoUrl: string;
+  };
+}
+
+export interface OralQuestionsResponse {
+  Success: boolean;
+  Response: OralQuestion[];
+  PagingInfo?: {
+    Skip: number;
+    Take: number;
+    Total: number;
+  };
+}
+
+interface TopicsResponse {
+  topics: string[];
+}
+
 export class HansardAPI {
-  private static async fetchWithErrorHandling(url: string) {
+  private static async fetchWithErrorHandling<T>(url: string): Promise<T> {
     try {
       const fullUrl = url.startsWith('http') ? url : url;
       const response = await fetch(fullUrl);
@@ -115,7 +157,6 @@ export class HansardAPI {
         house: config.house,
         date: config.date!,
         section: config.section!,
-        // groupByOwner: 'true'
       });
 
     return this.fetchWithErrorHandling(url);
@@ -289,8 +330,9 @@ export class HansardAPI {
 
   static async getTopics(): Promise<string[]> {
     try {
-      // Note: Topics endpoint not documented - might need to use search endpoint with specific parameters
-      const response = await this.fetchWithErrorHandling('/api/hansard/search?format=json&outputType=Group');
+      const response = await this.fetchWithErrorHandling<TopicsResponse>(
+        '/api/hansard/search?format=json&outputType=Group'
+      );
       return response.topics || [];
     } catch (error) {
       console.error('Failed to fetch topics:', error);
@@ -301,7 +343,7 @@ export class HansardAPI {
   static async getParties(): Promise<string[]> {
     try {
       // Note: Parties endpoint not documented - might need to use member search with aggregation
-      const response = await this.fetchWithErrorHandling('/api/hansard/search/members?format=json');
+      const response = await this.fetchWithErrorHandling<MemberSearchResponse>('/api/hansard/search/members?format=json');
       const parties = new Set(response.Results?.map((member: Member) => member.Party).filter(Boolean));
       return Array.from(parties) as string[];
     } catch (error) {
@@ -316,7 +358,7 @@ export class HansardAPI {
         format: 'json',
         searchTerm: searchTerm
       });
-      const response = await this.fetchWithErrorHandling(
+      const response = await this.fetchWithErrorHandling<MemberSearchResponse>(
         `/api/hansard/search/members?${params.toString()}`
       );
       return response.Results || [];
@@ -324,5 +366,54 @@ export class HansardAPI {
       console.error('Failed to search members:', error);
       return [];
     }
+  }
+
+  static async getUpcomingOralQuestions(forNextWeek: boolean = false): Promise<OralQuestion[]> {
+    try {
+      const today = new Date();
+      
+      if (forNextWeek) {
+        // Calculate next Monday
+        const nextMonday = new Date(today);
+        nextMonday.setDate(today.getDate() + ((8 - today.getDay()) % 7));
+        
+        // Calculate next Friday
+        const nextFriday = new Date(nextMonday);
+        nextFriday.setDate(nextMonday.getDate() + 4);
+        
+        return await this.fetchOralQuestions(nextMonday, nextFriday);
+      } else {
+        // Get remaining days of current week (until Friday)
+        const thisWeekEnd = new Date(today);
+        const daysUntilFriday = today.getDay() <= 5 ? 5 - today.getDay() : 0;
+        thisWeekEnd.setDate(today.getDate() + daysUntilFriday);
+        
+        return await this.fetchOralQuestions(today, thisWeekEnd);
+      }
+    } catch (error) {
+      console.error('Failed to get upcoming oral questions:', error);
+      throw error;
+    }
+  }
+
+  private static async fetchOralQuestions(
+    startDate: Date,
+    endDate: Date
+  ): Promise<OralQuestion[]> {
+    const params = new URLSearchParams({
+      answeringDateStart: format(startDate, 'yyyy-MM-dd'),
+      answeringDateEnd: format(endDate, 'yyyy-MM-dd')
+    });
+
+    const response = await this.fetchWithErrorHandling<OralQuestionsResponse>(
+      `/api/hansard/questions?${params.toString()}`
+    );
+    
+    if (!response.Success) {
+      console.error('Failed to fetch oral questions:', response);
+      return [];
+    }
+
+    return response.Response || [];
   }
 }

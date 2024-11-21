@@ -24,18 +24,16 @@ import { Suspense } from 'react';
 const tiers = [
   {
     name: "Citizen",
-    description: "Essential tools for civic engagement",
+    description: "For all citizens - because democracy should be accessible",
     price: "Free",
     icon: Building2,
     features: [
-      "Personalised parliamentary feed",
-      "Basic debate summaries",
-      "View and compare voting record",
-      "Basic MP profiles",
-      "Essential debate search",
-      "Parliamentary calendar",
-      "Follow up to 3 topics",
-      "View debate transcripts",
+      "Unlimited votes on key questions",
+      "See MPs battle it out in the comments",
+      "View basic MP profiles",
+      "Parliamentary calendar and upcoming debates",
+      "Basic debate search and filtering",
+      "Personalised feed based on your interests",
     ],
     color: "text-blue-500",
     bgColor: "bg-blue-50 dark:bg-blue-500/10",
@@ -43,20 +41,16 @@ const tiers = [
   },
   {
     name: "Engaged Citizen",
-    description: "Enhanced engagement and personalisation",
-    price: "£0.25",
+    description: "For engaged citizens who want deeper insights",
+    price: "£4.99",
     icon: Crown,
     features: [
-      "Everything in Free, plus:",
-      "Unlimited topic following",
-      "Full AI-simplified debates",
-      "Advanced voting analytics",
-      "MP activity alerts",
-      "Custom topic alerts",
-      "Downloadable voting records",
-      "Advanced search filters",
-      "Personal debate notes",
-      "Ad-free experience",
+      "See how MPs voted in Parliamentary Divisions",
+      "Track what your MP says in Parliament",
+      "View your voting analytics",
+      "Filter your feed by day, type, and topic",
+      "Advanced Hansard search capabilities",
+      "See what's coming up in Parliament",
     ],
     color: "text-purple-500",
     bgColor: "bg-purple-50 dark:bg-purple-500/10",
@@ -64,20 +58,19 @@ const tiers = [
   },
   {
     name: "Professional",
-    description: "Advanced research and analysis tools",
-    price: "£15.99",
+    description: "Advanced research and analysis tools for policy professionals",
+    price: "Coming Soon",
     icon: Briefcase,
     features: [
-      "Everything in Premium, plus:",
-      "AI research assistant",
-      "Cross-debate analysis",
-      "Advanced Hansard search",
-      "Search alerts",
-      "Export in multiple formats",
-      "Citation tools",
-      "Historical data access",
-      "Batch processing",
-      "Limited API access",
+      "Everything in Engaged Citizen, plus:",
+      "AI research assistant with Hansard-wide analysis",
+      "Sophisticated Hansard search",
+      "Track bills and their progress",
+      "Feed subscriptions for your site",
+      "Data export in multiple formats",
+      "Basic API access",
+      "View constituency-wide trends",
+      "Access parliamentary documents",
     ],
     color: "text-emerald-500",
     bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
@@ -232,30 +225,24 @@ function PricingContent() {
                     if (user) {
                       router.push('/myparliament');
                     } else {
-                      router.push('/accounts/signup');
+                      router.push('/signup');
                     }
                   }}
                 >
                   {user ? "Get Started" : "Sign Up Free"}
                 </Button>
-              ) : tier.name === "Enterprise" ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="w-full">Contact Sales</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Enterprise Inquiry</DialogTitle>
-                      <DialogDescription>
-                        Please email enterprise@whatgov.co.uk for custom pricing and features.
-                      </DialogDescription>
-                    </DialogHeader>
-                  </DialogContent>
-                </Dialog>
+              ) : tier.name === "Professional" ? (
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  disabled
+                >
+                  Coming Soon
+                </Button>
               ) : (
                 <Button 
                   className="w-full" 
-                  onClick={() => handleSubscribe(PLANS[tier.name === "Professional" ? "PROFESSIONAL" : "ENGAGED_CITIZEN"].id)}
+                  onClick={() => handleSubscribe(PLANS["ENGAGED_CITIZEN"].id)}
                 >
                   Subscribe
                 </Button>
@@ -295,16 +282,15 @@ function PricingContent() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                "Multi-user accounts",
-                "Team collaboration",
-                "Constituency analysis",
-                "Custom reports",
-                "Presentation tools",
-                "Bulk data export",
+                "Everything in Professional, plus:",
+                "Custom cards for your website",
+                "Constituency-level analysis",
+                "Custom feature development",
                 "Advanced API access",
+                "Usage analytics",
+                "Custom report generation",
+                "Bulk data export",
                 "Priority support",
-                "Custom training",
-                "Usage analytics"
               ].map((feature, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />

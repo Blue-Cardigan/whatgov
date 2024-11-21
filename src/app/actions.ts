@@ -12,6 +12,6 @@ export async function checkFirstVisit() {
       maxAge: 60 * 60 * 24 * 365, // 1 year
       path: '/',
     })
-    redirect('/accounts/signup')
+    redirect('/signup')
   }
 }

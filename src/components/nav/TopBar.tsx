@@ -6,12 +6,12 @@ import {
   Calendar, 
   MapPin, 
   Tags, 
-  LayoutList,
+  LandPlot,
 } from "lucide-react";
 
 interface TopBarProps {
   filters: {
-    type: string[];
+    house: string[];
     location: string[];
     days: string[];
     topics: string[];
@@ -23,9 +23,9 @@ interface TopBarProps {
 
 export const filterItems = [
   {
-    id: 'type' as const,
-    icon: LayoutList,
-    label: "Type"
+    id: 'house' as const,
+    icon: LandPlot,
+    label: "House"
   },
   {
     id: 'location' as const,

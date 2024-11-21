@@ -30,10 +30,13 @@ RETURNS TABLE (
   interest_factors TEXT,
   interest_score FLOAT,
   location TEXT,
-  party_count TEXT,
+  party_count JSONB,
   speaker_count INTEGER,
   title TEXT,
-  total_score FLOAT
+  type TEXT,
+  engagement_score FLOAT,
+  ai_comment_thread JSONB,
+  speakers TEXT[]
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -64,9 +67,12 @@ BEGIN
       d.interest_factors::text,
       d.interest_score,
       d.location,
-      d.party_count::text,
+      d.party_count,
       d.speaker_count,
       d.title,
+      d.type,
+      d.ai_comment_thread,
+      d.speakers,
       (
         COALESCE(d.ai_question_1_ayes, 0) + 
         COALESCE(d.ai_question_1_noes, 0) +
@@ -74,7 +80,7 @@ BEGIN
         COALESCE(d.ai_question_2_noes, 0) +
         COALESCE(d.ai_question_3_ayes, 0) + 
         COALESCE(d.ai_question_3_noes, 0)
-      )::float AS engagement_score
+      )::float AS total_votes
     FROM debates d
   ),
   scored_debates AS (
@@ -84,8 +90,8 @@ BEGIN
       p_cursor IS NULL 
       OR (
         debate_date < p_cursor_date
-        OR (debate_date = p_cursor_date AND engagement_score < p_cursor_score)
-        OR (debate_date = p_cursor_date AND engagement_score = p_cursor_score AND id > p_cursor)
+        OR (debate_date = p_cursor_date AND total_votes < p_cursor_score)
+        OR (debate_date = p_cursor_date AND total_votes = p_cursor_score AND id > p_cursor)
       )
     )
   )
@@ -118,11 +124,14 @@ BEGIN
     scored_debates.party_count,
     scored_debates.speaker_count,
     scored_debates.title,
-    scored_debates.engagement_score
+    scored_debates.type,
+    scored_debates.total_votes as engagement_score,
+    COALESCE(scored_debates.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
+    scored_debates.speakers
   FROM scored_debates
   ORDER BY 
     scored_debates.debate_date DESC,
-    scored_debates.engagement_score DESC,
+    scored_debates.total_votes DESC,
     scored_debates.id ASC
   LIMIT p_limit;
 END;

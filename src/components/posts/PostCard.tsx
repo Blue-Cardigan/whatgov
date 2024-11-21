@@ -10,7 +10,7 @@ import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
 import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
-import { locationColors, DEBATE_TYPES, TOPICS } from '@/lib/utils';
+import { locationColors, getDebateType, TOPICS } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface PostCardProps {
@@ -128,6 +128,11 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
   const mpSpoke = useMemo(() => 
     userMp && item.speakers?.includes(userMp)
   , [userMp, item.speakers]);
+
+  // Get debate type details
+  const debateType = useMemo(() => {
+    return getDebateType(item.type);
+  }, [item.type]);
 
   return (
     <Card 
@@ -260,16 +265,7 @@ function MetaInformation({ item }: { item: FeedItem }) {
   
   // Get debate type details
   const debateType = useMemo(() => {
-    // Check Commons types
-    const commonsType = DEBATE_TYPES.Commons.find(t => t.type === item.type);
-    if (commonsType) return commonsType;
-
-    // Check Lords types
-    const lordsType = DEBATE_TYPES.Lords.find(t => t.type === item.type);
-    if (lordsType) return lordsType;
-
-    // Return Other type if no match found
-    return DEBATE_TYPES.Other;
+    return getDebateType(item.type);
   }, [item.type]);
   
   // Get topics from ai_topics array and match with TOPICS array
@@ -297,16 +293,14 @@ function MetaInformation({ item }: { item: FeedItem }) {
         <PartyDistribution partyCount={partyCount} />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <Badge 
-          variant={debateType === DEBATE_TYPES.Other ? "outline" : "secondary"}
-          className={cn(
-            "text-xs font-normal w-fit",
-            debateType === DEBATE_TYPES.Other && "text-muted-foreground"
-          )}
-        >
-          {debateType.label}
-          {debateType === DEBATE_TYPES.Other && item.type && `: ${item.type}`}
-        </Badge>
+        {debateType && (
+          <Badge 
+            variant="secondary"
+            className="text-xs font-normal w-fit"
+          >
+            {debateType.label}
+          </Badge>
+        )}
         {topics.map(({ topic, frequency }) => topic && (
           <Badge 
             key={topic.id}

@@ -162,19 +162,77 @@ export const DEBATE_TYPES = {
   Lords: [
     { type: "Venue", label: "Lords Venue", house: "Lords" },
     { type: "New Debate", label: "New Debate", house: "Lords" },
-  ],
-  Other: {
-    type: "Other",
-    label: "Other Debate",
-    house: "Commons"
-  }
+  ]
 } as const;
+
+
+export function getDebateType(type: string): DebateType {
+  // Check Commons types
+  const commonsType = DEBATE_TYPES.Commons.find(t => t.type === type);
+  if (commonsType) return commonsType;
+  // Check Lords types
+  const lordsType = DEBATE_TYPES.Lords.find(t => t.type === type);
+  if (lordsType) return lordsType;
+
+  // If no match found, return Other type
+  return {
+    type: "Other",
+    label: "Topical Debate",
+    house: "Commons"
+  };
+}
 
 export const VALID_TYPES = [
   ...DEBATE_TYPES.Commons,
-  ...DEBATE_TYPES.Lords,
-  DEBATE_TYPES.Other
+  ...DEBATE_TYPES.Lords
 ];
+
+export const HOUSES = {
+  Commons: {
+    id: 'Commons',
+    label: 'House of Commons',
+    color: 'rgb(0, 110, 70)',
+    locations: {
+      'Commons Chamber': {
+        types: ['Main', 'Urgent Question', 'Bill Procedure', 'Opposition Day', 
+                'Question', 'Debated Motion', 'Debated Bill', 'Statement', 
+                'Business Without Debate', 'Petition', 'Generic', 'Department']
+      },
+      'Westminster Hall': {
+        types: ['Westminster Hall Debate', 'Bill Procedure', 'Debated Motion', 
+                'Debated Bill', 'Main']
+      },
+      'Written Statements': {
+        types: ['Main', 'Statement']
+      },
+      'Written Corrections': {
+        types: ['Generic', 'Department', 'Main']
+      },
+      'Public Bill Committees': {
+        types: []
+      },
+      'General Committees': {
+        types: []
+      },
+      'Petitions': {
+        types: ['Petition', 'Main']
+      }
+    }
+  },
+  Lords: {
+    id: 'Lords',
+    label: 'House of Lords',
+    color: 'rgb(163, 36, 59)',
+    locations: {
+      'Lords Chamber': {
+        types: ['Venue', 'New Debate']
+      },
+      'Grand Committee': {
+        types: ['Venue', 'New Debate']
+      }
+    }
+  }
+} as const;
 
 export const DAYS = [
   'Monday',

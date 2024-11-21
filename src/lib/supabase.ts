@@ -191,11 +191,58 @@ export type FeedCursor = {
 
 // First, add the filter types
 export interface FeedFilters {
-  type?: string[];
+  house?: string[];
   location?: string[];
   days?: string[];
   topics?: string[];
   mpOnly?: boolean;
+}
+
+// Add validation constants
+export const VALID_FILTERS = {
+  Commons: {
+    locations: {
+      'Commons Chamber': [
+        'Main', 'Urgent Question', 'Bill Procedure', 'Opposition Day',
+        'Question', 'Debated Motion', 'Debated Bill', 'Statement',
+        'Business Without Debate', 'Petition', 'Generic', 'Department'
+      ],
+      'Westminster Hall': [
+        'Westminster Hall Debate', 'Bill Procedure', 'Debated Motion',
+        'Debated Bill', 'Main'
+      ],
+      'Written Statements': ['Main', 'Statement'],
+      'Written Corrections': ['Generic', 'Department', 'Main'],
+      'Public Bill Committees': [] as string[],
+      'General Committees': [] as string[],
+      'Petitions': ['Petition', 'Main']
+    }
+  },
+  Lords: {
+    locations: {
+      'Lords Chamber': ['Venue', 'New Debate'],
+      'Grand Committee': ['Venue', 'New Debate']
+    }
+  }
+} as const;
+
+// Add helper function to validate filter combinations
+export function validateFilterCombination(
+  house: string | undefined,
+  location: string | undefined,
+  type: string | undefined
+): boolean {
+  if (!house) return true;
+  if (!location) return true;
+
+  const houseData = VALID_FILTERS[house as keyof typeof VALID_FILTERS];
+  if (!houseData) return false;
+
+  const locationData = houseData.locations[location as keyof typeof houseData.locations];
+  if (!locationData) return false;
+
+  if (!type) return true;
+  return (locationData as readonly string[]).includes(type);
 }
 
 // Update getFeedItems signature to accept filters
@@ -218,14 +265,16 @@ export async function getFeedItems(
       return { items: [] };
     }
 
-    // Prepare filter parameters
-    const filterParams = {
-      p_type: filters?.type?.length ? filters.type : null,
+    // Prepare filter parameters for authenticated users only
+    const filterParams = user ? {
+      p_house: filters?.house?.length ? filters.house : null,
       p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
       p_mp_only: filters?.mpOnly || false
-    };
+    } : {};
+
+    console.log('Filter params:', filterParams);
 
     if (user) {
       // Authenticated user flow
@@ -256,7 +305,7 @@ export async function getFeedItems(
         return processDebates(debates, pageSize);
       }
     } else {
-      // Unauthenticated user flow
+      // Unauthenticated user flow - only pass cursor-related parameters
       const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
         p_limit: pageSize + 1,
         p_cursor: cursor?.id,
@@ -431,8 +480,8 @@ function processDebates(
       ai_topics: aiTopics,
       speaker_count: debate.speaker_count || 0,
       contribution_count: debate.contribution_count || 0,
-      party_count: typeof debate.party_count === 'object' && debate.party_count
-        ? debate.party_count as PartyCount
+      party_count: typeof debate.party_count === 'object' && debate.party_count 
+        ? debate.party_count as PartyCount 
         : {},
       interest_score: debate.interest_score || 0,
       interest_factors: parseInterestFactors(debate.interest_factors),
@@ -458,6 +507,10 @@ function processDebates(
         : [],
     };
   });
+
+  for (const item of processedItems) {
+    console.log(item.type);
+  }
 
   return {
     items: processedItems,

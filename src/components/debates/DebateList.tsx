@@ -236,7 +236,7 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/accounts/signup')}
+            onClick={() => router.push('/signup')}
           >
             Create an account to continue voting
           </Button>
@@ -264,7 +264,7 @@ export function DebateList({
             <Button 
               variant="default" 
               size="sm" 
-              onClick={() => router.push('/accounts/signup')}
+              onClick={() => router.push('/signup')}
             >
               Sign up
             </Button>
@@ -300,7 +300,7 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/accounts/signup')}
+            onClick={() => router.push('/signup')}
           >
             Create an account
           </Button>

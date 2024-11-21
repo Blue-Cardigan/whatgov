@@ -63,7 +63,7 @@ const plans = [
         "Personalised feed based on your interests",
       ]}
     ],
-    cta: { text: "Start Free", href: "/accounts/signup" }
+    cta: { text: "Start Free", href: "/signup" }
   },
   {
     name: "Engaged Citizen",
@@ -101,7 +101,7 @@ const plans = [
       ]},
       { icon: <BarChart2 />, title: "Integration", items: [
         "Basic API access",
-        "View constituency-wide trends",
+        "Access constituency-wide trends",
         "Access parliamentary documents",
       ]}
     ],
@@ -114,18 +114,16 @@ const plans = [
     features: [
       { icon: <Users />, title: "Team Features", items: [
         "Everything in Professional, plus:",
-        "Custom features for your organisation",
-        "Team collaboration workspace",
-        "Shared research, notes, and report creation",
-        "Usage analytics"
+        "Custom cards for your website",
+        "Custom feature development",
       ]},
       { icon: <BarChart2 />, title: "Analysis Tools", items: [
-        "Custom report generation",
-        "Constituency analysis",
-        "Bulk data export"
+        "Constituency-level analysis",
+        "Advanced API access",
+        "Usage analytics",
       ]},
       { icon: <Database />, title: "Enterprise Support", items: [
-        "Advanced API access",
+        "Bulk data export",
         "Priority support",
         "Service level agreement"
       ]}
