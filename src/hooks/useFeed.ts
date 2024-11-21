@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { getFeedItems, type FeedCursor, FeedFilters } from '@/lib/supabase';
+import { getFeedItems, type FeedCursor } from '@/lib/supabase';
+import { FeedFilters } from '@/types';
 import { useCache } from './useCache';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +16,7 @@ export function useFeed({
   votedOnly = false, 
   pageSize = 8,
   userTopics = [],
-  filters = {}
+  filters = {} as FeedFilters
 }: UseFeedOptions = {}) {
   const { getCache, setCache, CACHE_KEYS } = useCache();
   const { user } = useAuth();

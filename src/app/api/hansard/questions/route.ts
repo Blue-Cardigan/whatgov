@@ -3,7 +3,61 @@ import { NextRequest, NextResponse } from 'next/server';
 const ORAL_QUESTIONS_API = 'https://oralquestionsandmotions-api.parliament.uk/oralquestions/list';
 const PAGE_SIZE = 100;
 
-async function fetchQuestionsPage(baseParams: URLSearchParams, skip: number): Promise<any> {
+interface Member {
+  MnisId: number;
+  PimsId: number;
+  Name: string;
+  ListAs: string;
+  Constituency: string;
+  Status: string;
+  Party: string;
+  PartyId: number;
+  PartyColour: string;
+  PhotoUrl: string;
+}
+
+interface Question {
+  Id: number;
+  QuestionType: number;
+  QuestionText: string;
+  Status: number;
+  Number: number;
+  TabledWhen: string;
+  RemovedFromToBeAskedWhen: string | null;
+  DeclarableInterestDetail: string | null;
+  HansardLink: string;
+  UIN: number;
+  AnsweringWhen: string;
+  AnsweringBodyId: number;
+  AnsweringBody: string;
+  AnsweringMinisterTitle: string;
+  AskingMember: Member;
+  AnsweringMinister: Member;
+  AskingMemberId: number;
+  AnsweringMinisterId: number;
+}
+
+interface QuestionResponse {
+  Response: Question[];
+  PagingInfo?: {
+    Skip: number;
+    Take: number;
+    Total: number;
+    GlobalTotal: number;
+    StatusCounts: never[];  // Empty array by design
+    GlobalStatusCounts: never[];  // Empty array by design
+  };
+  StatusCode?: number;
+  Success?: boolean;
+  Errors?: Error[];  // Using standard Error type
+}
+
+interface Error {
+  message: string;
+  code?: string;
+}
+
+async function fetchQuestionsPage(baseParams: URLSearchParams, skip: number): Promise<QuestionResponse> {
   const queryParams = new URLSearchParams(baseParams);
   queryParams.set('parameters.skip', skip.toString());
   queryParams.set('parameters.take', PAGE_SIZE.toString());

@@ -129,11 +129,6 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
     userMp && item.speakers?.includes(userMp)
   , [userMp, item.speakers]);
 
-  // Get debate type details
-  const debateType = useMemo(() => {
-    return getDebateType(item.type);
-  }, [item.type]);
-
   return (
     <Card 
       className="overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md" 

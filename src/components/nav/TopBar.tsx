@@ -18,6 +18,16 @@ interface TopBarProps {
 
 export const filterItems = [
   {
+    id: 'topics' as const,
+    icon: Tags,
+    label: "Topics"
+  },
+  {
+    id: 'days' as const,
+    icon: Calendar,
+    label: "Days"
+  },
+  {
     id: 'type' as const,
     icon: LayoutList,
     label: "Type"
@@ -27,16 +37,6 @@ export const filterItems = [
     icon: MapPin,
     label: "Location"
   },
-  {
-    id: 'days' as const,
-    icon: Calendar,
-    label: "Days"
-  },
-  {
-    id: 'topics' as const,
-    icon: Tags,
-    label: "Topics"
-  }
 ] as const;
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
@@ -64,6 +64,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
 
 // Helper function to omit the house property
 function omitHouse(filters: FeedFilters): Omit<FeedFilters, 'house'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { house, ...rest } = filters;
   return rest;
 } 

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: 'Learn about WhatGov\'s commitment to digital accessibility and how we ensure our service is usable by everyone.',
 };
 
-async function getAccessibilityContent() {
+async function getAccessibilityContent(): Promise<string> {
   const filePath = path.join(process.cwd(), 'src/content/accessibility.md');
   const fileContent = fs.readFileSync(filePath, 'utf8');
   return marked(fileContent);

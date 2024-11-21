@@ -26,10 +26,10 @@ export function DebateFeed() {
     pageSize: 8,
     filters: {
       ...filters,
-      type: filters.type.length ? filters.type : undefined,
-      location: filters.location.length ? filters.location : undefined,
-      days: filters.days.length ? filters.days : undefined,
-      topics: filters.topics.length ? filters.topics : undefined,
+      type: filters.type.length ? filters.type : [],
+      location: filters.location.length ? filters.location : [],
+      days: filters.days.length ? filters.days : [],
+      topics: filters.topics.length ? filters.topics : [],
     }
   });
 
