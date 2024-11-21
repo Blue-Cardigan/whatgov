@@ -1,13 +1,9 @@
 My Parliament
 - Integrate schedule
 
-Add 'frequent topics/subtopics' to MP Profile view
-
 #Optimizations
-Load more virtualized debates at once/ slow down scroll/ skeletons 
-- problem: looks janky when scrolling fast
 Reduce middleware build size for edge runtime
-Preload myparliament content (shows sign in briefly before loading)
+Show skeletons or empty in myparliament, instead of sign in
 
 
 Free Features for Signed in Users
