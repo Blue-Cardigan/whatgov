@@ -261,8 +261,7 @@ export async function getFeedItems(
         p_limit: pageSize + 1,
         p_cursor: cursor?.id,
         p_cursor_date: cursor?.date,
-        p_cursor_score: cursor?.score,
-        ...filterParams
+        p_cursor_score: cursor?.score
       });
 
       if (error) throw error;

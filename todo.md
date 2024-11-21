@@ -5,13 +5,12 @@ My Parliament
 Reduce middleware build size for edge runtime
 Show skeletons or empty in myparliament, instead of sign in
 
-
 Free Features for Signed in Users
 - Feed and unlimited votes
 - Basic voting record view
 - Basic search
 - View debate comments
-- View trends by locaiton, gender and age after info provided
+- View trends by location, gender and age after info provided
 
 Engaged Citizen Features
 - See Divisions
