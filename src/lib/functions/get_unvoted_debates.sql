@@ -5,7 +5,6 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates(
   p_cursor_date DATE DEFAULT NULL,
   p_cursor_score FLOAT DEFAULT NULL,
   p_type TEXT[] DEFAULT NULL,
-  p_house TEXT[] DEFAULT NULL,
   p_location TEXT[] DEFAULT NULL,
   p_days TEXT[] DEFAULT NULL,
   p_topics TEXT[] DEFAULT NULL,
@@ -123,17 +122,12 @@ BEGIN
       END
     )
     AND (
-      p_house IS NULL 
-      OR d.house = ANY(p_house)
+      p_type IS NULL 
+      OR d.type IS NULL 
+      OR d.type = ANY(p_type)
     )
-    AND (
-      p_location IS NULL 
-      OR d.location = ANY(p_location)
-    )
-    AND (
-      p_days IS NULL 
-      OR d.day_of_week = ANY(p_days)
-    )
+    AND (p_location IS NULL OR d.location = ANY(p_location))
+    AND (p_days IS NULL OR d.day_of_week = ANY(p_days))
     AND (
       NOT p_mp_only
       OR ut.user_mp = ANY(d.speakers)

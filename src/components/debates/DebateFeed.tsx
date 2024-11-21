@@ -4,20 +4,13 @@ import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFeed } from '@/hooks/useFeed';
 import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
-
-interface Filters {
-  type: string[];
-  location: string[];
-  days: string[];
-  topics: string[];
-  mpOnly: boolean;
-}
-
+import type { FeedFilters } from '@/types';
 export function DebateFeed() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [filters, setFilters] = useState<Filters>({
-    type: [],
+  const [filters, setFilters] = useState<FeedFilters>({
+    house: [],
     location: [],
+    type: [],
     days: [],
     topics: [],
     mpOnly: false
@@ -37,7 +30,6 @@ export function DebateFeed() {
       location: filters.location.length ? filters.location : undefined,
       days: filters.days.length ? filters.days : undefined,
       topics: filters.topics.length ? filters.topics : undefined,
-      mpOnly: filters.mpOnly
     }
   });
 

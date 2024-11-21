@@ -140,3 +140,12 @@ export interface CommentThread {
   content: string;
   parent_id: string | null;
 }
+
+export interface FeedFilters {
+  house: string[];
+  location: string[];
+  type: string[];
+  days: string[];
+  topics: string[];
+  mpOnly: boolean;
+}

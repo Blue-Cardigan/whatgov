@@ -148,28 +148,41 @@ export type DebateType = {
 
 export const DEBATE_TYPES = {
   Commons: [
-    { type: "Main", label: "Main Debate", house: "Commons" },
-    { type: "Urgent Question", label: "Urgent Question", house: "Commons" },
-    { type: "Westminster Hall Debate", label: "Westminster Hall", house: "Commons" },
-    { type: "Bill Procedure", label: "Bill Procedure", house: "Commons" },
-    { type: "Petition", label: "Petition", house: "Commons" },
-    { type: "Opposition Day", label: "Opposition Day", house: "Commons" },
-    { type: "Question", label: "Question Time", house: "Commons" },
-    { type: "Debated Motion", label: "Motion", house: "Commons" },
-    { type: "Debated Bill", label: "Bill Debate", house: "Commons" },
-    { type: "Statement", label: "Statement", house: "Commons" },
+    // Chamber debates
+    { type: "Main", label: "Main Chamber Business", house: "Commons" },
+    { type: "Question", label: "Questions", house: "Commons" },
+    { type: "Urgent Question", label: "Urgent Questions", house: "Commons" },
+    { type: "Statement", label: "Ministerial Statements", house: "Commons" },
+    { type: "Opposition Day", label: "Opposition Day Debates", house: "Commons" },
+    { type: "Debated Motion", label: "Motions", house: "Commons" },
+    { type: "Debated Bill", label: "Bill Debates", house: "Commons" },
+    { type: "Bill Procedure", label: "Bill Procedures", house: "Commons" },
+    { type: "Business Without Debate", label: "Business Without Debate", house: "Commons" },
+    { type: "Delegated Legislation", label: "Delegated Legislation", house: "Commons" },
+    { type: "Petition", label: "Petitions", house: "Commons" },
+    { type: "Department", label: "Departmental Business", house: "Commons" },
+    { type: "Generic", label: "Other Business", house: "Commons" },
+
+    // Other locations
+    { type: "Westminster Hall", label: "Westminster Hall Debates", house: "Commons" },
+    { type: "Public Bill Committees", label: "Public Bill Committees", house: "Commons" },
+    { type: "General Committees", label: "General Committees", house: "Commons" },
+    
+    // Written business
+    { type: "Written Statements", label: "Written Statements", house: "Commons" },
+    { type: "Written Corrections", label: "Written Corrections", house: "Commons" },
   ],
   Lords: [
-    { type: "Venue", label: "Lords Venue", house: "Lords" },
-    { type: "New Debate", label: "New Debate", house: "Lords" },
+    { type: "Lords Chamber", label: "Lords Chamber Business", house: "Lords" },
+    { type: "Grand Committee", label: "Grand Committee", house: "Lords" },
   ]
 } as const;
-
 
 export function getDebateType(type: string): DebateType {
   // Check Commons types
   const commonsType = DEBATE_TYPES.Commons.find(t => t.type === type);
   if (commonsType) return commonsType;
+
   // Check Lords types
   const lordsType = DEBATE_TYPES.Lords.find(t => t.type === type);
   if (lordsType) return lordsType;
@@ -177,7 +190,7 @@ export function getDebateType(type: string): DebateType {
   // If no match found, return Other type
   return {
     type: "Other",
-    label: "Topical Debate",
+    label: "General Debate",
     house: "Commons"
   };
 }
@@ -186,53 +199,6 @@ export const VALID_TYPES = [
   ...DEBATE_TYPES.Commons,
   ...DEBATE_TYPES.Lords
 ];
-
-export const HOUSES = {
-  Commons: {
-    id: 'Commons',
-    label: 'House of Commons',
-    color: 'rgb(0, 110, 70)',
-    locations: {
-      'Commons Chamber': {
-        types: ['Main', 'Urgent Question', 'Bill Procedure', 'Opposition Day', 
-                'Question', 'Debated Motion', 'Debated Bill', 'Statement', 
-                'Business Without Debate', 'Petition', 'Generic', 'Department']
-      },
-      'Westminster Hall': {
-        types: ['Westminster Hall Debate', 'Bill Procedure', 'Debated Motion', 
-                'Debated Bill', 'Main']
-      },
-      'Written Statements': {
-        types: ['Main', 'Statement']
-      },
-      'Written Corrections': {
-        types: ['Generic', 'Department', 'Main']
-      },
-      'Public Bill Committees': {
-        types: []
-      },
-      'General Committees': {
-        types: []
-      },
-      'Petitions': {
-        types: ['Petition', 'Main']
-      }
-    }
-  },
-  Lords: {
-    id: 'Lords',
-    label: 'House of Lords',
-    color: 'rgb(163, 36, 59)',
-    locations: {
-      'Lords Chamber': {
-        types: ['Venue', 'New Debate']
-      },
-      'Grand Committee': {
-        types: ['Venue', 'New Debate']
-      }
-    }
-  }
-} as const;
 
 export const DAYS = [
   'Monday',

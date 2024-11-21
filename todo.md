@@ -1,6 +1,7 @@
 Show skeletons or empty in myparliament, instead of sign in
 Move filters and schedule behind Paywall
-Implement 'how people in your area voted' 
+Ensure your MP division vote tip displays
+Implement 'how your constituency voted' 
 
 
 #Optimizations

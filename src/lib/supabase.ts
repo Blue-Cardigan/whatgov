@@ -3,7 +3,7 @@
 import { Session } from '@supabase/supabase-js';
 import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
-import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread } from '@/types'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
 import type { Database, Json } from '@/types/supabase';
 import type { UserTopicVotes, TopicVoteStats } from '@/types/VoteStats';
 export type AuthError = {
@@ -189,62 +189,6 @@ export type FeedCursor = {
   score: number;
 };
 
-// First, add the filter types
-export interface FeedFilters {
-  house?: string[];
-  location?: string[];
-  days?: string[];
-  topics?: string[];
-  mpOnly?: boolean;
-}
-
-// Add validation constants
-export const VALID_FILTERS = {
-  Commons: {
-    locations: {
-      'Commons Chamber': [
-        'Main', 'Urgent Question', 'Bill Procedure', 'Opposition Day',
-        'Question', 'Debated Motion', 'Debated Bill', 'Statement',
-        'Business Without Debate', 'Petition', 'Generic', 'Department'
-      ],
-      'Westminster Hall': [
-        'Westminster Hall Debate', 'Bill Procedure', 'Debated Motion',
-        'Debated Bill', 'Main'
-      ],
-      'Written Statements': ['Main', 'Statement'],
-      'Written Corrections': ['Generic', 'Department', 'Main'],
-      'Public Bill Committees': [] as string[],
-      'General Committees': [] as string[],
-      'Petitions': ['Petition', 'Main']
-    }
-  },
-  Lords: {
-    locations: {
-      'Lords Chamber': ['Venue', 'New Debate'],
-      'Grand Committee': ['Venue', 'New Debate']
-    }
-  }
-} as const;
-
-// Add helper function to validate filter combinations
-export function validateFilterCombination(
-  house: string | undefined,
-  location: string | undefined,
-  type: string | undefined
-): boolean {
-  if (!house) return true;
-  if (!location) return true;
-
-  const houseData = VALID_FILTERS[house as keyof typeof VALID_FILTERS];
-  if (!houseData) return false;
-
-  const locationData = houseData.locations[location as keyof typeof houseData.locations];
-  if (!locationData) return false;
-
-  if (!type) return true;
-  return (locationData as readonly string[]).includes(type);
-}
-
 // Update getFeedItems signature to accept filters
 export async function getFeedItems(
   pageSize: number = 8,
@@ -267,14 +211,12 @@ export async function getFeedItems(
 
     // Prepare filter parameters for authenticated users only
     const filterParams = user ? {
-      p_house: filters?.house?.length ? filters.house : null,
+      p_type: filters?.type?.length ? filters.type : null,
       p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
       p_mp_only: filters?.mpOnly || false
     } : {};
-
-    console.log('Filter params:', filterParams);
 
     if (user) {
       // Authenticated user flow
@@ -507,10 +449,6 @@ function processDebates(
         : [],
     };
   });
-
-  for (const item of processedItems) {
-    console.log(item.type);
-  }
 
   return {
     items: processedItems,

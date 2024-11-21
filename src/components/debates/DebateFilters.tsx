@@ -6,22 +6,60 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LucideIcon, UserIcon } from "lucide-react";
-import { locationColors, HOUSES, DAYS, TOPICS } from '@/lib/utils';
+import { locationColors, TOPICS, DAYS, DEBATE_TYPES } from '@/lib/utils';
+import type { FeedFilters } from "@/types";
 
 interface FiltersProps {
-  filters: {
-    house: string[];
-    location: string[];
-    days: string[];
-    topics: string[];
-    mpOnly: boolean;
-  };
-  onChange: (filters: FiltersProps['filters']) => void;
+  filters: Omit<FeedFilters, 'house'>;
+  onChange: (filters: Omit<FeedFilters, 'house'>) => void;
   filterItems: readonly {
-    id: keyof Omit<FiltersProps['filters'], 'mpOnly'>;
+    id: keyof Omit<Omit<FeedFilters, 'house'>, 'mpOnly'>;
     icon: LucideIcon;
     label: string;
   }[];
+}
+
+// Define the type for a mapping entry
+type LocationTypeMapping = {
+  location: string;
+  types: readonly string[];
+};
+
+// Update the constant with the type
+const LOCATION_TYPE_MAPPINGS: readonly LocationTypeMapping[] = [
+  { location: "Written Corrections", types: ["Generic", "Department", "Main"] },
+  { location: "Commons Chamber", types: ["Debated Motion", "Statement", "Business Without Debate", "Question", "Debated Bill", "Delegated Legislation", "Generic", "Petition", "Urgent Question", "Opposition Day", "Bill Procedure", "Main", "Department"] },
+  { location: "Westminster Hall", types: ["Debated Motion", "Bill Procedure", "Debated Bill", "Westminster Hall", "Main"] },
+  { location: "Public Bill Committees", types: ["Public Bill Committees"] },
+  { location: "Lords Chamber", types: ["Lords Chamber"] },
+  { location: "Written Statements", types: ["Main", "Statement"] },
+  { location: "Grand Committee", types: ["Grand Committee"] },
+  { location: "General Committees", types: ["General Committees"] },
+  { location: "Petitions", types: ["Petition", "Main"] },
+] as const;
+
+// First, let's create a type for our filters
+type FilterValues = Omit<FeedFilters, 'house'>;
+type FilterKey = keyof Omit<FilterValues, 'mpOnly'>;
+
+function getAvailableTypes(selectedLocations: string[]): string[] {
+  if (selectedLocations.length === 0) return [];
+  return [...new Set(
+    selectedLocations.flatMap(location => 
+      LOCATION_TYPE_MAPPINGS.find(m => m.location === location)?.types ?? []
+    )
+  )];
+}
+
+function getAvailableLocations(selectedTypes: string[]): string[] {
+  if (selectedTypes.length === 0) return [];
+  return [...new Set(
+    selectedTypes.flatMap(type => 
+      LOCATION_TYPE_MAPPINGS
+        .filter(m => m.types.includes(type))
+        .map(m => m.location)
+    )
+  )];
 }
 
 export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) {
@@ -42,19 +80,77 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
     return () => window.removeEventListener('resize', checkWidth);
   }, []);
 
+  // Update the handleFilterChange function with proper typing
+  const handleFilterChange = (
+    id: keyof Omit<FeedFilters, 'house' | 'mpOnly'>,
+    newValues: string[]
+  ) => {
+    const updatedFilters: Omit<FeedFilters, 'house'> = { ...filters };
+
+    if (id === 'type' || id === 'location' || id === 'days' || id === 'topics') {
+      updatedFilters[id] = newValues;
+
+      // Update related filters based on selection
+      if (id === 'location') {
+        const availableTypes = getAvailableTypes(newValues);
+        updatedFilters.type = filters.type.filter(t => availableTypes.includes(t));
+      } else if (id === 'type') {
+        const availableLocations = getAvailableLocations(newValues);
+        updatedFilters.location = filters.location.filter(l => availableLocations.includes(l));
+      }
+    }
+
+    onChange(updatedFilters);
+  };
+
   const renderFilterContent = (activeFilter: keyof FiltersProps['filters']) => {
     const renderFilterList = (
       items: { value: string; label: string; icon?: LucideIcon; color?: string }[],
-      selectedValues: string[] | undefined,
+      selectedValues: string[],
       onChange: (values: string[]) => void
     ) => {
+      let availableItems = items;
+      if (activeFilter === 'type' && filters.location.length > 0) {
+        const availableTypes = getAvailableTypes(filters.location);
+        availableItems = items.filter(item => availableTypes.includes(item.value));
+      } else if (activeFilter === 'location' && filters.type.length > 0) {
+        const availableLocations = getAvailableLocations(filters.type);
+        availableItems = items.filter(item => availableLocations.includes(item.value));
+      }
+
+      if (activeFilter === 'type') {
+        const groupedItems = availableItems.reduce((acc, item) => {
+          const debateType = [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords]
+            .find(t => t.type === item.value);
+          const house = debateType?.house || "Commons";
+          
+          if (!acc[house]) acc[house] = [];
+          acc[house].push(item);
+          return acc;
+        }, {} as Record<'Commons' | 'Lords', typeof items>);
+
+        return (
+          <div>
+            {Object.entries(groupedItems).map(([house, houseItems]) => (
+              <div key={house}>
+                <div className="px-3 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                  {house === 'Commons' ? 'House of Commons' : 'House of Lords'}
+                </div>
+                {houseItems.map(item => renderFilterItem(
+                  item,
+                  selectedValues,
+                  onChange,
+                  house as 'Commons' | 'Lords'
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      }
+
       return (
         <div>
-          {items.map(item => renderFilterItem(
-            item, 
-            selectedValues || [],
-            onChange
-          ))}
+          {availableItems.map(item => renderFilterItem(item, selectedValues, onChange))}
         </div>
       );
     };
@@ -70,7 +166,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
       onChange: (values: string[]) => void,
       house?: 'Commons' | 'Lords'
     ) => {
-      const isSelected = selectedValues?.includes(value) || false;
+      const isSelected = selectedValues.includes(value);
       
       return (
         <button 
@@ -131,49 +227,32 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
     }
 
     switch (activeFilter) {
-      case 'house':
+      case 'type':
         return renderFilterList(
-          Object.values(HOUSES).map(house => ({
-            value: house.id,
-            label: house.label,
-            color: house.color
+          [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords].map(({ type, label }) => ({
+            value: type,
+            label: label
           })),
-          filters.house,
-          (values) => {
-            const validLocations = values.flatMap(house => 
-              Object.keys(HOUSES[house as keyof typeof HOUSES].locations)
-            );
-            
-            onChange({
-              ...filters,
-              house: values,
-              location: (filters.location || []).filter(loc => validLocations.includes(loc))
-            });
-          }
+          filters.type,
+          (values) => handleFilterChange('type', values)
         );
       
       case 'location':
-        const validLocations = (filters.house || []).length > 0
-          ? filters.house.flatMap(house => 
-              Object.keys(HOUSES[house as keyof typeof HOUSES].locations)
-            )
-          : Object.keys(locationColors);
-
         return renderFilterList(
-          validLocations.map(location => ({
+          Object.entries(locationColors).map(([location, color]) => ({
             value: location,
             label: location,
-            color: locationColors[location]
+            color
           })),
           filters.location,
-          (values) => onChange({ ...filters, location: values })
+          (values) => handleFilterChange('location', values)
         );
       
       case 'days':
         return renderFilterList(
-          DAYS.map(day => ({ value: day, label: day })),
+          DAYS.map((day) => ({ value: day, label: day })),
           filters.days,
-          (values) => onChange({ ...filters, days: values })
+          (values) => handleFilterChange('days', values)
         );
       
       case 'topics':
@@ -184,7 +263,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
             icon: topic.icon
           })),
           filters.topics,
-          (values) => onChange({ ...filters, topics: values })
+          (values) => handleFilterChange('topics', values)
         );
     }
   };
@@ -225,13 +304,13 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
       </button>
 
       {filterItems.map(({ id, icon: Icon, label }) => {
-        const hasActiveFilters = Array.isArray(filters[id]) && filters[id].length > 0;
+        const hasActiveFilters = filters[id].length > 0;
         const items = getItemsForFilter(id);
         const allSelected = items.every(item => 
-          Array.isArray(filters[id]) && filters[id].includes(item.value)
+          filters[id].includes(item.value)
         );
         const someSelected = items.some(item => 
-          Array.isArray(filters[id]) && filters[id].includes(item.value)
+          filters[id].includes(item.value)
         );
         
         return (
@@ -307,10 +386,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
                     const newValues = allSelected
                       ? []
                       : items.map(item => item.value);
-                    onChange({
-                      ...filters,
-                      [id]: newValues
-                    });
+                    handleFilterChange(id, newValues);
                   }}
                   title={allSelected ? "Deselect all" : "Select all"}
                 >
@@ -329,6 +405,13 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
                 {renderFilterContent(id)}
               </ScrollArea>
 
+              {((id === 'type' && filters.location.length > 0) ||
+                (id === 'location' && filters.type.length > 0)) && (
+                <div className="px-3 py-2 text-sm text-muted-foreground border-t">
+                  Showing options available for current selection
+                </div>
+              )}
+
               {hasActiveFilters && (
                 <div className="p-2 border-t bg-muted/50">
                   <Button
@@ -336,10 +419,7 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
                     size="sm"
                     className="w-full h-8 text-xs"
                     onClick={() => {
-                      onChange({
-                        ...filters,
-                        [id]: []
-                      });
+                      handleFilterChange(id, []);
                       setOpen(prev => ({ ...prev, [id]: false }));
                     }}
                   >
@@ -358,12 +438,9 @@ export function DebateFilters({ filters, onChange, filterItems }: FiltersProps) 
 // Helper function to get items for each filter type
 function getItemsForFilter(id: string) {
   switch (id) {
-    case 'house':
-      return Object.values(HOUSES).map(house => ({ 
-        value: house.id, 
-        label: house.label,
-        color: house.color 
-      }));
+    case 'type':
+      return [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords]
+        .map(({ type, label }) => ({ value: type, label }));
     case 'location':
       return Object.entries(locationColors)
         .map(([location, color]) => ({ value: location, label: location, color }));
