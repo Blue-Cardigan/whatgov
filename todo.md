@@ -1,6 +1,7 @@
 Move filters and schedule behind Paywall
 Ensure your MP division vote tip displays
 Advanced search
+Update Engaged Citizen price
 
 #Optimizations
 Reduce middleware build size for edge runtime

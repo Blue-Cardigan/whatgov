@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +11,6 @@ import type {
   TopicStats, 
   TopicVotes 
 } from "@/types/VoteStats";
-import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import { useVotes } from "@/hooks/useVotes";

@@ -7,7 +7,6 @@ import { MenuItem } from './MenuItem';
 import { useAuth } from '../../hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { SignInPrompt } from '../ui/sign-in-prompt';
-import { Badge } from "@/components/ui/badge";
 
 const UserVoteHistory = dynamic(() => import("./YourStats").then(mod => mod.UserVoteHistory), {
   loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
@@ -109,7 +108,11 @@ export function MyParliament() {
             isActive={item.id === activeTab}
             onSelect={() => {
               if (!item.isDisabled) {
-                item.isPremium ? window.location.href = '/pricing' : setActiveTab(item.id);
+                if (item.isPremium) {
+                  window.location.href = '/pricing';
+                } else {
+                  setActiveTab(item.id);
+                }
               }
             }}
           />
