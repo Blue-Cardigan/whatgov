@@ -47,6 +47,37 @@ export interface PartyCount {
   [key: string]: number | undefined;
 }
 
+
+export type MPData = {
+  member_id: number;
+  display_as: string;
+  full_title: string;
+  gender: string;
+  party: string;
+  constituency: string;
+  house_start_date: string;
+  constituency_country: string | null;
+  twfy_image_url: string | null;
+  email: string | null;
+  age: number | null;
+  department: string | null;
+  ministerial_ranking: number | null;
+  media: {
+    twitter?: string;
+    facebook?: string;
+  } | null;
+};
+
+export type MPKeyPoint = {
+  debate_id: string;
+  debate_title: string;
+  debate_date: string;
+  point: string;
+  point_type: 'made' | 'supported' | 'opposed';
+  original_speaker: string | null;
+  ai_topics: AiTopics;
+};
+
 export type KeyPoint = {
   point: string;
   speaker: string;

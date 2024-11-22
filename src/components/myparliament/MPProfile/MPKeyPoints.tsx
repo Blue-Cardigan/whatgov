@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import type { MPKeyPoint } from "@/lib/supabase";
+import type { MPKeyPoint } from "@/types";
 
 interface MPKeyPointsProps {
   keyPoints: MPKeyPoint[];

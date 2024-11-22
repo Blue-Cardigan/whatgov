@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { MPData } from "@/lib/supabase";
+import type { MPData } from "@/types";
 import { partyColours } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";

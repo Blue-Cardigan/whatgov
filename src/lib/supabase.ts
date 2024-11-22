@@ -3,39 +3,10 @@
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { VoteData, DemographicGroup, RawTopicStats, RawUserVotingStats, RawDemographicStats } from '@/types/VoteStats';
+import type { RawTopicStats, RawUserVotingStats, RawDemographicStats } from '@/types/VoteStats';
 import type { AuthResponse, UserProfile } from '@/types/supabase';
 import { User } from '@supabase/supabase-js';
-
-export type MPData = {
-  member_id: number;
-  display_as: string;
-  full_title: string;
-  gender: string;
-  party: string;
-  constituency: string;
-  house_start_date: string;
-  constituency_country: string | null;
-  twfy_image_url: string | null;
-  email: string | null;
-  age: number | null;
-  department: string | null;
-  ministerial_ranking: number | null;
-  media: {
-    twitter?: string;
-    facebook?: string;
-  } | null;
-};
-
-export type MPKeyPoint = {
-  debate_id: string;
-  debate_title: string;
-  debate_date: string;
-  point: string;
-  point_type: 'made' | 'supported' | 'opposed';
-  original_speaker: string | null;
-  ai_topics: AiTopics;
-};
+import { MPData, MPKeyPoint } from '@/types';
 
 const getSupabase = () => createClient()
 

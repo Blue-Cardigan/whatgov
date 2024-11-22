@@ -16,7 +16,7 @@ const MPProfile = dynamic(() => import("./MPProfile").then(mod => mod.MPProfile)
 const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mod.UpcomingDebates));
 
 export function MyParliament() {
-  const [activeTab, setActiveTab] = useState("activity");
+  const [activeTab, setActiveTab] = useState("mp");
   const { loading: authLoading, user } = useAuth();
 
   // Show a loading state for the entire dashboard while auth initializes

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Mail, Facebook, Twitter } from "lucide-react";
-import type { MPData } from "@/lib/supabase";
+import type { MPData } from "@/types";
 
 interface MPLinksProps {
   mpData: MPData;

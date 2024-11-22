@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { getMPData, getMPKeyPoints, type MPKeyPoint } from "@/lib/supabase";
-import type { MPData } from "@/lib/supabase";
+import { getMPData, getMPKeyPoints } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { MPProfileCard } from "./MPProfileCard";
@@ -11,7 +10,7 @@ import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { MPTopics } from "./MPTopics";
-import { AiTopic } from "@/types";
+import { AiTopic, MPData, MPKeyPoint } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function MPProfileSkeleton() {
@@ -52,6 +51,7 @@ export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
   const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
   const [topics, setTopics] = useState<AiTopic[]>([]);
+  const [totalMentions, setTotalMentions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { profile, isEngagedCitizen } = useAuth();
@@ -98,9 +98,14 @@ export function MPProfile() {
               });
             }
           });
+          
           const sortedTopics = Array.from(topicsMap.values())
             .sort((a, b) => b.frequency - a.frequency);
+          
+          const total = sortedTopics.reduce((sum, topic) => sum + topic.frequency, 0);
+          
           setTopics(sortedTopics);
+          setTotalMentions(total);
         }
         setKeyPoints(points);
       } catch (e) {
@@ -143,7 +148,7 @@ export function MPProfile() {
         <MPLinks mpData={mpData} />
         {isEngagedCitizen ? (
           <>
-            {topics.length > 0 && <MPTopics topics={topics} />}
+            {topics.length > 0 && <MPTopics topics={topics} totalMentions={totalMentions} />}
             {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
           </>
         ) : (
