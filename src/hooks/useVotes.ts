@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, useQuery, UseQueryOptions, QueryKey } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats } from '@/lib/supabase';
 import { FeedItem } from '@/types';
 import { useAuth } from './useAuth';
@@ -7,8 +7,6 @@ import type {
   UserTopicStats, 
   DemographicStats, 
   VoteData,
-  TopQuestion,
-  VoteHistoryEntry,
   TopicStatsEntry,
   UserTopicStatsEntry
 } from '@/types/VoteStats';
@@ -30,12 +28,6 @@ interface UseVotesReturn {
   userTopicVotes: UserTopicStats | undefined;
   demographicStats: DemographicStats | undefined;
   isLoading: boolean;
-}
-
-// Add type for the query cache
-interface VoteCache {
-  votes: Map<string, Map<number, boolean>>;
-  feed: QueryData;
 }
 
 // Add type for raw response data
@@ -149,7 +141,7 @@ const isRawTopicStats = (data: unknown): data is RawTopicStats => {
     }
 
     // Make other properties optional
-    const t = topic as any;
+    const t = topic as Record<string, unknown>;
     
     // Check arrays if they exist
     if (t.top_questions && !Array.isArray(t.top_questions)) return false;

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn, DAYS, DEBATE_TYPES, TOPICS, locationColors } from "@/lib/utils";
-import type { ArrayFilterItem, BooleanFilterItem, FeedFilters, FilterItem } from "@/types";
+import type { ArrayFilterItem, BooleanFilterItem, FeedFilters } from "@/types";
 import { DebateFilters } from "../debates/DebateFilters";
 import { 
   Calendar, 
@@ -116,7 +116,6 @@ export const booleanFilters = [
 export function TopBar({ filters, onChange, className }: TopBarProps) {
   const { isEngagedCitizen, user, profile } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<typeof filterItems[number] | null>(null);
   const router = useRouter();
   const supabase = useSupabase();
 
@@ -134,11 +133,11 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
 
     // If user is not subscribed, ignore all other filters except mpOnly
     if (!isEngagedCitizen) {
-      const { mpOnly, divisionsOnly, ...rest } = updatedFilters;
+      const { mpOnly } = updatedFilters;
       onChange({
         ...filters,
         mpOnly,
-        divisionsOnly: false,  // Ensure divisions filter is off for non-subscribers
+        divisionsOnly: false,
         type: [],
         location: [],
         days: [],
@@ -257,9 +256,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
           <DialogDescription asChild>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                {selectedFilter 
-                  ? `Get access to ${selectedFilter.label.toLowerCase()} filters and more with an Engaged Citizen subscription.`
-                  : "Access all advanced filtering options with an Engaged Citizen subscription."}
+                Access all advanced filtering options with an Engaged Citizen subscription.
               </p>
 
               <Card>

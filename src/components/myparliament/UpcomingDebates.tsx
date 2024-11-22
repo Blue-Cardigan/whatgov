@@ -121,11 +121,11 @@ function EmptyState({
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
             {showNextWeek ? (
               <>
-                There are no oral questions scheduled for next week yet. Check back later or view this week's questions.
+                There are no oral questions scheduled for next week yet. Check back later or view this week&apos;s questions.
               </>
             ) : (
               <>
-                There are no more oral questions scheduled for this week. Try checking next week's schedule.
+                There are no more oral questions scheduled for this week. Try checking next week&apos;s schedule.
               </>
             )}
           </p>
@@ -352,8 +352,12 @@ export function UpcomingDebates() {
       error: query.error,
       actualWeek: requestedWeek
     };
-  }, [requestedWeek, currentWeekQuery.data, nextWeekQuery.data, 
-      currentWeekQuery.isLoading, nextWeekQuery.isLoading, autoSwitchedToNext]);
+  }, [
+    requestedWeek,
+    currentWeekQuery,
+    nextWeekQuery,
+    autoSwitchedToNext
+  ]);
 
   // 6. Event handlers
   const toggleWeek = () => {
@@ -384,14 +388,14 @@ export function UpcomingDebates() {
     <div className="flex justify-between items-center">
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {actualWeek === 'next' ? "Next Week's Questions" : "This Week's Questions"}
+          {actualWeek === 'next' ? "Next Week&apos;s Questions" : "This Week&apos;s Questions"}
         </h2>
         <p className="text-sm text-muted-foreground">
           Scheduled oral questions in the House of Commons
           {autoSwitchedToNext && requestedWeek === 'current' && (
             <span className="ml-2 inline-flex items-center gap-1.5 text-amber-500 font-medium">
               <AlertCircle className="h-4 w-4" />
-              No more questions this week - showing next week's schedule
+              No more questions this week - showing next week&apos;s schedule
             </span>
           )}
         </p>

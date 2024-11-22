@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import type { AiTopic } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Minus, Users, Hash, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TOPICS } from "@/lib/utils";

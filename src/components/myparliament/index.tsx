@@ -4,7 +4,6 @@ import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
-import { useAuth } from '@/hooks/useAuth';
 import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {

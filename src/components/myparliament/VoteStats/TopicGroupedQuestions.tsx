@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { TOPICS } from "@/lib/utils";
 import { QuestionCard } from "./QuestionCard";
 import type { TopicStats } from "@/types/VoteStats";
@@ -8,10 +7,19 @@ interface TopicGroupedQuestionsProps {
   sortBy: 'votes' | 'recent' | 'agreement';
 }
 
+interface Question {
+  question: string;  // The actual question text
+  topic: string;
+  aye_votes: number;
+  no_votes: number;
+  total_votes: number;
+  created_at?: string;
+}
+
 export function TopicGroupedQuestions({ topicVoteStats, sortBy }: TopicGroupedQuestionsProps) {
   if (!topicVoteStats) return null;
 
-  const sortQuestions = (questions: any[]) => {
+  const sortQuestions = (questions: Question[]) => {
     return questions.sort((a, b) => {
       switch (sortBy) {
         case 'votes':
@@ -55,7 +63,7 @@ export function TopicGroupedQuestions({ topicVoteStats, sortBy }: TopicGroupedQu
                   ...q,
                   topic: topicName,
                   total_votes: q.aye_votes + q.no_votes
-                }))).map((question, idx) => (
+                } as Question))).map((question, idx) => (
                   <QuestionCard
                     key={idx}
                     question={question}

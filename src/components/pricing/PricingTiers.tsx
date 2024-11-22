@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { PLANS } from '@/lib/stripe-client';
 import { useEffect } from 'react';
-import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { Suspense } from 'react';
 
 const tiers = [

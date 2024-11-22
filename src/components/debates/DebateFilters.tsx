@@ -6,12 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check, CheckCheck, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserIcon } from "lucide-react";
-import { locationColors, TOPICS, DAYS, DEBATE_TYPES } from '@/lib/utils';
+import { DEBATE_TYPES } from '@/lib/utils';
 import { useAuth } from "@/hooks/useAuth";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Vote } from "lucide-react";
-import { LayoutList, MapPin, Calendar } from "lucide-react";
 
 interface FiltersProps {
   filters: Omit<FeedFilters, 'house'>;
@@ -57,48 +56,6 @@ function getAvailableLocations(selectedTypes: string[]): string[] {
         .map(m => m.location)
     )
   )];
-}
-
-// First, let's properly type the getItemsForFilter function
-type FilterOption = {
-  value: string;
-  label: string;
-  icon?: LucideIcon;
-  color?: string;
-};
-
-function getItemsForFilter(id: FilterId): FilterOption[] {
-  switch (id) {
-    case 'type':
-      return [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords]
-        .map(({ type, label }) => ({ 
-          value: type, 
-          label,
-          icon: LayoutList
-        }));
-    case 'location':
-      return Object.entries(locationColors)
-        .map(([location, color]) => ({ 
-          value: location, 
-          label: location, 
-          color,
-          icon: MapPin
-        }));
-    case 'days':
-      return DAYS.map((day) => ({ 
-        value: day, 
-        label: day,
-        icon: Calendar
-      }));
-    case 'topics':
-      return TOPICS.map((topic) => ({
-        value: topic.id,
-        label: topic.label,
-        icon: topic.icon
-      }));
-    default:
-      return [];
-  }
 }
 
 // Then, let's fix the filter type checking
@@ -168,7 +125,7 @@ export function DebateFilters({
   isEnabled
 }: FiltersProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
-  const [isMobile, setIsMobile] = useState(true);
+  const [isMobile] = useState(true);
   const { user, profile } = useAuth();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
