@@ -114,7 +114,7 @@ export const booleanFilters = [
 ] satisfies BooleanFilterItem[];
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
-  const { isEngagedCitizen, user, profile } = useAuth();
+  const { isEngagedCitizen, user, profile, getAuthHeader } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const router = useRouter();
   const supabase = useSupabase();
@@ -156,36 +156,23 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
   const handleSubscribe = async () => {
     if (!user) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to subscribe to a plan",
-        variant: "destructive",
+        title: "Sign in to upgrade",
+        description: "Please sign in to upgrade to a plan",
+        variant: "default",
       });
       router.push('/login');
       return;
     }
 
     try {
-      const { data: { user: authenticatedUser }, error: userError } = 
-        await supabase.auth.getUser();
+      const token = await getAuthHeader();
       
-      if (userError || !authenticatedUser) {
-        console.error('Authentication error:', userError);
-        toast({
-          title: "Authentication error",
-          description: "Please sign in again",
-          variant: "destructive",
-        });
-        await supabase.auth.signOut();
-        router.push('/login');
-        return;
-      }
-
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authenticatedUser.id}`,
-          'Idempotency-Key': `${authenticatedUser.id}-${Date.now()}`,
+          'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': `${user.id}-${Date.now()}`,
         },
         body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
       });
@@ -222,28 +209,6 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
           filterItems={[...filterItems, ...booleanFilters]}
           isEnabled={isEngagedCitizen}
         />
-        
-        {/* Premium feature hint */}
-        {!isEngagedCitizen && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full mt-2 text-muted-foreground hover:text-primary"
-                  onClick={() => setShowUpgradeDialog(true)}
-                >
-                  <Lock className="w-3 h-3 mr-1" />
-                  More Filters
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Upgrade to Engaged Citizen to access all filters
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
       </div>
 
       {/* Upgrade Dialog */}

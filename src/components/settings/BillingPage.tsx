@@ -30,18 +30,29 @@ interface BillingPageProps {
 }
 
 export default function BillingPage({ className }: BillingPageProps) {
-  const { user, subscription } = useAuth();
+  const { user, subscription, getAuthHeader } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleManageSubscription = async () => {
     try {
       setIsLoading(true);
+      const authHeader = await getAuthHeader();
+      
       const response = await fetch('/api/stripe/create-portal', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authHeader}`,
+        },
+        credentials: 'include',
       });
       
+      if (response.status === 401) {
+        throw new Error('Please sign in to access billing');
+      }
+      
       if (!response.ok) {
-        throw new Error('Failed to access billing portal');
+        const error = await response.text();
+        throw new Error(error || 'Failed to access billing portal');
       }
       
       const { url } = await response.json();
@@ -53,7 +64,7 @@ export default function BillingPage({ className }: BillingPageProps) {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Unable to access billing portal. Please try again.",
+        description: error instanceof Error ? error.message : "Unable to access billing portal",
         variant: "destructive",
       });
       console.error('Billing portal error:', error);

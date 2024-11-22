@@ -138,13 +138,18 @@ export function DebateList({
       return measurementCache.current.compact.get(item.id)!;
     }
 
-    // Base estimation
-    const baseHeight = 250;
-    const questionsHeight = (item.ai_question_1 ? 150 : 0) + 
-                          (item.ai_question_2 ? 150 : 0) + 
-                          (item.ai_question_3 ? 150 : 0);
+    // More generous base estimation
+    const baseHeight = 300; // Increased from 250
+    const questionsHeight = (item.ai_question_1 ? 200 : 0) + 
+                          (item.ai_question_2 ? 200 : 0) + 
+                          (item.ai_question_3 ? 200 : 0);
     
-    return isExpanded ? baseHeight + questionsHeight + 300 : baseHeight + questionsHeight;
+    // Add extra height for divisions if present
+    const divisionsHeight = item.divisions?.length ? 400 : 0;
+    
+    return isExpanded 
+      ? baseHeight + questionsHeight + divisionsHeight + 300 
+      : baseHeight + questionsHeight + divisionsHeight;
   }, [items]);
 
   // Virtualizer configuration

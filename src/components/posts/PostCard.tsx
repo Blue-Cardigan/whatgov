@@ -131,7 +131,10 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
 
   return (
     <Card 
-      className="overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md" 
+      className={cn(
+        "overflow-visible relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
+        "min-h-[150px]"
+      )}
       style={{ 
         borderLeftColor: locationColors[item.location] || '#2b2b2b',
         borderLeftStyle: 'solid',
@@ -166,7 +169,10 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
       <div 
         {...swipeHandlers}
         ref={scrollRef}
-        className="flex w-full overflow-x-auto snap-x snap-mandatory scrollbar-none"
+        className={cn(
+          "flex w-full snap-x snap-mandatory scrollbar-none",
+          "overflow-visible"
+        )}
         style={{ 
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
@@ -180,6 +186,7 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
             key="division" 
             className="w-full flex-none snap-center"
             ref={activeSlide === 'division' ? firstContentRef : undefined}
+            layout
           >
             <DivisionContent 
               division={item.divisions![currentDivisionIndex]}
@@ -193,6 +200,7 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
           key="debate" 
           className="w-full flex-none snap-center"
           ref={!hasDivisions && activeSlide === 'debate' ? firstContentRef : undefined}
+          layout
         >
           <DebateContent 
             debate={item}

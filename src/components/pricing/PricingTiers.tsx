@@ -27,12 +27,12 @@ const tiers = [
     price: "Free",
     icon: Building2,
     features: [
-      "Unlimited votes on key questions",
+      "Unlimited votes across all parliamentary debates",
       "See MPs battle it out in the comments",
-      "View basic MP profiles",
-      "Parliamentary calendar and upcoming debates",
+      "View your MP's profile",
+      "View your constituency's voting record",
+      "See upcoming questions to Parliament",
       "Basic debate search and filtering",
-      "Personalised feed based on your interests",
     ],
     color: "text-blue-500",
     bgColor: "bg-blue-50 dark:bg-blue-500/10",
@@ -45,11 +45,10 @@ const tiers = [
     icon: Crown,
     features: [
       "See how MPs voted in Parliamentary Divisions",
-      "Track what your MP says in Parliament",
-      "View your voting analytics",
       "Filter your feed by day, type, and topic",
+      "Track what your MP talks about in debates",
+      "Access advanced voting analytics",
       "Advanced Hansard search capabilities",
-      "See what's coming up in Parliament",
     ],
     color: "text-purple-500",
     bgColor: "bg-purple-50 dark:bg-purple-500/10",
@@ -104,8 +103,8 @@ function PricingContent() {
     if (!user) {
       toast({
         title: "Sign in required",
-        description: "Please sign in to subscribe to a plan",
-        variant: "destructive",
+        description: "Please sign in to upgrade to a plan",
+        variant: "default",
       });
       router.push('/login');
       return;

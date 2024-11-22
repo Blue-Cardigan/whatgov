@@ -5,6 +5,10 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
 import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
+import { PLANS } from '@/lib/stripe-client';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
   loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
@@ -15,6 +19,49 @@ const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mo
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("mp");
+  const { user, getAuthHeader } = useAuth();
+  const router = useRouter();
+
+  const handlePremiumFeature = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to access premium features",
+        variant: "default",
+      });
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const token = await getAuthHeader();
+      
+      const response = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': `${user.id}-${Date.now()}`,
+        },
+        body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const { url, sessionId } = await response.json();
+      if (!url) throw new Error('No checkout URL received');
+      
+      localStorage.setItem('checkoutSessionId', sessionId);
+      window.location.href = url;
+    } catch (error) {
+      console.error('Subscription error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
 
   const menuItems = [
     {
@@ -74,7 +121,7 @@ export function MyParliament() {
               onSelect={() => {
                 if (!item.isDisabled) {
                   if (item.isPremium) {
-                    window.location.href = '/pricing';
+                    handlePremiumFeature();
                   } else {
                     setActiveTab(item.id);
                   }
@@ -85,7 +132,7 @@ export function MyParliament() {
         </div>
 
         {/* Content Area */}
-        <div className="bg-card rounded-lg p-4 mt-6">
+        <div className="bg-card rounded-lg p-0 mt-6">
           {activeTab === "activity" && <VoteStats />}
           {activeTab === "mp" && <MPProfile />}
           {activeTab === "upcoming" && <UpcomingDebates />}

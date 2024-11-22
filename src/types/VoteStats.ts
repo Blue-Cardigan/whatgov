@@ -1,3 +1,5 @@
+import { submitVote } from "@/lib/supabase";
+
 // Core Question Types
 export interface TopicQuestion {
   text: string;
@@ -78,15 +80,51 @@ export interface ConstituencyStats {
   no_votes: number;
 }
 
+export interface QuestionStats {
+  question: string;
+  total_votes: number;
+  aye_votes: number;
+  no_votes: number;
+  debate_id: string;
+  created_at: string;
+  topic: string;
+}
+
+export interface DemographicBreakdown {
+  total_votes: number;
+  aye_percentage: number;
+  questions: QuestionStats[];
+}
+
+export interface ConstituencyStats {
+  total_votes: number;
+  aye_votes: number;
+  no_votes: number;
+  questions: QuestionStats[];
+}
+
 export interface DemographicStats {
-  userDemographics: {
-    constituency?: string;
-    gender?: string;
-    age_group?: string;
+  user_demographics: {
+    constituency: string | null;
+    gender: string | null;
+    age_group: string | null;
   };
-  gender_breakdown: Record<string, DemographicGroup>;
-  age_breakdown: Record<string, DemographicGroup>;
-  constituency_breakdown: Record<string, ConstituencyStats>;
+  gender_breakdown: Record<string, {
+    total_votes: number;
+    aye_percentage: number;
+    questions: QuestionStats[];
+  }>;
+  age_breakdown: Record<string, {
+    total_votes: number;
+    aye_percentage: number;
+    questions: QuestionStats[];
+  }>;
+  constituency_breakdown: Record<string, {
+    total_votes: number;
+    aye_votes: number;
+    no_votes: number;
+    questions: QuestionStats[];
+  }>;
 }
 
 export interface UserTopicStatsEntry extends BaseStats {
@@ -148,27 +186,6 @@ export interface RawUserVotingStats {
   }>;
 }
 
-export interface RawDemographicStats {
-  user_demographics: {
-    constituency?: string;
-    gender?: string;
-    age_group?: string;
-  };
-  gender_breakdown: Record<string, {
-    total_votes: string | number;
-    aye_percentage: string | number;
-  }>;
-  age_breakdown: Record<string, {
-    total_votes: string | number;
-    aye_percentage: string | number;
-  }>;
-  constituency_breakdown: Record<string, {
-    total_votes: string | number;
-    aye_votes: string | number;
-    no_votes: string | number;
-  }>;
-}
-
 export interface TopicWithName extends TopicStatsEntry {
   name: string;
   engagement_score: number;
@@ -176,3 +193,47 @@ export interface TopicWithName extends TopicStatsEntry {
   consistency_score: number;
 }
 
+
+// Add type for the hook's return value
+export interface UseVotesReturn {
+  submitVote: (voteData: Parameters<typeof submitVote>[0]) => void;
+  hasVoted: (debate_id: string, question_number: number) => boolean;
+  topicVoteStats: TopicStats | undefined;
+  userTopicVotes: UserTopicStats | undefined;
+  demographicStats: DemographicStats | undefined;
+  isLoading: boolean;
+}
+
+// Define the props interface for the DemographicComparison component
+export interface DemographicComparisonProps {
+  userDemographics?: {
+    constituency: string | null;
+    gender: string | null;
+    age_group: string | null;
+  };
+  constituencyStats?: {
+    total_votes: number;
+    aye_votes: number;
+    no_votes: number;
+  };
+  demographicComparison?: {
+    gender: Record<string, {
+      total_votes: number;
+      aye_percentage: number;
+      questions: QuestionStats[];
+    }>;
+    age_group: Record<string, {
+      total_votes: number;
+      aye_percentage: number;
+      questions: QuestionStats[];
+    }>;
+  };
+  constituencyBreakdown?: Record<string, {
+    total_votes: number;
+    aye_votes: number;
+    no_votes: number;
+    questions: QuestionStats[];
+  }>;
+  isOverview?: boolean;
+  showUpgradePrompt?: boolean;
+}

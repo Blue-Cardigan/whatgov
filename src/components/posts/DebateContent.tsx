@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useMemo } from 'react';
 import { cn } from "@/lib/utils";
+import { fadeIn, slideIn } from './animations';
 
 interface BaseContentProps {
   isActive?: boolean;
@@ -70,39 +71,46 @@ export function DebateContent({
     const questionCount = questions.length;
     const summaryLength = summaryPoints.length;
     
-    // Maintain the same spacing logic
-    const questionSpacing = Math.max(1, Math.floor(summaryLength / (questionCount + 1)));
+    // Adjust spacing based on whether there are questions
+    const hasQuestions = questionCount > 0;
+    const questionSpacing = hasQuestions 
+      ? Math.max(1, Math.floor(summaryLength / (questionCount + 1)))
+      : summaryLength; // If no questions, use full length
     
     let questionIndex = 0;
     let summaryIndex = 0;
 
-    // Keep the same interleaving logic
     while (summaryIndex < summaryLength || questionIndex < questionCount) {
+      // Add summary point with dynamic spacing
       if (summaryIndex < summaryLength) {
         contentBlocks.push({
           type: 'summary' as const,
           text: summaryPoints[summaryIndex],
-          question: null
+          question: null,
+          isLastInSection: !hasQuestions || 
+            (summaryIndex === summaryLength - 1 && questionIndex >= questionCount)
         });
         summaryIndex++;
       }
 
-      if (questionIndex < questionCount && 
+      // Add question with dynamic spacing
+      if (hasQuestions && 
+          questionIndex < questionCount && 
           (summaryIndex % questionSpacing === 0 || summaryIndex === summaryLength)) {
         const questionData = questions[questionIndex];
-        // Only show if it's the current question
         if (questionData && questionData.number === currentQuestion) {
           contentBlocks.push({
             type: 'question' as const,
             text: '',
-            question: questionData
+            question: questionData,
+            isLastInSection: questionIndex === questionCount - 1
           });
         } else {
-          // Add a placeholder to maintain spacing
           contentBlocks.push({
             type: 'placeholder' as const,
             text: '',
-            question: null
+            question: null,
+            isLastInSection: false
           });
         }
         questionIndex++;
@@ -133,27 +141,37 @@ export function DebateContent({
   }, [findNextQuestion]);
 
   return (
-    <CardContent className={cn("space-y-4 flex flex-col", className)}>
+    <CardContent 
+      className={cn(
+        "relative",
+        content.some(item => item.type === 'question') ? "pb-4" : "pb-2",
+        className
+      )}
+    >
       <motion.div
-        className="space-y-4 flex-1"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
+        className="relative"
+        {...fadeIn}
       >
         {content.map((item, index) => (
           <motion.div 
             key={index}
             className={cn(
-              "space-y-3",
-              item.type === 'question' && "pl-4 border-l-2 border-muted"
+              item.type === 'question' ? "my-3" : "my-1",
+              item.type === 'question' && "pl-4 border-l-2 border-muted",
+              item.type === 'summary' && !item.isLastInSection && "mb-1",
+              item.type === 'question' && "mt-2",
+              "relative"
             )}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            {...slideIn}
+            transition={{ delay: index * 0.05 }}
           >
             {item.type === 'summary' && item.text && (
-              <div className="prose prose-lg max-w-none">
-                <p className="text-muted-foreground leading-relaxed">
+              <div className={cn(
+                "prose max-w-none",
+                "break-words",
+                item.text.length > 200 ? "prose-sm" : "prose-base"
+              )}>
+                <p className="text-muted-foreground leading-relaxed m-0">
                   {item.text}
                 </p>
               </div>
@@ -172,7 +190,8 @@ export function DebateContent({
             )}
 
             {item.type === 'placeholder' && (
-              <div className="h-4 flex-shrink-0" />
+              content.some(i => i.type === 'question') ? 
+                <div className="h-2" /> : null
             )}
           </motion.div>
         ))}
@@ -180,11 +199,10 @@ export function DebateContent({
 
       {hasReachedLimit && (
         <motion.div 
-          className="flex justify-between items-center text-xs text-muted-foreground mt-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-background/80 backdrop-blur-sm"
+          {...fadeIn}
         >
-          <span className="text-yellow-600">
+          <span className="text-yellow-600 text-xs">
             Daily voting limit reached
           </span>
         </motion.div>
@@ -214,32 +232,35 @@ function Question({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
-      className="rounded-lg border p-3 space-y-2 bg-muted/50 shadow-sm relative"
+      className="rounded-lg border bg-muted/50 shadow-sm relative"
     >
-      {!readOnly && !hasReachedLimit && (
-        <button
-          onClick={() => onSkip(number)}
-          className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Skip
-        </button>
-      )}
-      <p className="text-base leading-relaxed pr-12">
-        {question}
-      </p>
-      
-      {!readOnly && !hasReachedLimit && (
-        <motion.div
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <VoteButtons 
-            onVote={onVote}
-            questionNumber={number} 
-          />
-        </motion.div>
-      )}
+      <div className="p-3">
+        {!readOnly && !hasReachedLimit && (
+          <button
+            onClick={() => onSkip(number)}
+            className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Skip
+          </button>
+        )}
+        <p className="text-base leading-relaxed pr-12 m-0">
+          {question}
+        </p>
+        
+        {!readOnly && !hasReachedLimit && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mt-2"
+          >
+            <VoteButtons 
+              onVote={onVote}
+              questionNumber={number} 
+            />
+          </motion.div>
+        )}
+      </div>
     </motion.div>
   );
 }

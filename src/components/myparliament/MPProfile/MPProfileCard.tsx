@@ -23,10 +23,12 @@ interface ProfileDetailProps {
 
 function ProfileDetail({ icon, label, value }: ProfileDetailProps) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="text-muted-foreground">{icon}</div>
-      <span className="font-medium min-w-24 text-muted-foreground">{label}:</span>
-      <span className="flex-1">{value}</span>
+    <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 sm:items-center">
+      <div className="flex items-center gap-2">
+        <div className="text-muted-foreground">{icon}</div>
+        <span className="font-medium text-muted-foreground">{label}:</span>
+      </div>
+      <span className="ml-6 sm:ml-0">{value}</span>
     </div>
   );
 }
@@ -93,9 +95,9 @@ export function MPProfileCard({ mpData }: MPProfileCardProps) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
-      {/* Image Section - centered on mobile, left-aligned on desktop */}
-      <div className="relative mx-auto sm:mx-0 w-36 h-48 shrink-0">
+    <div className="flex flex-col sm:flex-row gap-5 sm:gap-6">
+      {/* Image Section - improved mobile sizing */}
+      <div className="relative mx-auto sm:mx-0 w-40 sm:w-36 h-52 sm:h-48 shrink-0">
         {mpData.twfy_image_url ? (
           <div className="relative w-full h-full">
             <Image
@@ -116,21 +118,21 @@ export function MPProfileCard({ mpData }: MPProfileCardProps) {
         )}
       </div>
       
-      {/* Details Section - adjusted spacing */}
+      {/* Details Section - better spacing */}
       <div className="flex-1 space-y-4">
-        {/* Header - centered on mobile */}
-        <div className="space-y-2 text-center sm:text-left">
-          <div className="space-y-1">
+        {/* Header - improved spacing */}
+        <div className="space-y-2.5 text-center sm:text-left">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-2">
-              <h2 className="text-2xl font-bold tracking-tight">{mpData.display_as}</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{mpData.display_as}</h2>
               {mpData.ministerial_ranking && (
                 <MinisterialBadge rank={mpData.ministerial_ranking.toString()} />
               )}
             </div>
-            <p className="text-lg text-muted-foreground">{mpData.full_title}</p>
+            <p className="text-base sm:text-lg text-muted-foreground">{mpData.full_title}</p>
           </div>
           
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
             <Badge 
               variant="outline" 
               style={getPartyBadgeStyle(mpData.party)}
@@ -145,16 +147,16 @@ export function MPProfileCard({ mpData }: MPProfileCardProps) {
           </div>
         </div>
 
-        {/* Main Details - left-aligned always */}
-        <div className="space-y-3 pt-4 border-t">
+        {/* Main Details - improved spacing */}
+        <div className="space-y-3 pt-3 border-t">
           <ProfileDetail
             icon={<MapPin className="h-4 w-4" />}
             label="Constituency"
             value={
-              <span>
+              <span className="break-words">
                 {mpData.constituency}
                 {mpData.constituency_country && 
-                  <span className="text-sm text-muted-foreground ml-2">
+                  <span className="text-sm text-muted-foreground block sm:inline sm:ml-2">
                     ({mpData.constituency_country})
                   </span>
                 }

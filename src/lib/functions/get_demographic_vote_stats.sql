@@ -13,7 +13,15 @@ begin
       up.age,
       up.constituency,
       d.ai_topics,
-      d.id as debate_id
+      d.id as debate_id,
+      d.title,
+      coalesce(
+        nullif(d.ai_question_1, ''),
+        nullif(d.ai_question_2, ''),
+        nullif(d.ai_question_3, ''),
+        d.title
+      ) as question,
+      dv.created_at
     from debate_votes dv
     join user_profiles up on up.id = dv.user_id
     join debates d on d.id = dv.debate_id
@@ -28,12 +36,50 @@ begin
       )
     )
   ),
+  debate_stats as (
+    select
+      debate_id,
+      question,
+      created_at,
+      count(*) as total_votes,
+      sum(case when vote then 1 else 0 end) as aye_votes,
+      sum(case when not vote then 1 else 0 end) as no_votes
+    from filtered_votes
+    group by debate_id, question, created_at
+    order by total_votes desc
+    limit 10
+  ),
   gender_stats as (
     select 
       gender,
       count(*) as total_votes,
-      sum(case when vote then 1 else 0 end)::float / count(*)::float as aye_percentage
-    from filtered_votes
+      sum(case when vote then 1 else 0 end)::float / nullif(count(*), 0)::float as aye_percentage,
+      (
+        select jsonb_agg(q)
+        from (
+          select distinct jsonb_build_object(
+            'question', question,
+            'total_votes', q_total_votes,
+            'aye_votes', q_aye_votes,
+            'no_votes', q_no_votes,
+            'debate_id', debate_id,
+            'created_at', q_created_at
+          ) as q
+          from (
+            select 
+              ds.question,
+              ds.total_votes as q_total_votes,
+              ds.aye_votes as q_aye_votes,
+              ds.no_votes as q_no_votes,
+              ds.debate_id,
+              ds.created_at as q_created_at
+            from debate_stats ds
+            where ds.total_votes > 0
+            order by ds.total_votes desc
+          ) sorted_stats
+        ) distinct_questions
+      ) as questions
+    from filtered_votes fv
     where gender is not null
     group by gender
   ),
@@ -41,8 +87,19 @@ begin
     select 
       age,
       count(*) as total_votes,
-      sum(case when vote then 1 else 0 end)::float / count(*)::float as aye_percentage
-    from filtered_votes
+      sum(case when vote then 1 else 0 end)::float / count(*)::float as aye_percentage,
+      jsonb_agg(
+        distinct jsonb_build_object(
+          'question', ds.question,
+          'total_votes', ds.total_votes,
+          'aye_votes', ds.aye_votes,
+          'no_votes', ds.no_votes,
+          'debate_id', ds.debate_id,
+          'created_at', ds.created_at
+        )
+      ) as questions
+    from filtered_votes fv
+    join debate_stats ds on ds.debate_id = fv.debate_id
     where age is not null
     group by age
   ),
@@ -51,8 +108,19 @@ begin
       constituency,
       count(*) as total_votes,
       sum(case when vote then 1 else 0 end) as aye_votes,
-      sum(case when not vote then 1 else 0 end) as no_votes
-    from filtered_votes
+      sum(case when not vote then 1 else 0 end) as no_votes,
+      jsonb_agg(
+        distinct jsonb_build_object(
+          'question', ds.question,
+          'total_votes', ds.total_votes,
+          'aye_votes', ds.aye_votes,
+          'no_votes', ds.no_votes,
+          'debate_id', ds.debate_id,
+          'created_at', ds.created_at
+        )
+      ) as questions
+    from filtered_votes fv
+    join debate_stats ds on ds.debate_id = fv.debate_id
     where constituency is not null
     group by constituency
   )
@@ -70,7 +138,8 @@ begin
         gender,
         json_build_object(
           'total_votes', total_votes,
-          'aye_percentage', aye_percentage
+          'aye_percentage', aye_percentage,
+          'questions', questions
         )
       )
       from gender_stats
@@ -80,7 +149,8 @@ begin
         age,
         json_build_object(
           'total_votes', total_votes,
-          'aye_percentage', aye_percentage
+          'aye_percentage', aye_percentage,
+          'questions', questions
         )
       )
       from age_stats
@@ -91,7 +161,8 @@ begin
         json_build_object(
           'total_votes', total_votes,
           'aye_votes', aye_votes,
-          'no_votes', no_votes
+          'no_votes', no_votes,
+          'questions', questions
         )
       )
       from constituency_stats

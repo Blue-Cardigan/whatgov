@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { PLANS } from "@/lib/stripe-client";
+
 import {
   Search,
   BookOpen,
@@ -40,28 +42,50 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut, isPremium } = useAuth();
+  const { user, signOut, isPremium, getAuthHeader } = useAuth();
 
-  const handlePremiumNavigation = (e: React.MouseEvent, href: string) => {
+  const handlePremiumNavigation = async (e: React.MouseEvent, href: string) => {
     e.preventDefault();
     
     if (!user) {
       toast({
         title: "Sign in required",
-        description: "Please sign in to access this feature",
-        variant: "destructive",
+        description: "Sign in or create an account to access this feature",
+        variant: "default",
       });
       router.push('/login');
       return;
     }
 
     if (!isPremium) {
-      toast({
-        title: "Professional plan required",
-        description: "Upgrade to Professional to access research tools",
-        variant: "destructive",
-      });
-      router.push('/pricing');
+      try {
+        const token = await getAuthHeader();
+        
+        const response = await fetch('/api/stripe/create-checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Idempotency-Key': `${user.id}-${Date.now()}`,
+          },
+          body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+
+        const { url, sessionId } = await response.json();
+        if (!url) throw new Error('No checkout URL received');
+        
+        localStorage.setItem('checkoutSessionId', sessionId);
+        window.location.href = url;
+      } catch (error) {
+        console.error('Subscription error:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Something went wrong",
+          variant: "destructive",
+        });
+      }
       return;
     }
 

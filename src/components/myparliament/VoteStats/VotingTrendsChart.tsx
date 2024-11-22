@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { TopicStatsEntry } from "@/types/VoteStats";
-import { VotingChart } from './VotingChart';
+import { VotingChart } from './subcomponents/VotingChart';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';

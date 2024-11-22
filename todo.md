@@ -1,17 +1,17 @@
-Paywall vote analytics
-Dynamic card size to first item
-Fix Stripe price
-Links direct to payment portal, instead of /payment redirect
-Make sure features text aligns across pages
+Responsive design for myparliament pages
+Show most popular votes *for last 30/7 days*
+Divisionsonly tooltip when locked
+Show constituency data for authenticated users without subscription
 Advanced search
 
 #Optimizations
 Reduce middleware build size for edge runtime
 Replace twfy image urls with hansard: https://members-api.parliament.uk/api/Members/5071/Portrait
+Auth context when loading feed, to show all filters when page is loading
 
 Free Features for Signed in Users
 - Feed and unlimited votes
-- My Mp and Divisions filters
+- My Mp filter
 - View upcoming Parliamentary questions
 - Basic MP Profile view
 - Basic voting record view

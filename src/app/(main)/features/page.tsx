@@ -231,7 +231,9 @@ function PlanCard({ name, price, description, features, cta, comingSoon }: PlanP
               {cta.text}
             </span>
           ) : (
-            <Link href={cta.href}>{cta.text}</Link>
+            <Link href={`/pricing?plan=${encodeURIComponent(name.toLowerCase())}`}>
+              {cta.text}
+            </Link>
           )}
         </Button>
       </div>

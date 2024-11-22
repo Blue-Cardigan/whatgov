@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, FolderKanban } from "lucide-react";
+import { LayoutGrid, FolderKanban, Globe2, MapPin } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { 
   TopicStatsEntry,
@@ -26,6 +26,9 @@ import { FlatQuestionList } from './FlatQuestionList';
 import { UserTopicVotes } from "./UserTopicVotes";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 import { AuthenticatedRoute } from "@/components/auth/AuthenticatedRoute";
+import { SubscriptionCTA } from "@/components/ui/subscription-cta";
+import { QuestionStats } from "@/types/VoteStats";
+import { Badge } from "@/components/ui/badge";
 
 const VotingTrendsChart = dynamic(() => import('./VotingTrendsChart').then(mod => mod.VotingTrendsChart), {
   loading: () => <DashboardSkeleton />
@@ -84,64 +87,173 @@ export function VoteStats() {
   const demographicData = useMemo(() => {
     if (!demographicStats) return {};
     
+    // Helper to transform questions data
+    const transformQuestions = (questions: any[]): QuestionStats[] => {
+      if (!Array.isArray(questions)) return [];
+      return questions
+        .filter(q => q && typeof q === 'object')
+        .map(q => ({
+          question: String(q.question || ''),
+          total_votes: Number(q.total_votes || 0),
+          aye_votes: Number(q.aye_votes || 0),
+          no_votes: Number(q.no_votes || 0),
+          debate_id: String(q.debate_id || ''),
+          created_at: String(q.created_at || ''),
+          topic: String(q.topic || '')
+        }));
+    };
+
+    const userConstituency = demographicStats.user_demographics?.constituency;
+    
     return {
-      userDemographics: demographicStats.userDemographics,
-      constituencyStats: {
-        total_votes: demographicStats.constituency_breakdown?.[demographicStats.userDemographics?.constituency || '']?.total_votes || 0,
-        aye_votes: demographicStats.constituency_breakdown?.[demographicStats.userDemographics?.constituency || '']?.aye_votes || 0,
-        no_votes: demographicStats.constituency_breakdown?.[demographicStats.userDemographics?.constituency || '']?.no_votes || 0
-      },
+      userDemographics: demographicStats.user_demographics,
+      constituencyStats: userConstituency ? {
+        total_votes: Number(demographicStats.constituency_breakdown?.[userConstituency]?.total_votes || 0),
+        aye_votes: Number(demographicStats.constituency_breakdown?.[userConstituency]?.aye_votes || 0),
+        no_votes: Number(demographicStats.constituency_breakdown?.[userConstituency]?.no_votes || 0)
+      } : undefined,
       demographicComparison: {
-        gender: demographicStats.gender_breakdown,
-        age_group: demographicStats.age_breakdown
+        gender: Object.fromEntries(
+          Object.entries(demographicStats.gender_breakdown || {})
+            .filter(([gender]) => gender)
+            .map(([gender, stats]) => [
+              gender,
+              {
+                total_votes: Number(stats.total_votes || 0),
+                aye_percentage: Number(stats.aye_percentage || 0),
+                questions: transformQuestions(stats.questions || [])
+              }
+            ])
+        ),
+        age_group: Object.fromEntries(
+          Object.entries(demographicStats.age_breakdown || {})
+            .filter(([age]) => age)
+            .map(([age, stats]) => [
+              age,
+              {
+                total_votes: Number(stats.total_votes || 0),
+                aye_percentage: Number(stats.aye_percentage || 0),
+                questions: transformQuestions(stats.questions || [])
+              }
+            ])
+        )
       },
-      constituencyBreakdown: demographicStats.constituency_breakdown
+      constituencyBreakdown: Object.fromEntries(
+        Object.entries(demographicStats.constituency_breakdown || {})
+          .filter(([constituency]) => constituency)
+          .map(([constituency, stats]) => [
+            constituency,
+            {
+              total_votes: Number(stats.total_votes || 0),
+              aye_votes: Number(stats.aye_votes || 0),
+              no_votes: Number(stats.no_votes || 0),
+              questions: transformQuestions(stats.questions || [])
+            }
+          ])
+      )
     };
   }, [demographicStats]);
 
-  // Basic Stats Component - Simplified View
-  const BasicStats = () => (
-    <TabsContent value="popular" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Popular Questions</h2>
-        <Select
-          value={sortBy}
-          onValueChange={(value) => setSortBy(value as typeof sortBy)}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="votes">Most Voted</SelectItem>
-            <SelectItem value="recent">Most Recent</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+  // BasicStats Component - Updated without animations
+  const BasicStats = () => {
+    const userConstituency = demographicStats?.user_demographics?.constituency;
 
-      <ScrollArea className="h-[650px] pr-4">
-        <div className="grid gap-3">
-          {topicVoteStats && Object.entries(topicVoteStats.topics)
-            .flatMap(([topicName, stats]) =>
-              (stats.top_questions || []).map(question => ({
-                topic: topicName,
-                ...question
-              }))
-            )
-            .sort((a, b) => b.total_votes - a.total_votes)
-            .map((question, idx) => (
-              <QuestionCard 
-                key={idx}
-                question={question}
-                showTopic={true}
-                showDate={false}
-              />
-            ))}
-        </div>
-      </ScrollArea>
-    </TabsContent>
-  );
+    return (
+      <TabsContent value="popular" className="space-y-4">
+        <Card className="p-2 border-0 shadow-none">
+          <Tabs defaultValue="uk" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <TabsList className="grid w-[200px] grid-cols-2">
+                <TabsTrigger value="uk">
+                  <div className="flex items-center gap-2">
+                    <Globe2 className="h-4 w-4" />
+                    UK
+                  </div>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="constituency" 
+                  disabled={!userConstituency}
+                  title={!userConstituency ? "Set your constituency to view local data" : undefined}
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Local
+                  </div>
+                </TabsTrigger>
+              </TabsList>
+              
+              {userConstituency && (
+                <Badge variant="outline" className="hidden sm:inline-flex">
+                  {userConstituency}
+                </Badge>
+              )}
+            </div>
 
-  // Enhanced Stats Component - Full Featured View
+            <TabsContent value="uk" className="mt-0">
+              <ScrollArea className="h-[650px] pr-4">
+                <div className="grid gap-3">
+                  {topicVoteStats && Object.entries(topicVoteStats.topics)
+                    .flatMap(([topicName, stats]) =>
+                      (stats.top_questions || []).map(question => ({
+                        topic: topicName,
+                        ...question
+                      }))
+                    )
+                    .sort((a, b) => b.total_votes - a.total_votes)
+                    .map((question, idx) => (
+                      <QuestionCard 
+                        key={idx}
+                        question={question}
+                        showTopic={true}
+                        showDate={false}
+                      />
+                    ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="constituency" className="mt-0">
+              <div className="space-y-6">
+                {demographicStats?.constituency_breakdown ? (
+                  <>
+                    <div className="text-sm text-muted-foreground mb-4">
+                      Showing voting patterns in {userConstituency}
+                    </div>
+                    <DemographicComparison
+                      userDemographics={demographicData.userDemographics}
+                      constituencyStats={demographicData.constituencyStats}
+                      demographicComparison={demographicData.demographicComparison}
+                      constituencyBreakdown={demographicData.constituencyBreakdown}
+                      showUpgradePrompt={true}
+                    />
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <MapPin className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="font-medium mb-2">No Constituency Data</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Set your constituency in your profile to view local voting patterns
+                    </p>
+                  </div>
+                )}
+                <SubscriptionCTA
+                  title="Upgrade to see your constituency's voting patterns"
+                  description="Get detailed insights into how your constituency votes on different issues."
+                  features={[
+                    "See how your constituency compares to others",
+                    "Track local voting patterns",
+                    "Get constituency-specific insights"
+                  ]}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </TabsContent>
+    );
+  };
+
+  // EngagedCitizenStats Component - Updated without animations
   const EngagedCitizenStats = () => (
     <>
       <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex mb-8">
@@ -153,8 +265,8 @@ export function VoteStats() {
       {/* Popular Questions Tab */}
       <TabsContent value="popular" className="space-y-6">
         <div className="flex flex-col gap-6">
-          {/* Enhanced Filter Controls */}
-          <Card className="p-2">
+          {/* Filter Controls Card */}
+          <Card className="p-0 border-0 shadow-none">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 grid grid-cols-2 sm:flex items-center gap-2">
                 <Button
@@ -217,7 +329,7 @@ export function VoteStats() {
         </div>
       </TabsContent>
 
-      {/* Your Votes Tab - Analytics Dashboard */}
+      {/* Your Votes Tab */}
       <TabsContent value="your-votes" className="space-y-8">
         <VotingTrendsChart 
           topicVotes={transformUserTopicStatsToTopicStats(userTopicVotes?.user_topics || {})}
@@ -236,14 +348,21 @@ export function VoteStats() {
 
       {/* Demographics Tab */}
       <TabsContent value="demographics">
-        <DemographicComparison {...demographicData} />
+        <DemographicComparison 
+          userDemographics={demographicData.userDemographics}
+          constituencyStats={demographicData.constituencyStats}
+          demographicComparison={demographicData.demographicComparison}
+          constituencyBreakdown={demographicData.constituencyBreakdown}
+          isOverview={true}
+          showUpgradePrompt={false}
+        />
       </TabsContent>
     </>
   );
 
   return (
     <AuthenticatedRoute>
-      <Card className="p-4">
+      <Card className="p-0">
         <CardContent className="pt-4">
           <Tabs defaultValue="popular" className="space-y-4">
             {isEngagedCitizen ? <EngagedCitizenStats /> : <BasicStats />}

@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
-import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
+import { PLANS } from '@/lib/stripe-client';
 
 interface SubscriptionCTAProps {
   title: string;
@@ -16,6 +19,52 @@ export function SubscriptionCTA({
   features,
   className = "",
 }: SubscriptionCTAProps) {
+  const { user, getAuthHeader } = useAuth();
+  const router = useRouter();
+
+  const handleUpgrade = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to upgrade to a plan",
+        variant: "default",
+      });
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const token = await getAuthHeader();
+      
+      const response = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': `${user.id}-${Date.now()}`,
+        },
+        body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const { url, sessionId } = await response.json();
+      if (!url) throw new Error('No checkout URL received');
+      
+      localStorage.setItem('checkoutSessionId', sessionId);
+      window.location.href = url;
+    } catch (error) {
+      console.error('Subscription error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className={`p-6 bg-muted/50 ${className}`}>
       <div className="space-y-4">
@@ -33,10 +82,8 @@ export function SubscriptionCTA({
           ))}
         </ul>
 
-        <Button asChild className="w-full">
-          <Link href="/pricing">
-            Upgrade Now
-          </Link>
+        <Button onClick={handleUpgrade} className="w-full">
+          Upgrade Now
         </Button>
       </div>
     </Card>

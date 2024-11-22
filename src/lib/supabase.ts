@@ -3,7 +3,7 @@
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { RawTopicStats, RawUserVotingStats, RawDemographicStats } from '@/types/VoteStats';
+import type { DemographicStats, RawTopicStats, RawUserVotingStats } from '@/types/VoteStats';
 import type { AuthResponse, UserProfile } from '@/types/supabase';
 import { User } from '@supabase/supabase-js';
 import { MPData, MPKeyPoint } from '@/types';
@@ -631,8 +631,8 @@ export const getUserTopicVotes = async (): Promise<RawUserVotingStats> => {
 export const getDemographicVoteStats = async (
   debateId?: string,
   topic?: string,
-  days: number = 30
-): Promise<RawDemographicStats> => {
+  days: number = 14
+): Promise<DemographicStats> => {
   const supabase = getSupabase();
   
   const { data, error } = await supabase.rpc('get_demographic_vote_stats', {
@@ -642,5 +642,5 @@ export const getDemographicVoteStats = async (
   });
 
   if (error) throw error;
-  return data as RawDemographicStats;
+  return data as DemographicStats;
 };

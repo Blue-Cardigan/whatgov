@@ -152,6 +152,7 @@ export const DEBATE_TYPES = {
     { type: "Main", label: "Main Chamber Business", house: "Commons" },
     { type: "Question", label: "Questions", house: "Commons" },
     { type: "Urgent Question", label: "Urgent Questions", house: "Commons" },
+    { type: "Prime Minister's Questions", label: "Prime Minister's Questions", house: "Commons" },
     { type: "Statement", label: "Ministerial Statements", house: "Commons" },
     { type: "Opposition Day", label: "Opposition Day Debates", house: "Commons" },
     { type: "Debated Motion", label: "Motions", house: "Commons" },

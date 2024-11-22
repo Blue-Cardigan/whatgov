@@ -11,7 +11,8 @@ export default {
   	extend: {
   		screens: {
   			lg: '1280px',
-  			xl: '1536px'
+  			xl: '1536px',
+			'firefox': { raw: '(-moz-box-flex: 0)' }
   		},
   		colors: {
   			background: 'hsl(var(--background))',

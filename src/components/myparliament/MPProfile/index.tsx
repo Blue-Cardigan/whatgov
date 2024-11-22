@@ -110,25 +110,35 @@ export function MPProfile() {
 
   return (
     <AuthenticatedRoute>
-      <Card className="p-4">
-        <div className="space-y-6">
+      <Card className="p-3 sm:p-4">
+        <div className="space-y-5 sm:space-y-6">
           <MPProfileCard mpData={mpData} />
           <MPLinks mpData={mpData} />
           {isEngagedCitizen ? (
             <>
-              {topics.length > 0 && <MPTopics topics={topics} totalMentions={totalMentions} />}
-              {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
+              {topics.length > 0 && (
+                <div className="pt-2">
+                  <MPTopics topics={topics} totalMentions={totalMentions} />
+                </div>
+              )}
+              {keyPoints.length > 0 && (
+                <div className="pt-2">
+                  <MPKeyPoints keyPoints={keyPoints} />
+                </div>
+              )}
             </>
           ) : (
-            <SubscriptionCTA
-              title="Upgrade to track your MP's activity"
-              description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
-              features={[
-                "See which topics your MP speaks on",
-                "Track your MP's votes in Parliamentary Divisions",
-                "Read your MP's key points and speeches"
-              ]}
-            />
+            <div className="pt-2">
+              <SubscriptionCTA
+                title="Upgrade to track your MP's activity"
+                description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
+                features={[
+                  "See which topics your MP speaks on",
+                  "Track your MP's votes in Parliamentary Divisions",
+                  "Read your MP's key points and speeches"
+                ]}
+              />
+            </div>
           )}
         </div>
       </Card>

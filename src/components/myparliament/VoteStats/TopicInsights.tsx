@@ -1,4 +1,4 @@
-import { PatternCard } from "./PatternCard";
+import { PatternCard } from "./subcomponents/PatternCard";
 import { getTopicsByAgreement } from "./utils/getTopicsByAgreement";
 import type { TopicStatsEntry } from "@/types/VoteStats";
 import { useAuth } from "@/hooks/useAuth";

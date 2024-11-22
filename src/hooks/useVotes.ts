@@ -8,7 +8,10 @@ import type {
   DemographicStats, 
   VoteData,
   TopicStatsEntry,
-  UserTopicStatsEntry
+  UserTopicStatsEntry,
+  RawTopicStats,
+  RawUserVotingStats,
+  UseVotesReturn
 } from '@/types/VoteStats';
 import { useCache } from '@/hooks/useCache';
 
@@ -17,88 +20,6 @@ const ANON_VOTES_KEY = 'whatgov_anon_votes';
 interface QueryData {
   pages: Array<{
     items: FeedItem[];
-  }>;
-}
-
-// Add type for the hook's return value
-interface UseVotesReturn {
-  submitVote: (voteData: Parameters<typeof submitVote>[0]) => void;
-  hasVoted: (debate_id: string, question_number: number) => boolean;
-  topicVoteStats: TopicStats | undefined;
-  userTopicVotes: UserTopicStats | undefined;
-  demographicStats: DemographicStats | undefined;
-  isLoading: boolean;
-}
-
-// Add type for raw response data
-interface RawTopicStats {
-  topics: Record<string, {
-    total_votes: string | number;
-    aye_votes: string | number;
-    no_votes: string | number;
-    frequency: number;
-    top_questions: Array<{
-      question: string;
-      ayes: string | number;
-      noes: string | number;
-    }>;
-    vote_history: Array<{
-      vote: boolean;
-      title: string;
-      topic: string;
-      question: string;
-      debate_id: string;
-      created_at: string;
-    }>;
-    speakers: string[];
-    subtopics: string[];
-  }>;
-}
-
-interface RawDemographicStats {
-  user_demographics: {
-    constituency?: string;
-    gender?: string;
-    age_group?: string;
-  };
-  gender_breakdown: Record<string, {
-    total_votes: number | string;
-    aye_percentage: number | string;
-  }>;
-  age_breakdown: Record<string, {
-    total_votes: number | string;
-    aye_percentage: number | string;
-  }>;
-  constituency_breakdown: Record<string, {
-    total_votes: number | string;
-    aye_votes: number | string;
-    no_votes: number | string;
-  }>;
-}
-
-interface RawUserVotingStats {
-  totalVotes: number;
-  userAyeVotes: number;
-  userNoVotes: number;
-  topic_stats: Record<string, {
-    total: number;
-    ayes: number;
-    noes: number;
-    subtopics: unknown[];
-    details: Array<{
-      tags: string[];
-      question_1: { text: string; topic: string; ayes: number; noes: number; };
-      question_2: { text: string; topic: string; ayes: number; noes: number; };
-      question_3: { text: string; topic: string; ayes: number; noes: number; };
-      speakers: string[];
-    }>;
-    frequency: number[];
-  }>;
-  vote_stats: Array<{
-    timestamp: string;
-    userAyes: number;
-    userNoes: number;
-    topicVotes: Record<string, { ayes: number; noes: number; }>;
   }>;
 }
 
@@ -170,36 +91,6 @@ const isRawUserTopicStats = (data: unknown): data is RawUserVotingStats => {
 type UserTopicVotesKey = readonly ['userTopicVotes', string | undefined];
 
 type TopicVoteStatsKey = readonly ['topicVoteStats'];
-
-const transformDemographicStats = (raw: RawDemographicStats): DemographicStats => ({
-  userDemographics: {
-    constituency: raw.user_demographics?.constituency,
-    gender: raw.user_demographics?.gender,
-    age_group: raw.user_demographics?.age_group
-  },
-  gender_breakdown: Object.entries(raw.gender_breakdown).reduce((acc, [key, value]) => ({
-    ...acc,
-    [key]: {
-      total_votes: Number(value.total_votes),
-      aye_percentage: Number(value.aye_percentage)
-    }
-  }), {}),
-  age_breakdown: Object.entries(raw.age_breakdown).reduce((acc, [key, value]) => ({
-    ...acc,
-    [key]: {
-      total_votes: Number(value.total_votes),
-      aye_percentage: Number(value.aye_percentage)
-    }
-  }), {}),
-  constituency_breakdown: Object.entries(raw.constituency_breakdown).reduce((acc, [key, value]) => ({
-    ...acc,
-    [key]: {
-      total_votes: Number(value.total_votes),
-      aye_votes: Number(value.aye_votes),
-      no_votes: Number(value.no_votes)
-    }
-  }), {})
-});
 
 export function useVotes(): UseVotesReturn {
   const { user } = useAuth();
@@ -310,25 +201,20 @@ export function useVotes(): UseVotesReturn {
   });
 
   // Demographic Stats with caching
-  const demographicStats = useQuery<RawDemographicStats, Error, DemographicStats>({
+  const demographicStats = useQuery<DemographicStats>({
     queryKey: ['demographicStats'] as const,
     queryFn: async () => {
-      // Try cache first
-      const cached = await getCache<RawDemographicStats>(CACHE_KEYS.demographicStats.key());
+      const cached = await getCache<DemographicStats>(CACHE_KEYS.demographicStats.key());
       if (cached) {
         return cached;
       }
 
-      // Fetch fresh data if no cache
       const data = await getDemographicVoteStats();
-      
-      // Cache the fresh data
-      await setCache(CACHE_KEYS.demographicStats.key(), data, CACHE_KEYS.demographicStats.ttl); // 15 minute TTL
+      await setCache(CACHE_KEYS.demographicStats.key(), data, CACHE_KEYS.demographicStats.ttl);
       return data;
     },
-    select: transformDemographicStats,
-    staleTime: 1000 * 60 * 15, // Consider data stale after 15 minutes
-    cacheTime: 1000 * 60 * 60, // Keep in React Query cache for 1 hour
+    staleTime: 1000 * 60 * 15,
+    cacheTime: 1000 * 60 * 60,
   });
 
   // Helper functions for anonymous votes

@@ -2,7 +2,7 @@ export const PLANS = {
     ENGAGED_CITIZEN: {
       name: 'Engaged Citizen',
       id: process.env.NEXT_PUBLIC_STRIPE_ENGAGED_CITIZEN_PRICE_ID!,
-      price: 0.25,
+      price: 2.49,
     },
     PROFESSIONAL: {
       name: 'Professional',
