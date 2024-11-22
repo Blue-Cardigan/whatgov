@@ -19,15 +19,30 @@ export function useFeed({
   filters = {} as FeedFilters
 }: UseFeedOptions = {}) {
   const { getCache, setCache, CACHE_KEYS } = useCache();
-  const { user } = useAuth();
+  const { user, isEngagedCitizen } = useAuth();
+
+  // Create sanitized filters - ignore all filters for unauthenticated users
+  const sanitizedFilters: FeedFilters = user ? {
+    ...filters,
+    // Ensure divisions filter is off for non-subscribers
+    divisionsOnly: isEngagedCitizen ? filters.divisionsOnly : false
+  } : {
+    house: [],
+    location: [],
+    type: [],
+    days: [],
+    topics: [],
+    mpOnly: false,
+    divisionsOnly: false
+  };
 
   return useInfiniteQuery({
-    queryKey: ['feed', { votedOnly, pageSize, userTopics, filters, isAuthenticated: !!user }],
+    queryKey: ['feed', { votedOnly, pageSize, userTopics, filters: sanitizedFilters, isAuthenticated: !!user }],
     queryFn: async ({ pageParam = null as FeedCursor | null }) => {
       const cacheKey = CACHE_KEYS.debates.key(
         `${votedOnly}:${pageSize}:${
           pageParam ? `${pageParam.id}:${pageParam.date}:${pageParam.score}` : 'initial'
-        }:${!!user}:${userTopics.join(',')}:${JSON.stringify(filters)}`
+        }:${!!user}:${userTopics.join(',')}:${JSON.stringify(sanitizedFilters)}`
       );
       
       const VERSION = "v2";
@@ -36,7 +51,7 @@ export function useFeed({
       try {
         const cached = await getCache<ReturnType<typeof getFeedItems>>(versionedKey);
         if (cached) {
-          getFeedItems(pageSize, pageParam, votedOnly, filters)
+          getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters)
             .then(fresh => {
               if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
                 setCache(versionedKey, fresh, CACHE_KEYS.debates.ttl);
@@ -46,12 +61,12 @@ export function useFeed({
           return cached;
         }
 
-        const data = await getFeedItems(pageSize, pageParam, votedOnly, filters);
+        const data = await getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters);
         await setCache(versionedKey, data, CACHE_KEYS.debates.ttl);
         return data;
       } catch (error) {
         console.error('Cache error:', error);
-        return getFeedItems(pageSize, pageParam, votedOnly, filters);
+        return getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters);
       }
     },
     getNextPageParam: (lastPage): FeedCursor | undefined => {

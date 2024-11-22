@@ -15,7 +15,7 @@ import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/ut
 import { Loader2 } from "lucide-react";
 import { lookupPostcode } from "@/lib/supabase";
 import { AnimatePresence, motion } from "framer-motion";
-import type { UserProfile } from '@/lib/supabase';
+import type { UserProfile } from '@/types/supabase';
 import { createClient } from '@/lib/supabase-client';
 import { useRouter } from 'next/navigation';
 

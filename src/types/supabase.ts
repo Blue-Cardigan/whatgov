@@ -1,4 +1,30 @@
+import { Session } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { Division } from "."
+
+export type AuthError = {
+  message: string;
+}
+
+export type AuthResponse = {
+  user: User | null;
+  session: Session | null;
+  error?: string;
+  status?: 'verify_email' | 'error' | 'success';
+};
+
+export type UserProfile = {
+  name: string;
+  gender: string;
+  age: string;
+  postcode: string;
+  constituency: string;
+  mp: string;
+  mp_id?: number;
+  selected_topics: string[];
+  email: string;
+  email_verified?: boolean;
+};
 
 export type Json =
   | string

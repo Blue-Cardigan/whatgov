@@ -39,45 +39,36 @@ class MiddlewareError extends Error {
 export async function middleware(req: NextRequest) {
   const response = NextResponse.next();
 
-  // Early return for non-matching routes
-  if (!req.nextUrl.pathname.startsWith('/api/') && 
-      !req.nextUrl.pathname.startsWith('/settings/') && 
-      req.nextUrl.pathname !== '/') {
-    return response;
-  }
-
-  const supabase = getSupabaseClient(req, response);
+  // Add this helper function
+  const validateToken = async (token: string) => {
+    const supabase = getSupabaseClient(req, response);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) throw new Error('Invalid token');
+    return user;
+  };
 
   try {
-    // Refresh session if expired
-    const { data: { user } } = await supabase.auth.getUser()
-
-    // Check if it's a first-time visitor for non-auth pages
-    if (!user && !req.nextUrl.pathname.startsWith('/accounts/')) {
-      const hasVisited = req.cookies.get('has_visited')?.value
-      if (!hasVisited && req.nextUrl.pathname === '/') {
-        const response = NextResponse.redirect(new URL('/intro', req.url))
-        response.cookies.set('has_visited', 'true', {
-          maxAge: 60 * 60 * 24 * 365, // 1 year
-          path: '/',
-        })
-        return response
-      }
+    // Early return for non-matching routes
+    if (!req.nextUrl.pathname.startsWith('/api/') && 
+        !req.nextUrl.pathname.startsWith('/settings/') && 
+        req.nextUrl.pathname !== '/') {
+      return response;
     }
 
-    // Handle API routes that require authentication
+    // For API routes, check Authorization header
     if (req.nextUrl.pathname.startsWith('/api/')) {
-      if (!user) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        )
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        throw new MiddlewareError(401, 'Missing or invalid authorization header');
       }
 
-      // Add user session to request headers for API routes
-      response.headers.set('x-user-id', user.id)
-      response.headers.set('x-user-email', user.email ?? '')
-      response.headers.set('x-user-role', user.role ?? 'user')
+      const token = authHeader.split(' ')[1];
+      const user = await validateToken(token);
+
+      // Add user data to request headers
+      response.headers.set('x-user-id', user.id);
+      response.headers.set('x-user-email', user.email ?? '');
+      response.headers.set('x-user-role', user.role ?? 'user');
 
       // Check premium routes
       if (req.nextUrl.pathname.startsWith('/api/premium/')) {
@@ -93,12 +84,14 @@ export async function middleware(req: NextRequest) {
 
     // Handle protected page routes
     if (req.nextUrl.pathname.startsWith('/settings/')) {
-      if (!user) {
-        return NextResponse.redirect(new URL('/accounts/login', req.url))
+      const supabase = getSupabaseClient(req, response);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return NextResponse.redirect(new URL('/accounts/login', req.url));
       }
     }
 
-    return response
+    return response;
   } catch (error) {
     if (error instanceof MiddlewareError) {
       return NextResponse.json(
@@ -108,8 +101,8 @@ export async function middleware(req: NextRequest) {
     }
     console.error('Middleware error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
+      { error: 'Unauthorized' },
+      { status: 401 }
     );
   }
 }

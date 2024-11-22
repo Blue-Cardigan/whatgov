@@ -67,7 +67,7 @@ const plans = [
   },
   {
     name: "Engaged Citizen",
-    price: "£4.99/month",
+    price: "£2.49/month",
     description: "For engaged citizens who want deeper insights",
     features: [
       { icon: <BarChart2 />, title: "Better Understanding", items: [

@@ -1,3 +1,5 @@
+import { LucideIcon } from "lucide-react";
+
 export interface FeedItem {
     id: string;
     ext_id: string;
@@ -141,11 +143,54 @@ export interface CommentThread {
   parent_id: string | null;
 }
 
-export interface FeedFilters {
-  house: string[];
-  location: string[];
-  type: string[];
-  days: string[];
-  topics: string[];
-  mpOnly: boolean;
+// First, let's separate the filter types
+type ArrayFilterId = 'location' | 'type' | 'days' | 'topics';
+type BooleanFilterId = 'mpOnly' | 'divisionsOnly';
+
+// Create a union type for all filter IDs
+export type FilterId = ArrayFilterId | BooleanFilterId;
+
+// Define the shape of array filter values
+type ArrayFilterValue = {
+  [K in ArrayFilterId]: string[];
+};
+
+// Define the shape of boolean filter values
+type BooleanFilterValue = {
+  [K in BooleanFilterId]: boolean;
+};
+
+// Combine them into the final FeedFilters type
+export interface FeedFilters extends ArrayFilterValue, BooleanFilterValue {
+  house: string[]; // Keep house separate as it's handled differently
 }
+
+// Define base properties for all filter items
+interface BaseFilterItem {
+  id: FilterId;
+  icon: LucideIcon;
+  label: string;
+  tier: 'premium' | 'basic';
+  description: string;
+}
+
+// Specific type for array filters
+export interface ArrayFilterItem extends BaseFilterItem {
+  id: ArrayFilterId;
+  type: 'array';
+  options: Array<{
+    value: string;
+    label: string;
+    icon?: LucideIcon;
+    color?: string;
+  }>;
+}
+
+// Specific type for boolean filters
+export interface BooleanFilterItem extends BaseFilterItem {
+  id: BooleanFilterId;
+  type: 'boolean';
+}
+
+// Union type for all filter items
+export type FilterItem = ArrayFilterItem | BooleanFilterItem;

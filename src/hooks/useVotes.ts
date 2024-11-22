@@ -1,8 +1,17 @@
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { submitVote, getTopicVoteStats, getUserTopicVotes } from '@/lib/supabase';
+import { useMutation, useQueryClient, useQuery, UseQueryOptions, QueryKey } from '@tanstack/react-query';
+import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats } from '@/lib/supabase';
 import { FeedItem } from '@/types';
 import { useAuth } from './useAuth';
-import { VoteData } from '@/types/VoteStats';
+import type { 
+  TopicStats, 
+  UserTopicStats, 
+  DemographicStats, 
+  VoteData,
+  TopQuestion,
+  VoteHistoryEntry,
+  TopicStatsEntry,
+  UserTopicStatsEntry
+} from '@/types/VoteStats';
 
 const ANON_VOTES_KEY = 'whatgov_anon_votes';
 
@@ -12,20 +21,285 @@ interface QueryData {
   }>;
 }
 
-export function useVotes() {
+// Add type for the hook's return value
+interface UseVotesReturn {
+  submitVote: (voteData: Parameters<typeof submitVote>[0]) => void;
+  hasVoted: (debate_id: string, question_number: number) => boolean;
+  topicVoteStats: TopicStats | undefined;
+  userTopicVotes: UserTopicStats | undefined;
+  demographicStats: DemographicStats | undefined;
+  isLoading: boolean;
+}
+
+// Add type for the query cache
+interface VoteCache {
+  votes: Map<string, Map<number, boolean>>;
+  feed: QueryData;
+}
+
+// Add type for raw response data
+interface RawTopicStats {
+  topics: Record<string, {
+    total_votes: string | number;
+    aye_votes: string | number;
+    no_votes: string | number;
+    frequency: number;
+    top_questions: Array<{
+      question: string;
+      ayes: string | number;
+      noes: string | number;
+    }>;
+    vote_history: Array<{
+      vote: boolean;
+      title: string;
+      topic: string;
+      question: string;
+      debate_id: string;
+      created_at: string;
+    }>;
+    speakers: string[];
+    subtopics: string[];
+  }>;
+}
+
+interface RawDemographicStats {
+  user_demographics: {
+    constituency?: string;
+    gender?: string;
+    age_group?: string;
+  };
+  gender_breakdown: Record<string, {
+    total_votes: number | string;
+    aye_percentage: number | string;
+  }>;
+  age_breakdown: Record<string, {
+    total_votes: number | string;
+    aye_percentage: number | string;
+  }>;
+  constituency_breakdown: Record<string, {
+    total_votes: number | string;
+    aye_votes: number | string;
+    no_votes: number | string;
+  }>;
+}
+
+interface RawUserVotingStats {
+  totalVotes: number;
+  userAyeVotes: number;
+  userNoVotes: number;
+  topic_stats: Record<string, {
+    total: number;
+    ayes: number;
+    noes: number;
+    subtopics: unknown[];
+    details: Array<{
+      tags: string[];
+      question_1: { text: string; topic: string; ayes: number; noes: number; };
+      question_2: { text: string; topic: string; ayes: number; noes: number; };
+      question_3: { text: string; topic: string; ayes: number; noes: number; };
+      speakers: string[];
+    }>;
+    frequency: number[];
+  }>;
+  vote_stats: Array<{
+    timestamp: string;
+    userAyes: number;
+    userNoes: number;
+    topicVotes: Record<string, { ayes: number; noes: number; }>;
+  }>;
+}
+
+// Add type guards for raw data
+const isRawTopicStats = (data: unknown): data is RawTopicStats => {
+  if (typeof data !== 'object' || data === null) {
+    console.log('Data is not an object or is null');
+    return false;
+  }
+
+  if (!('topics' in data)) {
+    console.log('No topics property found');
+    return false;
+  }
+
+  const { topics } = data as { topics: Record<string, unknown> };
+  
+  // Check if topics is an object
+  if (typeof topics !== 'object' || topics === null) {
+    console.log('Topics is not an object or is null');
+    return false;
+  }
+
+  // More permissive check for each topic
+  return Object.values(topics).every(topic => {
+    if (typeof topic !== 'object' || topic === null) {
+      console.log('Topic is not an object or is null');
+      return false;
+    }
+
+    const hasRequiredProps = [
+      'total_votes',
+      'aye_votes',
+      'no_votes',
+    ].every(prop => prop in topic);
+
+    if (!hasRequiredProps) {
+      console.log('Missing required properties in topic');
+      return false;
+    }
+
+    // Make other properties optional
+    const t = topic as any;
+    
+    // Check arrays if they exist
+    if (t.top_questions && !Array.isArray(t.top_questions)) return false;
+    if (t.vote_history && !Array.isArray(t.vote_history)) return false;
+    if (t.speakers && !Array.isArray(t.speakers)) return false;
+    if (t.subtopics && !Array.isArray(t.subtopics)) return false;
+
+    return true;
+  });
+};
+
+const isRawUserTopicStats = (data: unknown): data is RawUserVotingStats => {
+  if (typeof data !== 'object' || data === null) return false;
+  
+  const typedData = data as Partial<RawUserVotingStats>;
+  return (
+    typeof typedData.totalVotes === 'number' &&
+    typeof typedData.userAyeVotes === 'number' &&
+    typeof typedData.userNoVotes === 'number' &&
+    typeof typedData.topic_stats === 'object' &&
+    Array.isArray(typedData.vote_stats)
+  );
+};
+
+// Define the query key type
+type UserTopicVotesKey = readonly ['userTopicVotes', string | undefined];
+
+type TopicVoteStatsKey = readonly ['topicVoteStats'];
+
+const transformDemographicStats = (raw: RawDemographicStats): DemographicStats => ({
+  userDemographics: {
+    constituency: raw.user_demographics?.constituency,
+    gender: raw.user_demographics?.gender,
+    age_group: raw.user_demographics?.age_group
+  },
+  gender_breakdown: Object.entries(raw.gender_breakdown).reduce((acc, [key, value]) => ({
+    ...acc,
+    [key]: {
+      total_votes: Number(value.total_votes),
+      aye_percentage: Number(value.aye_percentage)
+    }
+  }), {}),
+  age_breakdown: Object.entries(raw.age_breakdown).reduce((acc, [key, value]) => ({
+    ...acc,
+    [key]: {
+      total_votes: Number(value.total_votes),
+      aye_percentage: Number(value.aye_percentage)
+    }
+  }), {}),
+  constituency_breakdown: Object.entries(raw.constituency_breakdown).reduce((acc, [key, value]) => ({
+    ...acc,
+    [key]: {
+      total_votes: Number(value.total_votes),
+      aye_votes: Number(value.aye_votes),
+      no_votes: Number(value.no_votes)
+    }
+  }), {})
+});
+
+export function useVotes(): UseVotesReturn {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Query hooks for vote statistics
-  const topicVoteStats = useQuery({
-    queryKey: ['topicVoteStats'],
-    queryFn: getTopicVoteStats
+  // Strongly type the queries
+  const topicVoteStats = useQuery<RawTopicStats, Error, TopicStats, TopicVoteStatsKey>({
+    queryKey: ['topicVoteStats'] as const,
+    queryFn: async () => {
+      const data = await getTopicVoteStats();
+      console.log('Raw topic stats:', data);
+      if (!isRawTopicStats(data)) {
+        console.error('Invalid data structure:', data);
+        throw new Error('Invalid response format from getTopicVoteStats');
+      }
+      return data;
+    },
+    select: (data: RawTopicStats): TopicStats => {
+      return {
+        topics: Object.entries(data.topics).reduce<Record<string, TopicStatsEntry>>((acc, [topic, stats]) => ({
+          ...acc,
+          [topic]: {
+            total_votes: Number(stats.total_votes) || 0,
+            aye_votes: Number(stats.aye_votes) || 0,
+            no_votes: Number(stats.no_votes) || 0,
+            frequency: Number(stats.frequency) || 0,
+            top_questions: stats.top_questions?.map((q): TopQuestion => ({
+              question: q.question,
+              total_votes: Number(q.ayes) + Number(q.noes) || 0,
+              aye_votes: Number(q.ayes) || 0,
+              no_votes: Number(q.noes) || 0
+            })) || [],
+            vote_history: stats.vote_history?.map((v): VoteHistoryEntry => ({
+              vote: v.vote,
+              title: v.title,
+              topic: v.topic,
+              question: v.question,
+              debate_id: v.debate_id,
+              created_at: v.created_at
+            })) || [],
+            speakers: stats.speakers,
+            subtopics: stats.subtopics
+          }
+        }), {})
+      };
+    }
+  } satisfies UseQueryOptions<RawTopicStats, Error, TopicStats, QueryKey>);
+
+  const userTopicVotes = useQuery<RawUserVotingStats, Error, UserTopicStats, UserTopicVotesKey>({
+    queryKey: ['userTopicVotes', user?.id] as const,
+    queryFn: async () => {
+      const data = await getUserTopicVotes();
+      if (!isRawUserTopicStats(data)) {
+        throw new Error('Invalid response format from getUserTopicVotes');
+      }
+      return data;
+    },
+    enabled: !!user,
+    select: (data: RawUserVotingStats): UserTopicStats => {
+      return {
+        user_topics: Object.entries(data.topic_stats || {}).reduce<Record<string, UserTopicStatsEntry>>((acc, [topic, stats]) => {
+          if (!stats) return acc;
+          
+          return {
+            ...acc,
+            [topic]: {
+              total_votes: stats.total || 0,
+              aye_votes: stats.ayes || 0,
+              no_votes: stats.noes || 0,
+              vote_history: (data.vote_stats || [])
+                .filter(vs => vs?.topicVotes?.[topic])
+                .map(vs => ({
+                  vote: vs.topicVotes[topic].ayes > 0,
+                  title: stats.details?.[0]?.question_1?.text || '',
+                  topic: topic,
+                  question: stats.details?.[0]?.question_1?.text || '',
+                  debate_id: '', // This might need to come from somewhere else
+                  created_at: vs.timestamp
+                })),
+              speakers: Array.isArray(stats.details?.[0]?.speakers) ? stats.details[0].speakers : [],
+              frequency: Array.isArray(stats.frequency) ? stats.frequency[0] || 1 : 1,
+              subtopics: Array.isArray(stats.subtopics) ? stats.subtopics.map(String) : []
+            }
+          };
+        }, {})
+      };
+    }
   });
 
-  const userTopicVotes = useQuery({
-    queryKey: ['userTopicVotes', user?.id],
-    queryFn: getUserTopicVotes,
-    enabled: !!user
+  const demographicStats = useQuery<RawDemographicStats, Error, DemographicStats>({
+    queryKey: ['demographicStats'] as const,
+    queryFn: () => getDemographicVoteStats(),
+    select: transformDemographicStats
   });
 
   // Helper functions for anonymous votes
@@ -164,6 +438,7 @@ export function useVotes() {
     hasVoted,
     topicVoteStats: topicVoteStats.data,
     userTopicVotes: userTopicVotes.data,
-    isLoading: topicVoteStats.isLoading || userTopicVotes.isLoading
+    demographicStats: demographicStats.data,
+    isLoading: topicVoteStats.isLoading || userTopicVotes.isLoading || demographicStats.isLoading
   };
 } 

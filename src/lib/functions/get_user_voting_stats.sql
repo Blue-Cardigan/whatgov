@@ -154,21 +154,30 @@ begin
     from debate_topics
     group by period, topic_name
   ),
-  vote_stats as (
+  topic_period_votes as (
     select
       ts.timestamp,
-      coalesce(sum(pv.period_ayes), 0) as ayes,
-      coalesce(sum(pv.period_noes), 0) as noes,
-      jsonb_object_agg(
-        pv.topic_name,
-        jsonb_build_object(
-          'ayes', sum(pv.period_ayes),
-          'noes', sum(pv.period_noes)
-        )
-      ) filter (where pv.topic_name is not null) as topic_votes
+      pv.topic_name,
+      coalesce(sum(pv.period_ayes), 0) as topic_ayes,
+      coalesce(sum(pv.period_noes), 0) as topic_noes
     from time_series ts
     left join period_votes pv on pv.period = ts.timestamp
-    group by ts.timestamp
+    group by ts.timestamp, pv.topic_name
+  ),
+  vote_stats as (
+    select
+      tpv.timestamp,
+      sum(tpv.topic_ayes) as ayes,
+      sum(tpv.topic_noes) as noes,
+      jsonb_object_agg(
+        tpv.topic_name,
+        jsonb_build_object(
+          'ayes', tpv.topic_ayes,
+          'noes', tpv.topic_noes
+        )
+      ) filter (where tpv.topic_name is not null) as topic_votes
+    from topic_period_votes tpv
+    group by tpv.timestamp
   ),
   final_topic_stats as (
     select jsonb_object_agg(topic_name, topic_data) as topic_stats

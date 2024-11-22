@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useSupabase } from '@/components/providers/SupabaseProvider'
-import { signInWithEmail, signUpWithEmail, UserProfile } from '@/lib/supabase';
+import { signInWithEmail, signUpWithEmail } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Subscription, setSubscriptionCache, isSubscriptionActive } from '@/lib/subscription';
+import type { UserProfile } from '@/types/supabase';
 
 interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
   first_name?: string;
@@ -229,6 +230,12 @@ export function useAuth() {
     }
   };
 
+  const getAuthHeader = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) throw new Error('No active session');
+    return session.access_token;
+  };
+
   return {
     user,
     profile,
@@ -242,5 +249,6 @@ export function useAuth() {
     signUp,
     updateProfile,
     signOut: handleSignOut,
+    getAuthHeader,
   };
 }

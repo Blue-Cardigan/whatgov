@@ -151,9 +151,9 @@ export function MPProfile() {
             title="Upgrade to track your MP's activity"
             description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
             features={[
-              "View your MP's recent points",
-              "Track their voting patterns",
-              "Get alerts when they speak in debates"
+              "See which topics your MP speaks on",
+              "Track your MP's votes in Parliamentary Divisions",
+              "Read your MP's key points and speeches"
             ]}
           />
         )}

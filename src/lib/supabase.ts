@@ -1,34 +1,11 @@
 'use client'
 
-import { Session } from '@supabase/supabase-js';
-import { User } from '@supabase/supabase-js';
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { UserTopicVotes, TopicVoteStats } from '@/types/VoteStats';
-export type AuthError = {
-  message: string;
-}
-
-export type AuthResponse = {
-  user: User | null;
-  session: Session | null;
-  error?: string;
-  status?: 'verify_email' | 'error' | 'success';
-};
-
-export type UserProfile = {
-  name: string;
-  gender: string;
-  age: string;
-  postcode: string;
-  constituency: string;
-  mp: string;
-  mp_id?: number;
-  selected_topics: string[];
-  email: string;
-  email_verified?: boolean;
-};
+import type { VoteData, DemographicGroup, RawTopicStats, RawUserVotingStats, RawDemographicStats } from '@/types/VoteStats';
+import type { AuthResponse, UserProfile } from '@/types/supabase';
+import { User } from '@supabase/supabase-js';
 
 export type MPData = {
   member_id: number;
@@ -215,7 +192,8 @@ export async function getFeedItems(
       p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
-      p_mp_only: filters?.mpOnly || false
+      p_mp_only: filters?.mpOnly || false,
+      p_divisions_only: filters?.divisionsOnly || false
     } : {};
 
     if (user) {
@@ -654,27 +632,44 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
 };
 
 // Add new functions after existing functions
-export async function getTopicVoteStats(): Promise<TopicVoteStats> {
+export const getTopicVoteStats = async (): Promise<RawTopicStats> => {
   const supabase = getSupabase();
-  
   const { data, error } = await supabase.rpc('get_topic_vote_stats');
   
   if (error) throw error;
-  return data;
-}
+  return data as RawTopicStats;
+};
 
-export async function getUserTopicVotes(): Promise<UserTopicVotes> {
+export const getUserTopicVotes = async (): Promise<RawUserVotingStats> => {
   const supabase = getSupabase();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
-  if (userError || !user) {
-    throw new Error('Authentication required');
-  }
+  if (userError || !user) throw new Error('Authentication required');
 
-  const { data, error } = await supabase.rpc('get_user_topic_votes', {
-    p_user_id: user.id
+  const { data, error } = await supabase.rpc('get_user_voting_stats', {
+    p_user_id: user.id,
+    p_start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    p_end_date: new Date().toISOString(),
+    p_interval: 'day'
   });
   
   if (error) throw error;
-  return data;
-}
+  return data as RawUserVotingStats;
+};
+
+export const getDemographicVoteStats = async (
+  debateId?: string,
+  topic?: string,
+  days: number = 30
+): Promise<RawDemographicStats> => {
+  const supabase = getSupabase();
+  
+  const { data, error } = await supabase.rpc('get_demographic_vote_stats', {
+    p_debate_id: debateId || null,
+    p_topic: topic || null,
+    p_days: days
+  });
+
+  if (error) throw error;
+  return data as RawDemographicStats;
+};

@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import { TopicVotes } from '@/types/VoteStats';
+import type { TopicStatsEntry } from "@/types/VoteStats";
 import { VotingChart } from './VotingChart';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { analyzeTrends } from './utils/analyzeTrends';
 
 interface VotingTrendsChartProps {
-  userTopicVotes: TopicVotes;
+  topicVotes: Record<string, TopicStatsEntry>;
+  isUserVotes?: boolean;
 }
 
-export function VotingTrendsChart({ userTopicVotes }: VotingTrendsChartProps) {
+export function VotingTrendsChart({ topicVotes, isUserVotes = false }: VotingTrendsChartProps) {
   const [timeframe, setTimeframe] = useState<'all' | 'year' | 'month' | 'week'>('all');
 
   // Process all votes into time series data
   const processVoteHistory = () => {
     // Combine all votes from all topics
-    const allVotes = Object.values(userTopicVotes)
+    const allVotes = Object.values(topicVotes)
       .flatMap(topic => topic.vote_history || [])
       .filter(vote => vote?.created_at); // Filter out any null votes
 
@@ -58,13 +61,16 @@ export function VotingTrendsChart({ userTopicVotes }: VotingTrendsChartProps) {
   const chartData = processVoteHistory();
 
   // Calculate totals
-  const totals = Object.values(userTopicVotes).reduce(
+  const totals = Object.values(topicVotes).reduce(
     (acc, topic) => ({
       ayes: acc.ayes + (topic.aye_votes || 0),
       noes: acc.noes + (topic.no_votes || 0)
     }),
     { ayes: 0, noes: 0 }
   );
+
+  // Add time period selector and trend analysis
+  const trends = analyzeTrends(chartData, timeframe);
 
   return (
     <div className="space-y-6">
@@ -88,20 +94,20 @@ export function VotingTrendsChart({ userTopicVotes }: VotingTrendsChartProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-emerald-600">
-              {totals.ayes}
+              {totals.ayes.toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">
-              Total Aye Votes
+              {isUserVotes ? 'Your Aye Votes' : 'Total Aye Votes'}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-rose-600">
-              {totals.noes}
+              {totals.noes.toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">
-              Total No Votes
+              {isUserVotes ? 'Your No Votes' : 'Total No Votes'}
             </div>
           </CardContent>
         </Card>
@@ -120,6 +126,7 @@ export function VotingTrendsChart({ userTopicVotes }: VotingTrendsChartProps) {
           </div>
         </div>
       )}
+    
     </div>
   );
 } 

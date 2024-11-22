@@ -8,7 +8,8 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates(
   p_location TEXT[] DEFAULT NULL,
   p_days TEXT[] DEFAULT NULL,
   p_topics TEXT[] DEFAULT NULL,
-  p_mp_only BOOLEAN DEFAULT FALSE
+  p_mp_only BOOLEAN DEFAULT FALSE,
+  p_divisions_only BOOLEAN DEFAULT FALSE
 )
 RETURNS TABLE (
   result_id UUID,
@@ -103,6 +104,14 @@ BEGIN
     WHERE (
       NOT EXISTS (SELECT 1 FROM voted_debates)
       OR d.id NOT IN (SELECT debate_id FROM voted_debates)
+    )
+    AND (
+      NOT p_divisions_only 
+      OR (
+        dd.divisions_data IS NOT NULL 
+        AND dd.divisions_data != '[]'::jsonb
+        AND jsonb_array_length(dd.divisions_data) > 0
+      )
     )
     AND (
       CASE 

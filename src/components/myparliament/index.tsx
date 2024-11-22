@@ -8,7 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { SignInPrompt } from '../ui/sign-in-prompt';
 
-const UserVoteHistory = dynamic(() => import("./YourStats").then(mod => mod.UserVoteHistory), {
+const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
   loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
 });
 
@@ -121,10 +121,10 @@ export function MyParliament() {
 
       {/* Content Area */}
       <div className="bg-card border rounded-lg p-6 mt-8">
-        {activeTab === "activity" && <UserVoteHistory />}
+        {activeTab === "activity" && <VoteStats />}
         {activeTab === "mp" && <MPProfile />}
         {activeTab === "upcoming" && <UpcomingDebates />}
-        {activeTab === "stats" && <UserVoteHistory />}
+        {activeTab === "stats" && <VoteStats />}
         {activeTab === "agreement" && (
           <div className="text-muted-foreground text-center py-8">
             MP Agreement analysis coming soon

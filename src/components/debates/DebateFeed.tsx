@@ -13,7 +13,8 @@ export function DebateFeed() {
     type: [],
     days: [],
     topics: [],
-    mpOnly: false
+    mpOnly: false,
+    divisionsOnly: false
   });
 
   const { 

@@ -1,7 +1,9 @@
-Move filters and schedule behind Paywall
-Ensure your MP division vote tip displays
+Paywall vote analytics
+Dynamic card size to first item
+Fix Stripe price
+Links direct to payment portal, instead of /payment redirect
+Make sure features line up across pages
 Advanced search
-Update Engaged Citizen price
 
 #Optimizations
 Reduce middleware build size for edge runtime
@@ -9,6 +11,7 @@ Replace twfy image urls with hansard: https://members-api.parliament.uk/api/Memb
 
 Free Features for Signed in Users
 - Feed and unlimited votes
+- My Mp and Divisions filters
 - View upcoming Parliamentary questions
 - Basic voting record view
 - Basic search
@@ -17,8 +20,7 @@ Free Features for Signed in Users
 * -- Trends by location, gender and age after info provided
 
 Engaged Citizen Features
-- See Divisions
-- Feed filters
+- Advanced Feed filters
 - Track Your MP's activity
 - View your voting analytics
 - Advanced search

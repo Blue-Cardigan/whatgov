@@ -24,7 +24,7 @@ import { Suspense } from 'react';
 const tiers = [
   {
     name: "Citizen",
-    description: "For all citizens - because democracy should be accessible",
+    description: "For everyone - because democracy should be accessible",
     price: "Free",
     icon: Building2,
     features: [
@@ -41,8 +41,8 @@ const tiers = [
   },
   {
     name: "Engaged Citizen",
-    description: "For engaged citizens who want deeper insights",
-    price: "£4.99",
+    description: "For people who want deeper insights",
+    price: "£2.49",
     icon: Crown,
     features: [
       "See how MPs voted in Parliamentary Divisions",
@@ -80,8 +80,7 @@ const tiers = [
 
 // Create a separate component for the search params logic
 function PricingContent() {
-  const { user } = useAuth();
-  const supabase = useSupabase();
+  const { user, getAuthHeader } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -114,28 +113,14 @@ function PricingContent() {
     }
 
     try {
-      // Get authenticated user data
-      const { data: { user: authenticatedUser }, error: userError } = 
-        await supabase.auth.getUser();
+      const token = await getAuthHeader();
       
-      if (userError || !authenticatedUser) {
-        console.error('Authentication error:', userError);
-        toast({
-          title: "Authentication error",
-          description: "Please sign in again",
-          variant: "destructive",
-        });
-        await supabase.auth.signOut();
-        router.push('/login');
-        return;
-      }
-
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authenticatedUser.id}`,
-          'Idempotency-Key': `${authenticatedUser.id}-${Date.now()}`,
+          'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': `${user.id}-${Date.now()}`,
         },
         body: JSON.stringify({ priceId }),
       });
