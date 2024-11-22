@@ -2,7 +2,7 @@ Paywall vote analytics
 Dynamic card size to first item
 Fix Stripe price
 Links direct to payment portal, instead of /payment redirect
-Make sure features line up across pages
+Make sure features text aligns across pages
 Advanced search
 
 #Optimizations
@@ -13,15 +13,16 @@ Free Features for Signed in Users
 - Feed and unlimited votes
 - My Mp and Divisions filters
 - View upcoming Parliamentary questions
+- Basic MP Profile view
 - Basic voting record view
+- Basic constituency voting record view
 - Basic search
 - View debate comments
-* - 'how your constituency voted' 
-* -- Trends by location, gender and age after info provided
 
 Engaged Citizen Features
 - Advanced Feed filters
-- Track Your MP's activity
+- Track Your MP's key points
+- Track your constituency's votes
 - View your voting analytics
 - Advanced search
 

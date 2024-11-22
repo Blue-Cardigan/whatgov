@@ -12,6 +12,7 @@ import type {
   TopicStatsEntry,
   UserTopicStatsEntry
 } from '@/types/VoteStats';
+import { useCache } from '@/hooks/useCache';
 
 const ANON_VOTES_KEY = 'whatgov_anon_votes';
 
@@ -209,19 +210,28 @@ const transformDemographicStats = (raw: RawDemographicStats): DemographicStats =
 });
 
 export function useVotes(): UseVotesReturn {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { getCache, setCache, CACHE_KEYS } = useCache();
 
-  // Strongly type the queries
+  // Topic Vote Stats with caching
   const topicVoteStats = useQuery<RawTopicStats, Error, TopicStats, TopicVoteStatsKey>({
     queryKey: ['topicVoteStats'] as const,
     queryFn: async () => {
+      // Try cache first
+      const cached = await getCache<RawTopicStats>(CACHE_KEYS.topicVoteStats.key());
+      if (cached) {
+        return cached;
+      }
+
+      // Fetch fresh data if no cache
       const data = await getTopicVoteStats();
-      console.log('Raw topic stats:', data);
       if (!isRawTopicStats(data)) {
-        console.error('Invalid data structure:', data);
         throw new Error('Invalid response format from getTopicVoteStats');
       }
+
+      // Cache the fresh data
+      await setCache(CACHE_KEYS.topicVoteStats.key(), data, CACHE_KEYS.topicVoteStats.ttl); // 5 minute TTL
       return data;
     },
     select: (data: RawTopicStats): TopicStats => {
@@ -229,39 +239,48 @@ export function useVotes(): UseVotesReturn {
         topics: Object.entries(data.topics).reduce<Record<string, TopicStatsEntry>>((acc, [topic, stats]) => ({
           ...acc,
           [topic]: {
-            total_votes: Number(stats.total_votes) || 0,
-            aye_votes: Number(stats.aye_votes) || 0,
-            no_votes: Number(stats.no_votes) || 0,
-            frequency: Number(stats.frequency) || 0,
-            top_questions: stats.top_questions?.map((q): TopQuestion => ({
+            total_votes: Number(stats.total_votes),
+            aye_votes: Number(stats.aye_votes),
+            no_votes: Number(stats.no_votes),
+            top_questions: (stats.top_questions || []).map(q => ({
               question: q.question,
-              total_votes: Number(q.ayes) + Number(q.noes) || 0,
-              aye_votes: Number(q.ayes) || 0,
-              no_votes: Number(q.noes) || 0
-            })) || [],
-            vote_history: stats.vote_history?.map((v): VoteHistoryEntry => ({
-              vote: v.vote,
-              title: v.title,
-              topic: v.topic,
-              question: v.question,
-              debate_id: v.debate_id,
-              created_at: v.created_at
-            })) || [],
-            speakers: stats.speakers,
-            subtopics: stats.subtopics
+              total_votes: Number(q.ayes) + Number(q.noes),
+              aye_votes: Number(q.ayes),
+              no_votes: Number(q.noes)
+            })),
+            vote_history: stats.vote_history || [],
+            speakers: stats.speakers || [],
+            frequency: stats.frequency || 1,
+            subtopics: stats.subtopics || []
           }
         }), {})
       };
-    }
-  } satisfies UseQueryOptions<RawTopicStats, Error, TopicStats, QueryKey>);
+    },
+    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
+    cacheTime: 1000 * 60 * 30, // Keep in React Query cache for 30 minutes
+  });
 
+  // User Topic Votes with caching
   const userTopicVotes = useQuery<RawUserVotingStats, Error, UserTopicStats, UserTopicVotesKey>({
     queryKey: ['userTopicVotes', user?.id] as const,
     queryFn: async () => {
+      if (!user?.id) throw new Error('No user ID');
+      
+      // Try cache first
+      const cacheKey = CACHE_KEYS.userTopicVotes.key(user.id);
+      const cached = await getCache<RawUserVotingStats>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      // Fetch fresh data if no cache
       const data = await getUserTopicVotes();
       if (!isRawUserTopicStats(data)) {
         throw new Error('Invalid response format from getUserTopicVotes');
       }
+
+      // Cache the fresh data
+      await setCache(cacheKey, data, CACHE_KEYS.userTopicVotes.ttl); // 5 minute TTL
       return data;
     },
     enabled: !!user,
@@ -293,13 +312,31 @@ export function useVotes(): UseVotesReturn {
           };
         }, {})
       };
-    }
+    },
+    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
+    cacheTime: 1000 * 60 * 30, // Keep in React Query cache for 30 minutes
   });
 
+  // Demographic Stats with caching
   const demographicStats = useQuery<RawDemographicStats, Error, DemographicStats>({
     queryKey: ['demographicStats'] as const,
-    queryFn: () => getDemographicVoteStats(),
-    select: transformDemographicStats
+    queryFn: async () => {
+      // Try cache first
+      const cached = await getCache<RawDemographicStats>(CACHE_KEYS.demographicStats.key());
+      if (cached) {
+        return cached;
+      }
+
+      // Fetch fresh data if no cache
+      const data = await getDemographicVoteStats();
+      
+      // Cache the fresh data
+      await setCache(CACHE_KEYS.demographicStats.key(), data, CACHE_KEYS.demographicStats.ttl); // 15 minute TTL
+      return data;
+    },
+    select: transformDemographicStats,
+    staleTime: 1000 * 60 * 15, // Consider data stale after 15 minutes
+    cacheTime: 1000 * 60 * 60, // Keep in React Query cache for 1 hour
   });
 
   // Helper functions for anonymous votes
@@ -342,9 +379,16 @@ export function useVotes(): UseVotesReturn {
     mutationFn: async (voteData: Parameters<typeof submitVote>[0]) => {
       if (user) {
         await submitVote(voteData);
-        // Invalidate topic stats queries after successful vote
+        // Invalidate caches after successful vote
+        await Promise.all([
+          setCache(CACHE_KEYS.topicVoteStats.key(), null),
+          setCache(CACHE_KEYS.userTopicVotes.key(user.id), null),
+          setCache(CACHE_KEYS.demographicStats.key(), null)
+        ]);
+        // Invalidate React Query cache
         queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] });
         queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['demographicStats'] });
       } else {
         const anonVoteData: VoteData = {
           ...voteData,

@@ -59,12 +59,12 @@ export default function NotFound() {
                 <h3 className="font-semibold text-sm">Legal</h3>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>
-                    <Link href="/terms" className="hover:text-foreground transition-colors">
+                    <Link href="/about/terms" className="hover:text-foreground transition-colors">
                       Terms of Service
                     </Link>
                   </li>
                   <li>
-                    <Link href="/privacy" className="hover:text-foreground transition-colors">
+                    <Link href="/about/privacy" className="hover:text-foreground transition-colors">
                       Privacy Policy
                     </Link>
                   </li>

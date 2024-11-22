@@ -16,7 +16,8 @@ import {
   UserPlus,
   Crown,
   ScrollText,
-  BookMarked
+  BookMarked,
+  User
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,12 +80,22 @@ export function Sidebar({ className }: SidebarProps) {
   const renderAuthMenuItems = () => {
     return (
       <>
-        <DropdownMenuItem asChild className="md:hidden">
-          <Link href="/settings" className="flex w-full items-center">
-            <Settings className="h-4 w-4 mr-2.5" />
-            <span>Settings</span>
-          </Link>
-        </DropdownMenuItem>
+        {user && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex w-full items-center">
+                <User className="h-4 w-4 mr-2.5" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="md:hidden">
+              <Link href="/settings" className="flex w-full items-center">
+                <Settings className="h-4 w-4 mr-2.5" />
+                <span>Settings</span>
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/about" className="flex w-full items-center">
             <Info className="h-4 w-4 mr-2.5" />

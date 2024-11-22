@@ -99,10 +99,10 @@ We work with:
 - [Companies House](/https://find-and-update.company-information.service.gov.uk/company/15864302)
 
 ### Important Documents
-- [Terms of Service](/terms)
-- [Privacy Policy](/privacy)
-- [Cookie Policy](/cookies)
-- [Accessibility Statement](/accessibility)
+- [Terms of Service](/about/terms)
+- [Privacy Policy](/about/privacy)
+- [Cookie Policy](/about/cookies)
+- [Accessibility Statement](/about/accessibility)
 
 ### Data Protection
 - ICO Registration: Pending

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { getMPData, getMPKeyPoints } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthenticatedRoute } from "@/components/auth/AuthenticatedRoute";
 import { Button } from "@/components/ui/button";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
@@ -11,41 +12,7 @@ import { MPLinks } from "./MPLinks";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { MPTopics } from "./MPTopics";
 import { AiTopic, MPData, MPKeyPoint } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-
-function MPProfileSkeleton() {
-  return (
-    <Card className="p-6">
-      <div className="space-y-8">
-        <div className="flex items-start gap-4">
-          <Skeleton className="h-24 w-24 rounded-lg" />
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <div className="grid grid-cols-2 gap-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-32" />
-          <div className="space-y-2">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
+import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
@@ -120,13 +87,13 @@ export function MPProfile() {
   }, [profile?.mp_id, profile?.mp]);
 
   if (loading) {
-    return <MPProfileSkeleton />;
+    return <DashboardSkeleton />;
   }
 
   if (error || !mpData) {
     return (
-      <Card className="p-6">
-        <div className="space-y-4">
+      <Card className="p-4">
+        <div className="space-y-3">
           <p className="text-muted-foreground">{error || 'Unable to load MP data'}</p>
           {(!profile?.mp_id) && (
             <Button 
@@ -142,27 +109,29 @@ export function MPProfile() {
   }
 
   return (
-    <Card className="p-6">
-      <div className="space-y-8">
-        <MPProfileCard mpData={mpData} />
-        <MPLinks mpData={mpData} />
-        {isEngagedCitizen ? (
-          <>
-            {topics.length > 0 && <MPTopics topics={topics} totalMentions={totalMentions} />}
-            {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
-          </>
-        ) : (
-          <SubscriptionCTA
-            title="Upgrade to track your MP's activity"
-            description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
-            features={[
-              "See which topics your MP speaks on",
-              "Track your MP's votes in Parliamentary Divisions",
-              "Read your MP's key points and speeches"
-            ]}
-          />
-        )}
-      </div>
-    </Card>
+    <AuthenticatedRoute>
+      <Card className="p-4">
+        <div className="space-y-6">
+          <MPProfileCard mpData={mpData} />
+          <MPLinks mpData={mpData} />
+          {isEngagedCitizen ? (
+            <>
+              {topics.length > 0 && <MPTopics topics={topics} totalMentions={totalMentions} />}
+              {keyPoints.length > 0 && <MPKeyPoints keyPoints={keyPoints} />}
+            </>
+          ) : (
+            <SubscriptionCTA
+              title="Upgrade to track your MP's activity"
+              description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
+              features={[
+                "See which topics your MP speaks on",
+                "Track your MP's votes in Parliamentary Divisions",
+                "Read your MP's key points and speeches"
+              ]}
+            />
+          )}
+        </div>
+      </Card>
+    </AuthenticatedRoute>
   );
 } 

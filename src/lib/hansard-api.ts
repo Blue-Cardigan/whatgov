@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { format } from 'date-fns';
+import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -151,6 +152,35 @@ export class HansardAPI {
     }
   }
 
+  private static async fetchWithCache<T>(
+    cacheKey: string,
+    fetcher: () => Promise<T>,
+    ttl: number = 300 // 5 minutes default
+  ): Promise<T> {
+    try {
+      // Try to get from cache first
+      const cached = await getRedisValue<T>(cacheKey);
+      if (cached) {
+        return cached; // Already deserialized thanks to automaticDeserialization
+      }
+
+      // If not in cache, fetch fresh data
+      const data = await fetcher();
+
+      // Store in cache (only if we got valid data)
+      if (data) {
+        // Use server action to set cache
+        await setRedisValue(cacheKey, data, ttl);
+      }
+
+      return data;
+    } catch (error) {
+      console.error(`Cache operation failed for key ${cacheKey}:`, error);
+      // Fallback to direct fetch on cache error
+      return fetcher();
+    }
+  }
+
   static async fetchSectionTrees(config: HansardApiConfig) {
     const url = `${HANSARD_API_BASE}/overview/sectiontrees.${config.format}?` + 
       new URLSearchParams({
@@ -191,57 +221,67 @@ export class HansardAPI {
   }
 
   static async getDebatesList(date?: string, house: 'Commons' | 'Lords' = 'Commons') {
-    try {
-      const targetDate = date || await this.getLastSittingDate();
+    const targetDate = date || await this.getLastSittingDate();
+    const cacheKey = `hansard:debates:${house}:${targetDate}`;
 
-      const data = await this.fetchSectionTrees({
-        format: 'json',
-        house,
-        date: targetDate,
-        section: 'Debate'
-      });
+    return this.fetchWithCache(
+      cacheKey,
+      async () => {
+        try {
+          const data = await this.fetchSectionTrees({
+            format: 'json',
+            house,
+            date: targetDate,
+            section: 'Debate'
+          });
 
-      if (!Array.isArray(data)) {
-        console.error('Unexpected data format:', data);
-        return [];
-      }
+          if (!Array.isArray(data)) {
+            console.error('Unexpected data format:', data);
+            return [];
+          }
 
-      const sectionTreeItems = data[0]?.SectionTreeItems || [];
-      
-      return sectionTreeItems.filter((item: SectionTreeItem) => 
-        item.HRSTag?.includes('Question') || 
-        item.HRSTag?.includes('Debate') ||
-        item.HRSTag?.includes('Motion') ||
-        item.HRSTag?.includes('UrgentQuestion')
-      );
-    } catch (error) {
-      console.error('Failed to get debates list:', error);
-      return [];
-    }
+          const sectionTreeItems = data[0]?.SectionTreeItems || [];
+          
+          return sectionTreeItems.filter((item: SectionTreeItem) => 
+            item.HRSTag?.includes('Question') || 
+            item.HRSTag?.includes('Debate') ||
+            item.HRSTag?.includes('Motion') ||
+            item.HRSTag?.includes('UrgentQuestion')
+          );
+        } catch (error) {
+          console.error('Failed to get debates list:', error);
+          return [];
+        }
+      },
+      1800 // Cache for 30 minutes
+    );
   }
 
   static async getDebateDetails(debateSectionExtId: string) {
-    try {
-      const [debate, speakers, { data: generated, error: dbError }] = await Promise.all([
-        this.fetchDebate(debateSectionExtId),
-        this.fetchSpeakers(debateSectionExtId),
-        supabase
-          .from('debate_generated_content')
-          .select('*')
-          .eq('debate_section_ext_id', debateSectionExtId)
-      ]);
+    const cacheKey = `hansard:debate:${debateSectionExtId}`;
+    
+    return this.fetchWithCache(
+      cacheKey,
+      async () => {
+        const [debate, speakers, { data: generated, error: dbError }] = await Promise.all([
+          this.fetchDebate(debateSectionExtId),
+          this.fetchSpeakers(debateSectionExtId),
+          supabase
+            .from('debate_generated_content')
+            .select('*')
+            .eq('debate_section_ext_id', debateSectionExtId)
+        ]);
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
 
-      return { 
-        debate, 
-        speakers, 
-        generated: generated || [] 
-      };
-    } catch (error) {
-      console.error('Failed to get debate details:', error);
-      throw error;
-    }
+        return { 
+          debate, 
+          speakers, 
+          generated: generated || [] 
+        };
+      },
+      3600 // Cache debates for 1 hour as they don't change often
+    );
   }
 
   static async search(params: SearchParams): Promise<SearchResponse> {
@@ -369,31 +409,43 @@ export class HansardAPI {
   }
 
   static async getUpcomingOralQuestions(forNextWeek: boolean = false): Promise<OralQuestion[]> {
-    try {
-      const today = new Date();
-      
-      if (forNextWeek) {
-        // Calculate next Monday
-        const nextMonday = new Date(today);
-        nextMonday.setDate(today.getDate() + ((8 - today.getDay()) % 7));
-        
-        // Calculate next Friday
-        const nextFriday = new Date(nextMonday);
-        nextFriday.setDate(nextMonday.getDate() + 4);
-        
-        return await this.fetchOralQuestions(nextMonday, nextFriday);
-      } else {
-        // Get remaining days of current week (until Friday)
-        const thisWeekEnd = new Date(today);
-        const daysUntilFriday = today.getDay() <= 5 ? 5 - today.getDay() : 0;
-        thisWeekEnd.setDate(today.getDate() + daysUntilFriday);
-        
-        return await this.fetchOralQuestions(today, thisWeekEnd);
-      }
-    } catch (error) {
-      console.error('Failed to get upcoming oral questions:', error);
-      throw error;
+    const today = new Date();
+    const cacheKey = `hansard:oral-questions:${forNextWeek ? 'next' : 'current'}:${format(today, 'yyyy-MM-dd')}`;
+    
+    return this.fetchWithCache(
+      cacheKey,
+      async () => {
+        const questions = await this.fetchQuestionsForWeek(today, forNextWeek);
+        return questions;
+      },
+      // Cache for 5 minutes normally, but longer (30 mins) for next week's data
+      forNextWeek ? 1800 : 300
+    );
+  }
+
+  private static async fetchQuestionsForWeek(
+    baseDate: Date,
+    forNextWeek: boolean
+  ): Promise<OralQuestion[]> {
+    const weekStart = new Date(baseDate);
+    const weekEnd = new Date(baseDate);
+    
+    if (forNextWeek) {
+      // For next week, get next Monday through Friday
+      const daysUntilNextMonday = (8 - baseDate.getDay()) % 7;
+      weekStart.setDate(baseDate.getDate() + daysUntilNextMonday);
+      weekEnd.setDate(weekStart.getDate() + 4); // Monday + 4 = Friday
+    } else {
+      // For current week, start from today and go until Friday
+      weekEnd.setDate(weekStart.getDate() + (5 - weekStart.getDay())); // Set to this Friday
     }
+    
+    // If it's weekend, return empty array for current week
+    if (!forNextWeek && (baseDate.getDay() === 0 || baseDate.getDay() === 6)) {
+      return [];
+    }
+    
+    return await this.fetchOralQuestions(weekStart, weekEnd);
   }
 
   private static async fetchOralQuestions(
@@ -415,5 +467,10 @@ export class HansardAPI {
     }
 
     return response.Response || [];
+  }
+
+  // Helper method to generate consistent cache keys
+  private static getCacheKey(prefix: string, ...parts: (string | number)[]): string {
+    return ['hansard', prefix, ...parts].filter(Boolean).join(':');
   }
 }

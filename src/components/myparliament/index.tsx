@@ -4,9 +4,8 @@ import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
-import { useAuth } from '../../hooks/useAuth';
-import { Card } from '@/components/ui/card';
-import { SignInPrompt } from '../ui/sign-in-prompt';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
   loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
@@ -17,39 +16,6 @@ const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mo
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("mp");
-  const { loading: authLoading, user } = useAuth();
-
-  // Show a loading state for the entire dashboard while auth initializes
-  if (authLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="p-4 animate-pulse">
-              <div className="flex flex-row items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-muted" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 w-24 bg-muted rounded" />
-                  <div className="h-3 w-32 bg-muted rounded" />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        <div className="bg-card border rounded-lg p-6 mt-8 h-[400px] animate-pulse" />
-      </div>
-    );
-  }
-
-  // If auth is done loading and there's no user, redirect to sign in
-  if (!user) {
-    return (
-      <SignInPrompt
-        title="Sign in to access your dashboard"
-        description="Track your voting patterns and see how they align with different topics and MPs"
-      />
-    );
-  }
 
   const menuItems = [
     {
@@ -97,45 +63,46 @@ export function MyParliament() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-      {/* Grid of Action Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {menuItems.map((item) => (
-          <MenuItem
-            key={item.id}
-            item={item}
-            isActive={item.id === activeTab}
-            onSelect={() => {
-              if (!item.isDisabled) {
-                if (item.isPremium) {
-                  window.location.href = '/pricing';
-                } else {
-                  setActiveTab(item.id);
+    <AuthenticatedRoute>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Grid of Action Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {menuItems.map((item) => (
+            <MenuItem
+              key={item.id}
+              item={item}
+              isActive={item.id === activeTab}
+              onSelect={() => {
+                if (!item.isDisabled) {
+                  if (item.isPremium) {
+                    window.location.href = '/pricing';
+                  } else {
+                    setActiveTab(item.id);
+                  }
                 }
-              }
-            }}
-          />
-        ))}
-      </div>
+              }}
+            />
+          ))}
+        </div>
 
-      {/* Content Area */}
-      <div className="bg-card border rounded-lg p-6 mt-8">
-        {activeTab === "activity" && <VoteStats />}
-        {activeTab === "mp" && <MPProfile />}
-        {activeTab === "upcoming" && <UpcomingDebates />}
-        {activeTab === "stats" && <VoteStats />}
-        {activeTab === "agreement" && (
-          <div className="text-muted-foreground text-center py-8">
-            MP Agreement analysis coming soon
-          </div>
-        )}
-        {activeTab === "constituency" && (
-          <div className="text-muted-foreground text-center py-8">
-            Constituency insights coming soon
-          </div>
-        )}
+        {/* Content Area */}
+        <div className="bg-card rounded-lg p-4 mt-6">
+          {activeTab === "activity" && <VoteStats />}
+          {activeTab === "mp" && <MPProfile />}
+          {activeTab === "upcoming" && <UpcomingDebates />}
+          {activeTab === "stats" && <VoteStats />}
+          {activeTab === "agreement" && (
+            <div className="text-muted-foreground text-center py-6">
+              MP Agreement analysis coming soon
+            </div>
+          )}
+          {activeTab === "constituency" && (
+            <div className="text-muted-foreground text-center py-6">
+              Constituency insights coming soon
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AuthenticatedRoute>
   );
 } 
