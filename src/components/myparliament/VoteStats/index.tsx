@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, FolderKanban, Globe2, MapPin } from "lucide-react";
+import { LayoutGrid, FolderKanban, Globe2, MapPin, UserCircle2, Users } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { 
   TopicStatsEntry,
@@ -253,111 +253,132 @@ export function VoteStats() {
     );
   };
 
-  // EngagedCitizenStats Component - Updated without animations
+  // EngagedCitizenStats Component - Updated for consistency
   const EngagedCitizenStats = () => (
-    <>
-      <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex mb-8">
-        <TabsTrigger value="popular">Popular Questions</TabsTrigger>
-        <TabsTrigger value="your-votes">Your Votes</TabsTrigger>
-        <TabsTrigger value="demographics">Demographics</TabsTrigger>
-      </TabsList>
+    <TabsContent value="popular" className="space-y-4">
+      <Card className="p-2 border-0 shadow-none">
+        <Tabs defaultValue="popular" className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid w-[300px] grid-cols-3">
+              <TabsTrigger value="popular">
+                <div className="flex items-center gap-2">
+                  <Globe2 className="h-4 w-4" />
+                  Popular
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="your-votes">
+                <div className="flex items-center gap-2">
+                  <UserCircle2 className="h-4 w-4" />
+                  Your Votes
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="demographics">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Demographics
+                </div>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-      {/* Popular Questions Tab */}
-      <TabsContent value="popular" className="space-y-6">
-        <div className="flex flex-col gap-6">
-          {/* Filter Controls Card */}
-          <Card className="p-0 border-0 shadow-none">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 grid grid-cols-2 sm:flex items-center gap-2">
-                <Button
-                  variant={groupBy === 'all' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setGroupBy('all')}
-                  className="w-full sm:w-auto"
+          {/* Popular Questions Tab */}
+          <TabsContent value="popular" className="mt-0">
+            <div className="flex flex-col gap-6">
+              {/* Filter Controls */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 grid grid-cols-2 sm:flex items-center gap-2">
+                  <Button
+                    variant={groupBy === 'all' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setGroupBy('all')}
+                    className="w-full sm:w-auto"
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2 shrink-0" />
+                    All Questions
+                  </Button>
+                  <Button
+                    variant={groupBy === 'topic' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setGroupBy('topic')}
+                    className="w-full sm:w-auto"
+                  >
+                    <FolderKanban className="h-4 w-4 mr-2 shrink-0" />
+                    By Topic
+                  </Button>
+                </div>
+
+                <Separator orientation="vertical" className="h-8 hidden sm:block" />
+
+                <Select
+                  value={sortBy}
+                  onValueChange={(value) => setSortBy(value as typeof sortBy)}
                 >
-                  <LayoutGrid className="h-4 w-4 mr-2 shrink-0" />
-                  All Questions
-                </Button>
-                <Button
-                  variant={groupBy === 'topic' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setGroupBy('topic')}
-                  className="w-full sm:w-auto"
-                >
-                  <FolderKanban className="h-4 w-4 mr-2 shrink-0" />
-                  By Topic
-                </Button>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Sort Questions</SelectLabel>
+                      <SelectItem value="votes">Most Voted</SelectItem>
+                      <SelectItem value="recent">Most Recent</SelectItem>
+                      <SelectItem value="agreement">Highest Agreement</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <Separator orientation="vertical" className="h-8 hidden sm:block" />
-
-              <Select
-                value={sortBy}
-                onValueChange={(value) => setSortBy(value as typeof sortBy)}
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Sort Questions</SelectLabel>
-                    <SelectItem value="votes">Most Voted</SelectItem>
-                    <SelectItem value="recent">Most Recent</SelectItem>
-                    <SelectItem value="agreement">Highest Agreement</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              {/* Questions List */}
+              <ScrollArea className="h-[600px] pr-4">
+                <div className="grid gap-4">
+                  {groupBy === 'topic' ? (
+                    <TopicGroupedQuestions 
+                      topicVoteStats={topicVoteStats} 
+                      sortBy={sortBy}
+                    />
+                  ) : (
+                    <FlatQuestionList 
+                      topicVoteStats={topicVoteStats}
+                      sortBy={sortBy}
+                    />
+                  )}
+                </div>
+              </ScrollArea>
             </div>
-          </Card>
+          </TabsContent>
 
-          {/* Questions List */}
-          <ScrollArea className="h-[600px] pr-4">
-            <div className="grid gap-4">
-              {groupBy === 'topic' ? (
-                <TopicGroupedQuestions 
-                  topicVoteStats={topicVoteStats} 
-                  sortBy={sortBy}
+          {/* Your Votes Tab */}
+          <TabsContent value="your-votes" className="mt-0">
+            <div className="space-y-8">
+              <VotingTrendsChart 
+                topicVotes={transformUserTopicStatsToTopicStats(userTopicVotes?.user_topics || {})}
+                isUserVotes={true}
+              />
+              <div className="grid md:grid-cols-2 gap-8">
+                <TopicInsights 
+                  topicStats={transformUserTopicStatsToTopicStats(userTopicVotes?.user_topics || {})} 
                 />
-              ) : (
-                <FlatQuestionList 
-                  topicVoteStats={topicVoteStats}
-                  sortBy={sortBy}
+                <TopicComparison 
+                  topics={transformToTopicWithName(userTopicVotes?.user_topics || {})} 
                 />
-              )}
+              </div>
+              <UserTopicVotes userTopicVotes={userTopicVotes} />
             </div>
-          </ScrollArea>
-        </div>
-      </TabsContent>
+          </TabsContent>
 
-      {/* Your Votes Tab */}
-      <TabsContent value="your-votes" className="space-y-8">
-        <VotingTrendsChart 
-          topicVotes={transformUserTopicStatsToTopicStats(userTopicVotes?.user_topics || {})}
-          isUserVotes={true}
-        />
-        <div className="grid md:grid-cols-2 gap-8">
-          <TopicInsights 
-            topicStats={transformUserTopicStatsToTopicStats(userTopicVotes?.user_topics || {})} 
-          />
-          <TopicComparison 
-            topics={transformToTopicWithName(userTopicVotes?.user_topics || {})} 
-          />
-        </div>
-        <UserTopicVotes userTopicVotes={userTopicVotes} />
-      </TabsContent>
-
-      {/* Demographics Tab */}
-      <TabsContent value="demographics">
-        <DemographicComparison 
-          userDemographics={demographicData.userDemographics}
-          constituencyStats={demographicData.constituencyStats}
-          demographicComparison={demographicData.demographicComparison}
-          constituencyBreakdown={demographicData.constituencyBreakdown}
-          isOverview={true}
-          showUpgradePrompt={false}
-        />
-      </TabsContent>
-    </>
+          {/* Demographics Tab */}
+          <TabsContent value="demographics" className="mt-0">
+            <DemographicComparison 
+              userDemographics={demographicData.userDemographics}
+              constituencyStats={demographicData.constituencyStats}
+              demographicComparison={demographicData.demographicComparison}
+              constituencyBreakdown={demographicData.constituencyBreakdown}
+              isOverview={true}
+              showUpgradePrompt={false}
+            />
+          </TabsContent>
+        </Tabs>
+      </Card>
+    </TabsContent>
   );
 
   return (
