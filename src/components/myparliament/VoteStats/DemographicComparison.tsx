@@ -2,9 +2,8 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Users, MapPin, UserCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useState, useMemo } from "react";
-import { QuestionStats, DemographicComparisonProps } from '@/types/VoteStats';
+import { DemographicComparisonProps } from '@/types/VoteStats';
 import { QuestionCard } from "./QuestionCard";
 import { cn } from "@/lib/utils";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
@@ -56,36 +55,40 @@ export function DemographicComparison({
     },
   ] as const;
 
-  // Simplified getFilteredQuestions with early returns
-  const getFilteredQuestions = (): QuestionStats[] => {
-    if (filterBy === 'constituency') {
-      if (!userDemographics?.constituency || !constituencyBreakdown) return [];
-      return constituencyBreakdown[userDemographics.constituency]?.questions.map(q => ({
-        ...q,
-        topic: q.topic || 'Unknown'
-      })) || [];
-    }
-
-    if (filterBy === 'gender') {
-      if (!userDemographics?.gender || !demographicComparison?.gender) return [];
-      return demographicComparison.gender[userDemographics.gender]?.questions || [];
-    }
-
-    if (filterBy === 'age') {
-      if (!userDemographics?.age_group || !demographicComparison?.age_group) return [];
-      return demographicComparison.age_group[userDemographics.age_group]?.questions || [];
-    }
-
-    return [];
-  };
-
   // Memoized values
-  const questions = useMemo(() => 
-    getFilteredQuestions()
+  const questions = useMemo(() => {
+    // getFilteredQuestions logic moved inside
+    const getFilteredQuestions = () => {
+      if (filterBy === 'constituency') {
+        if (!userDemographics?.constituency || !constituencyBreakdown) return [];
+        return constituencyBreakdown[userDemographics.constituency]?.questions.map(q => ({
+          ...q,
+          topic: q.topic || 'Unknown'
+        })) || [];
+      }
+
+      if (filterBy === 'gender') {
+        if (!userDemographics?.gender || !demographicComparison?.gender) return [];
+        return demographicComparison.gender[userDemographics.gender]?.questions || [];
+      }
+
+      if (filterBy === 'age') {
+        if (!userDemographics?.age_group || !demographicComparison?.age_group) return [];
+        return demographicComparison.age_group[userDemographics.age_group]?.questions || [];
+      }
+
+      return [];
+    };
+
+    return getFilteredQuestions()
       .sort((a, b) => b.total_votes - a.total_votes)
-      .slice(0, 10),
-    [filterBy, constituencyBreakdown, demographicComparison, userDemographics]
-  );
+      .slice(0, 10);
+  }, [
+    filterBy,
+    userDemographics,
+    constituencyBreakdown,
+    demographicComparison
+  ]);
 
   const isLoading = useMemo(() => 
     !demographicComparison && !constituencyBreakdown && !constituencyStats,

@@ -1,7 +1,7 @@
 create or replace function get_demographic_vote_stats(
   p_debate_id uuid default null,
   p_topic text default null,
-  p_days integer default 30
+  p_days integer default 14
 ) returns json as $$
 declare
   result json;

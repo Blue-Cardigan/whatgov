@@ -1,7 +1,4 @@
-Responsive design for myparliament pages
-Show most popular votes *for last 30/7 days*
 Divisionsonly tooltip when locked
-Show constituency data for authenticated users without subscription
 Advanced search
 
 #Optimizations
@@ -11,7 +8,7 @@ Auth context when loading feed, to show all filters when page is loading
 
 Free Features for Signed in Users
 - Feed and unlimited votes
-- My Mp filter
+- My Mp and divisions filter
 - View upcoming Parliamentary questions
 - Basic MP Profile view
 - Basic voting record view

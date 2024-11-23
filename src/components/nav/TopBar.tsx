@@ -8,19 +8,12 @@ import {
   MapPin, 
   Tags, 
   LayoutList,
-  Lock,
   Crown,
   UserIcon,
   Vote,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +21,6 @@ import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PLANS } from '@/lib/stripe-client';
 import { toast } from "@/hooks/use-toast";
-import { useSupabase } from '@/components/providers/SupabaseProvider';
 
 interface TopBarProps {
   filters: FeedFilters;
@@ -117,15 +109,13 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
   const { isEngagedCitizen, user, profile, getAuthHeader } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const router = useRouter();
-  const supabase = useSupabase();
 
   const handleFilterChange = (updatedFilters: Omit<FeedFilters, 'house'>) => {
     // If user is not authenticated or doesn't have an MP, ignore mpOnly filter
     if (!user || !profile?.mp_id) {
-      const { mpOnly, ...rest } = updatedFilters;
       onChange({
         ...filters,
-        ...rest,
+        ...updatedFilters,
         mpOnly: false
       });
       return;
@@ -133,10 +123,9 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
 
     // If user is not subscribed, ignore all other filters except mpOnly
     if (!isEngagedCitizen) {
-      const { mpOnly } = updatedFilters;
       onChange({
         ...filters,
-        mpOnly,
+        mpOnly: updatedFilters.mpOnly,
         divisionsOnly: false,
         type: [],
         location: [],

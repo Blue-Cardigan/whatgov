@@ -254,7 +254,11 @@ export function DebateFilters({
                   "after:opacity-0 after:transition-opacity"
                 )}
                 onClick={() => {
-                  if (isEnabled) {
+                  if (!user) {
+                    setShowSignInPrompt(true);
+                  } else if (!isEnabled) {
+                    setShowUpgradeDialog(true);
+                  } else {
                     handleFilterChange('divisionsOnly', !filters.divisionsOnly);
                   }
                 }}
@@ -572,6 +576,21 @@ export function DebateFilters({
               ? "Add your postcode to your profile to see debates from your local MP."
               : "Create an account or sign in to see debates from your local MP."
             }
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-[425px] p-0">
+          <DialogTitle className="sr-only">
+            Upgrade to Engaged Citizen
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Upgrade your account to access additional filtering options
+          </DialogDescription>
+          <SignInPrompt
+            title="Upgrade to Engaged Citizen"
+            description="Upgrade your account to access additional filtering options and get more insights from parliamentary debates."
           />
         </DialogContent>
       </Dialog>

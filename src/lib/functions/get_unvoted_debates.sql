@@ -99,18 +99,25 @@ BEGIN
       d.*,
       COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
     FROM debates d
-    CROSS JOIN user_topics ut
+    LEFT JOIN user_topics ut ON true
     LEFT JOIN debate_divisions dd ON d.ext_id = dd.debate_section_ext_id
     WHERE (
       NOT EXISTS (SELECT 1 FROM voted_debates)
       OR d.id NOT IN (SELECT debate_id FROM voted_debates)
     )
     AND (
-      NOT p_divisions_only 
-      OR (
-        dd.divisions_data IS NOT NULL 
-        AND dd.divisions_data != '[]'::jsonb
-        AND jsonb_array_length(dd.divisions_data) > 0
+      (NOT EXISTS (SELECT 1 FROM user_topics) AND dd.divisions_data IS NOT NULL AND dd.divisions_data != '[]'::jsonb)
+      OR
+      (
+        EXISTS (SELECT 1 FROM user_topics)
+        AND (
+          NOT p_divisions_only 
+          OR (
+            dd.divisions_data IS NOT NULL 
+            AND dd.divisions_data != '[]'::jsonb
+            AND jsonb_array_length(dd.divisions_data) > 0
+          )
+        )
       )
     )
     AND (
