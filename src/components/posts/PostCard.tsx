@@ -43,28 +43,44 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
   const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Update height management
-  const [contentHeight, setContentHeight] = useState<number>(0);
-  const firstContentRef = useRef<HTMLDivElement>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Track heights of all content sections
+  const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
+  const contentRefs = useRef<Record<string, HTMLDivElement | null>>({
+    division: null,
+    debate: null
+  });
 
-  // Use ResizeObserver for more reliable height updates
+  // Use ResizeObserver to track heights of all sections
   useEffect(() => {
-    if (!firstContentRef.current) return;
+    const observers: ResizeObserver[] = [];
+    
+    Object.entries(contentRefs.current).forEach(([key, element]) => {
+      if (!element) return;
 
-    resizeObserverRef.current = new ResizeObserver(entries => {
-      const height = entries[0]?.contentRect.height;
-      if (height && height !== contentHeight) {
-        setContentHeight(height);
-      }
+      const observer = new ResizeObserver(entries => {
+        const height = entries[0]?.contentRect.height;
+        if (height) {
+          setContentHeights(prev => ({
+            ...prev,
+            [key]: height
+          }));
+        }
+      });
+
+      observer.observe(element);
+      observers.push(observer);
     });
 
-    resizeObserverRef.current.observe(firstContentRef.current);
-
     return () => {
-      resizeObserverRef.current?.disconnect();
+      observers.forEach(observer => observer.disconnect());
     };
-  }, [contentHeight,activeSlide]);
+  }, []);
+
+  // Calculate maximum height from all sections
+  const maxContentHeight = useMemo(() => {
+    const heights = Object.values(contentHeights);
+    return heights.length > 0 ? Math.max(...heights) : 0;
+  }, [contentHeights]);
 
   // Updated slide change handler
   const handleSlideChange = useCallback((type: string, index?: number) => {
@@ -132,8 +148,8 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
   return (
     <Card 
       className={cn(
-        "overflow-visible relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
-        "min-h-[150px]"
+        "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
+        "flex flex-col"
       )}
       style={{ 
         borderLeftColor: locationColors[item.location] || '#2b2b2b',
@@ -141,7 +157,7 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
         backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
       }}
     >
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex-shrink-0">
         {/* Only show MP indicator if we have both an MP and they spoke */}
         {userMp && mpSpoke && (
           <div className="flex items-center gap-2 text-primary mb-2">
@@ -170,22 +186,24 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
         {...swipeHandlers}
         ref={scrollRef}
         className={cn(
-          "flex w-full snap-x snap-mandatory scrollbar-none",
-          "overflow-visible"
+          "flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none",
+          "scroll-smooth flex-grow"
         )}
         style={{ 
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
-          height: contentHeight || 'auto',
-          transition: 'height 0.3s ease-in-out'
+          minHeight: maxContentHeight || 'auto',
+          transition: 'min-height 0.3s ease-in-out'
         }}
       >
         {/* Division Content */}
         {hasDivisions && (
           <motion.div 
             key="division" 
-            className="w-full flex-none snap-center"
-            ref={activeSlide === 'division' ? firstContentRef : undefined}
+            className="w-full flex-shrink-0 snap-center h-full"
+            ref={el => {
+              contentRefs.current.division = el;
+            }}
             layout
           >
             <DivisionContent 
@@ -198,8 +216,10 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
         {/* Debate Content */}
         <motion.div 
           key="debate" 
-          className="w-full flex-none snap-center"
-          ref={!hasDivisions && activeSlide === 'debate' ? firstContentRef : undefined}
+          className="w-full flex-shrink-0 snap-center h-full"
+          ref={el => {
+            contentRefs.current.debate = el;
+          }}
           layout
         >
           <DebateContent 
@@ -211,14 +231,13 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
         </motion.div>
       </div>
 
-      {/* Meta information */}
-      <div className="px-6 py-4 border-t bg-muted/5">
+      <div className="px-6 py-4 border-t bg-muted/5 flex-shrink-0">
         <MetaInformation item={item} />
       </div>
 
       {/* Key Points Preview */}
       {item.ai_comment_thread && item.ai_comment_thread.length > 0 && (
-        <div className="border-t">
+        <div className="border-t flex-shrink-0">
           <div className="px-6 py-3">
             {!showComments ? (
               <button

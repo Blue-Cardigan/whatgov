@@ -42,6 +42,7 @@ interface VirtualizedDebateListProps {
   profile: { mp?: string } | null;
   readOnly: boolean;
   hasReachedVoteLimit: () => boolean;
+  estimateSize: (index: number) => number;
 }
 
 // Create a client-only version of the virtualized list
@@ -52,7 +53,8 @@ const VirtualizedDebateList = dynamic(() => Promise.resolve(({
   handleVote, 
   profile, 
   readOnly, 
-  hasReachedVoteLimit 
+  hasReachedVoteLimit,
+  estimateSize
 }: VirtualizedDebateListProps) => (
   <div
     style={{
@@ -75,6 +77,7 @@ const VirtualizedDebateList = dynamic(() => Promise.resolve(({
             left: 0,
             width: '100%',
             transform: `translateY(${virtualRow.start}px)`,
+            minHeight: estimateSize(virtualRow.index),
           }}
         >
           <PostCard
@@ -138,17 +141,17 @@ export function DebateList({
       return measurementCache.current.compact.get(item.id)!;
     }
 
-    // More generous base estimation
-    const baseHeight = 300; // Increased from 250
-    const questionsHeight = (item.ai_question_1 ? 200 : 0) + 
-                          (item.ai_question_2 ? 200 : 0) + 
-                          (item.ai_question_3 ? 200 : 0);
+    // More conservative base estimation
+    const baseHeight = 150; // Reduced from 300
+    const questionsHeight = (item.ai_question_1 ? 100 : 0) + 
+                          (item.ai_question_2 ? 100 : 0) + 
+                          (item.ai_question_3 ? 100 : 0);
     
     // Add extra height for divisions if present
-    const divisionsHeight = item.divisions?.length ? 400 : 0;
+    const divisionsHeight = item.divisions?.length ? 200 : 0; // Reduced from 400
     
     return isExpanded 
-      ? baseHeight + questionsHeight + divisionsHeight + 300 
+      ? baseHeight + questionsHeight + divisionsHeight + 150 // Reduced extra padding
       : baseHeight + questionsHeight + divisionsHeight;
   }, [items]);
 
@@ -333,7 +336,7 @@ export function DebateList({
   }
 
   return (
-    <div ref={parentRef} className="w-full space-y-4">
+    <div ref={parentRef} className="w-full">
       {typeof window !== 'undefined' && (
         <VirtualizedDebateList
           items={items}
@@ -348,6 +351,7 @@ export function DebateList({
           profile={profile}
           readOnly={readOnly}
           hasReachedVoteLimit={hasReachedVoteLimit}
+          estimateSize={estimateSize}
         />
       )}
       

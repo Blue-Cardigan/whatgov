@@ -159,13 +159,16 @@ export async function getFeedItems(
 
     // Prepare filter parameters for authenticated users only
     const filterParams = user ? {
+      p_divisions_only: filters?.divisionsOnly || false,
+      p_mp_only: filters?.mpOnly || false,
+      
       p_type: filters?.type?.length ? filters.type : null,
       p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
-      p_mp_only: filters?.mpOnly || false,
-      p_divisions_only: filters?.divisionsOnly || false
     } : {};
+
+    console.log('filterParams', filterParams);
 
     if (user) {
       // Authenticated user flow

@@ -19,6 +19,7 @@ interface FiltersProps {
   onChange: (filters: Omit<FeedFilters, 'house'>) => void;
   filterItems: readonly FilterItem[];
   isEnabled: boolean;
+  onUpgrade: () => void;
 }
 
 // Define the type for a mapping entry
@@ -124,13 +125,13 @@ export function DebateFilters({
   filters, 
   onChange, 
   filterItems, 
-  isEnabled
+  isEnabled,
+  onUpgrade
 }: FiltersProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [isMobile] = useState(true);
   const { user, profile } = useAuth();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // Check if MP filter is available (user is authenticated and has an MP)
   const isMpFilterAvailable = user && profile?.mp_id;
@@ -247,7 +248,7 @@ export function DebateFilters({
                 className={cn(
                   "group flex flex-col items-center gap-1.5",
                   "justify-self-center relative",
-                  (!isEnabled) && "opacity-50 cursor-not-allowed",
+                  (!user) && "opacity-50 cursor-not-allowed",
                   "after:content-[''] after:absolute after:bottom-0 after:left-1/2",
                   "after:w-1 after:h-1 after:rounded-full after:bg-primary",
                   "after:transform after:-translate-x-1/2 after:translate-y-3",
@@ -256,8 +257,6 @@ export function DebateFilters({
                 onClick={() => {
                   if (!user) {
                     setShowSignInPrompt(true);
-                  } else if (!isEnabled) {
-                    setShowUpgradeDialog(true);
                   } else {
                     handleFilterChange('divisionsOnly', !filters.divisionsOnly);
                   }
@@ -266,13 +265,13 @@ export function DebateFilters({
                 <div className={cn(
                   "relative rounded-full p-3.5 transition-all duration-200",
                   "border-2",
-                  filters.divisionsOnly && isEnabled
+                  filters.divisionsOnly && user
                     ? "border-primary bg-primary/5" 
                     : "border-muted group-hover:border-muted-foreground/50 bg-background"
                 )}>
                   <Vote className={cn(
                     "w-6 h-6 transition-colors",
-                    filters.divisionsOnly && isEnabled
+                    filters.divisionsOnly && user
                       ? "text-primary" 
                       : "text-muted-foreground group-hover:text-foreground"
                   )} />
@@ -535,7 +534,7 @@ export function DebateFilters({
                           "justify-self-center relative",
                           "text-muted-foreground hover:text-primary"
                         )}
-                        onClick={() => setShowUpgradeDialog(true)}
+                        onClick={onUpgrade}
                       >
                         <div className={cn(
                           "relative rounded-full p-3.5 transition-all duration-200",
@@ -576,21 +575,6 @@ export function DebateFilters({
               ? "Add your postcode to your profile to see debates from your local MP."
               : "Create an account or sign in to see debates from your local MP."
             }
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="sm:max-w-[425px] p-0">
-          <DialogTitle className="sr-only">
-            Upgrade to Engaged Citizen
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Upgrade your account to access additional filtering options
-          </DialogDescription>
-          <SignInPrompt
-            title="Upgrade to Engaged Citizen"
-            description="Upgrade your account to access additional filtering options and get more insights from parliamentary debates."
           />
         </DialogContent>
       </Dialog>

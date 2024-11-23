@@ -121,12 +121,12 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
       return;
     }
 
-    // If user is not subscribed, ignore all other filters except mpOnly
+    // If user is not subscribed, only allow mpOnly and divisionsOnly filters
     if (!isEngagedCitizen) {
       onChange({
         ...filters,
         mpOnly: updatedFilters.mpOnly,
-        divisionsOnly: false,
+        divisionsOnly: updatedFilters.divisionsOnly,
         type: [],
         location: [],
         days: [],
@@ -197,6 +197,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
           onChange={handleFilterChange} 
           filterItems={[...filterItems, ...booleanFilters]}
           isEnabled={isEngagedCitizen}
+          onUpgrade={() => setShowUpgradeDialog(true)}
         />
       </div>
 
