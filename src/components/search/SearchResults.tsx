@@ -4,14 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, User, ArrowRight, FileText, MessageSquare, AlertCircle } from "lucide-react";
-import { useSearch } from '@/hooks/useSearch';
 import { Contribution } from "@/lib/hansard-api";
 import * as React from 'react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-
-interface SearchResultsProps {
-  searchHook: ReturnType<typeof useSearch>;
-}
+import type { SearchParams } from '@/lib/hansard-api';
 
 function constructHansardUrl(result: Contribution, searchTerm?: string) {
   // Format the date (yyyy-mm-dd)
@@ -35,17 +31,26 @@ function constructHansardUrl(result: Contribution, searchTerm?: string) {
   return `${baseUrl}${highlightParam}${contributionAnchor}`;
 }
 
-export function SearchResults({ searchHook }: SearchResultsProps) {
-  const { 
-    results, 
-    isLoading, 
-    totalResults, 
-    loadMore, 
-    hasMore,
-    updateSearch,
-    searchTerm,
-    query,
-  } = searchHook;
+export function SearchResults({ 
+  results, 
+  isLoading, 
+  totalResults,
+  searchParams,
+  onSearch,
+  onLoadMore,
+  hasMore
+}: {
+  results: Contribution[];
+  isLoading: boolean;
+  totalResults: number;
+  searchParams: SearchParams;
+  onSearch: (params: Partial<SearchParams>) => void;
+  onLoadMore: () => void;
+  hasMore: boolean;
+}) {
+  const handleSortOrderChange = React.useCallback((orderBy: SearchParams['orderBy']) => {
+    onSearch({ orderBy });
+  }, [onSearch]);
 
   // Memoize helper functions
   const getTotalResults = React.useCallback(() => {
@@ -65,11 +70,6 @@ export function SearchResults({ searchHook }: SearchResultsProps) {
         return <MessageSquare className="h-4 w-4" />;
     }
   }, []);
-
-  // Handle sort order change with loading state
-  const handleSortOrderChange = React.useCallback((newOrder: 'SittingDateDesc' | 'SittingDateAsc') => {
-    updateSearch({ sortOrder: newOrder });
-  }, [updateSearch]);
 
   return (
     <div className="space-y-4">
@@ -94,8 +94,8 @@ export function SearchResults({ searchHook }: SearchResultsProps) {
         </div>
 
         <Select
-          value={query.sortOrder}
-          onValueChange={handleSortOrderChange}
+          value={searchParams.orderBy}
+          onValueChange={(value) => handleSortOrderChange(value as SearchParams['orderBy'])}
           disabled={isLoading}
         >
           <SelectTrigger className="w-[140px]">
@@ -113,13 +113,13 @@ export function SearchResults({ searchHook }: SearchResultsProps) {
         {isLoading ? (
           <ResultsSkeleton />
         ) : !results?.length ? (
-          <EmptyState searchTerm={searchTerm} />
+          <EmptyState searchTerm={searchParams.searchTerm} />
         ) : (
           results.map((result) => (
             <ResultCard
               key={result.ContributionExtId}
               result={result}
-              searchTerm={searchTerm}
+              searchTerm={searchParams.searchTerm}
               getResultTypeIcon={getResultTypeIcon}
             />
           ))
@@ -131,7 +131,7 @@ export function SearchResults({ searchHook }: SearchResultsProps) {
         <div className="flex justify-center mt-6">
           <Button 
             variant="outline" 
-            onClick={loadMore}
+            onClick={onLoadMore}
             className="gap-2"
           >
             Load More Results

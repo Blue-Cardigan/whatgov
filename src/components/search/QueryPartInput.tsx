@@ -2,12 +2,22 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import type { QueryPart } from "./queryReducer";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
+
+export interface SearchType {
+  id: QueryPart['type'];
+  label: string;
+  description: string;
+  icon: JSX.Element;
+  placeholder: string;
+  example: string;
+}
 
 interface QueryPartInputProps {
   part: QueryPart;
+  searchType: SearchType | undefined;
   index: number;
   isFocused: boolean;
   onFocus: () => void;
@@ -20,88 +30,88 @@ interface QueryPartInputProps {
 
 export function QueryPartInput({
   part,
+  searchType,
   index,
   isFocused,
   onFocus,
   onBlur,
   onUpdate,
   onRemove,
-  onTypeChange,
   showRemove,
 }: QueryPartInputProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleTypeChange = (newType: QueryPart['type']) => {
-    onTypeChange(index, newType);
-  };
-
   return (
-    <div 
-      className={cn(
-        "flex items-center gap-2 rounded-lg p-2",
-        isFocused ? "ring-2 ring-primary" : "bg-secondary/50",
-        !part.isValid && "ring-2 ring-destructive"
-      )}
-    >
-      {part.type !== 'text' && (
-        <Select
-          value={part.type}
-          onValueChange={handleTypeChange}
-        >
-          <SelectTrigger className="h-8 w-[100px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="spokenby">Speaker</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+    <div className="group relative">
+      <div className={cn(
+        "flex items-center gap-4 rounded-lg border p-4 transition-all",
+        isFocused ? "ring-2 ring-primary border-primary" : "bg-card hover:bg-accent/50",
+        !part.isValid && "border-destructive"
+      )}>
+        {/* Left Icon */}
+        <div className="flex-shrink-0 text-muted-foreground">
+          {searchType?.icon}
+        </div>
 
-      <div className="relative flex-1" ref={inputRef}>
-        <Input
-          value={part.value}
-          onChange={(e) => onUpdate(index, e.target.value)}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          placeholder={getPlaceholder(part.type)}
-          className={cn("h-8", !part.isValid && "border-destructive")}
-        />
-
-        {!part.isValid && part.value.length > 0 && (
-          <div className="text-xs text-destructive mt-1">
-            {getErrorMessage(part)}
+        {/* Main Content */}
+        <div className="flex-grow space-y-2">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{searchType?.label}</span>
+              <Badge 
+                variant="secondary" 
+                className="text-xs font-normal"
+              >
+                {part.type}
+              </Badge>
+            </div>
           </div>
+
+          {/* Input */}
+          <div className="relative">
+            <Input
+              value={part.value}
+              onChange={(e) => onUpdate(index, e.target.value)}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              placeholder={searchType?.placeholder}
+              className={cn(
+                "border-none bg-transparent px-0 h-9 text-base",
+                !part.isValid && "text-destructive"
+              )}
+            />
+            {!part.isValid && part.value.length > 0 && (
+              <p className="text-xs text-destructive mt-1">
+                Please enter at least {part.type === 'spokenby' ? '2' : '1'} characters
+              </p>
+            )}
+          </div>
+
+          {/* Helper Text */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {searchType?.description}
+            </p>
+            {part.value && (
+              <p className="text-xs text-muted-foreground italic">
+                Example: {searchType?.example}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Remove Button */}
+        {showRemove && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(index)}
+            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Remove search part</span>
+          </Button>
         )}
       </div>
-
-      {showRemove && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(index)}
-          className="h-8 w-8 p-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
     </div>
   );
-}
-
-function getPlaceholder(type: QueryPart['type']): string {
-  switch (type) {
-    case 'spokenby':
-      return "Enter MP name...";
-    default:
-      return "Enter search terms...";
-  }
-}
-
-function getErrorMessage(part: QueryPart): string {
-  switch (part.type) {
-    case 'spokenby':
-      return "Please enter at least 2 characters";
-    default:
-      return "Invalid input";
-  }
 } 

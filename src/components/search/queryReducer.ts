@@ -1,5 +1,5 @@
 export interface QueryPart {
-  type: 'text' | 'spokenby';
+  type: 'text' | 'spokenby' | 'debate' | 'words';
   value: string;
   isValid: boolean;
 }
@@ -17,48 +17,40 @@ interface QueryState {
   focusedIndex: number | null;
 }
 
+const getMinLength = (type: QueryPart['type']): number => {
+  return {
+    spokenby: 2,
+    debate: 2,
+    words: 1,
+    text: 1
+  }[type];
+};
+
 export function queryReducer(state: QueryState, action: QueryAction): QueryState {
   switch (action.type) {
     case 'SET_PARTS':
-      return {
-        ...state,
-        parts: action.payload
-      };
-      
+      return { ...state, parts: action.payload };
+
     case 'UPDATE_PART': {
       const { index, value } = action.payload;
       const newParts = [...state.parts];
       const part = newParts[index];
       if (!part) return state;
 
-      const minLength = {
-        spokenby: 2,
-        text: 1
-      }[part.type];
-
       newParts[index] = {
         ...part,
         value,
-        isValid: value.length >= minLength
+        isValid: value.length >= getMinLength(part.type)
       };
       
-      return {
-        ...state,
-        parts: newParts
-      };
+      return { ...state, parts: newParts };
     }
 
     case 'ADD_PART':
-      return {
-        ...state,
-        parts: [...state.parts, { type: action.payload, value: '', isValid: true }]
-      };
+      return { ...state, parts: [...state.parts, { type: action.payload, value: '', isValid: true }] };
 
     case 'REMOVE_PART':
-      return {
-        ...state,
-        parts: state.parts.filter((_, i) => i !== action.payload)
-      };
+      return { ...state, parts: state.parts.filter((_, i) => i !== action.payload) };
 
     case 'CHANGE_PART_TYPE':
       return {
@@ -71,10 +63,7 @@ export function queryReducer(state: QueryState, action: QueryAction): QueryState
       };
 
     case 'SET_FOCUSED_INDEX':
-      return {
-        ...state,
-        focusedIndex: action.payload
-      };
+      return { ...state, focusedIndex: action.payload };
 
     default:
       return state;
