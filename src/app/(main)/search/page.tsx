@@ -15,11 +15,6 @@ export default function Search() {
     house: 'Commons',
     orderBy: 'SittingDateDesc',
     take: PAGE_SIZE,
-    outputType: 'List',
-    includeCurrent: true,
-    includeFormer: true,
-    includeCommitteeDivisions: false,
-    withDivision: false
   });
 
   const performSearch = useCallback(async (newParams?: Partial<SearchParams>, loadMore = false) => {
@@ -66,9 +61,6 @@ export default function Search() {
   return (
     <div className="container py-4 px-4 lg:py-8 lg:px-8">
       <div className="mb-8 lg:mb-12">
-        <h1 className="text-3xl lg:text-4xl font-bold mb-2 lg:mb-3">
-          Search Parliamentary Debates
-        </h1>
         <QueryBuilder
           searchParams={searchParams}
           onSearch={handleSearch}

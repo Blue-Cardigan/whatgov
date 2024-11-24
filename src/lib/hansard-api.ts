@@ -12,25 +12,14 @@ export interface HansardApiConfig {
 
 export interface SearchParams {
   searchTerm?: string;
-  house: 'Commons' | 'Lords';
-  outputType: 'List' | 'Group';
-  timelineGroupingSize?: 'Day' | 'Month' | 'Year';
+  house?: 'Commons' | 'Lords';
   orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
-  debateType?: 'debate' | 'statement' | 'answer' | 'petition';
-  department?: string;
-  committeeTitle?: string;
-  committeeType?: 1 | 2 | 3 | 4;
-  includeCommitteeDivisions: boolean;
-  includeFormer: boolean;
-  includeCurrent: boolean;
-  withDivision: boolean;
   startDate?: string;
   endDate?: string;
   spokenBy?: string;
   memberId?: number;
   memberIds?: number[];
   divisionId?: number;
-  hansardIdentifier?: string;
   seriesNumber?: number;
   volumeNumber?: number;
   columnNumber?: string;

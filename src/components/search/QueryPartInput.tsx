@@ -75,7 +75,7 @@ export function QueryPartInput({
               onBlur={onBlur}
               placeholder={searchType?.placeholder}
               className={cn(
-                "border-none bg-transparent px-0 h-9 text-base",
+                "border-none bg-transparent px-0 h-9 text-base pl-2",
                 !part.isValid && "text-destructive"
               )}
             />

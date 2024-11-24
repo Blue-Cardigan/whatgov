@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { searchTypes, getAdvancedButtons } from "./config";
+import { searchTypes } from "./config";
 import type { SearchParams } from "@/lib/hansard-api";
 import {
   Popover,
@@ -35,13 +35,11 @@ export function QueryBuilder({
     focusedIndex: null
   });
 
-  // Local state for date and advanced filter selections
+  // Local state for date selections and house toggle
   const [localParams, setLocalParams] = useState<Partial<SearchParams>>({
     startDate: searchParams.startDate,
     endDate: searchParams.endDate,
-    timelineGroupingSize: searchParams.timelineGroupingSize,
-    orderBy: searchParams.orderBy,
-    // Add other advanced filter states as needed
+    house: searchParams.house,
   });
 
   useEffect(() => {
@@ -112,7 +110,9 @@ export function QueryBuilder({
     handleLocalOptionsChange({ [type === 'start' ? 'startDate' : 'endDate']: date ? date.toISOString().split('T')[0] : undefined });
   }, [handleLocalOptionsChange]);
 
-  const advancedButtons = getAdvancedButtons({ ...searchParams, ...localParams }, handleLocalOptionsChange);
+  const handleHouseChange = useCallback((house: 'Commons' | 'Lords' | undefined) => {
+    handleLocalOptionsChange({ house });
+  }, [handleLocalOptionsChange]);
 
   return (
     <div className="space-y-4">
@@ -213,6 +213,57 @@ export function QueryBuilder({
           )}
         </div>
 
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={localParams.house === 'Commons' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleHouseChange('Commons')}
+                >
+                  Commons
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Select Commons for House of Commons debates</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={localParams.house === 'Lords' ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleHouseChange('Lords')}
+                >
+                  Lords
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Select Lords for House of Lords debates</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={!localParams.house ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleHouseChange(undefined)}
+                >
+                  Both
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Select Both to include all debates</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
         <div className="flex-1" />
 
         <Button
@@ -246,42 +297,6 @@ export function QueryBuilder({
             </Tooltip>
           </TooltipProvider>
         ))}
-      </div>
-
-      <div className="flex items-center justify-between gap-4 pt-4 border-t">
-        <div className="flex items-center gap-2">
-          {advancedButtons.map((button) => (
-            <TooltipProvider key={button.id}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={button.isActive({ ...searchParams, ...localParams }) ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 gap-2"
-                      >
-                        {button.icon}
-                        <span className="text-xs">{button.label}</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-4" align="start">
-                      <div className="space-y-2">
-                        <h4 className="font-medium leading-none">{button.label} Options</h4>
-                        <div className="pt-2">
-                          {button.content}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{button.tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ))}
-        </div>
       </div>
     </div>
   );
