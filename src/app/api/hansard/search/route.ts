@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     
     // Construct the Hansard API URL
     const url = `${HANSARD_API_BASE}/search.json?${searchParams.toString()}`;
-    console.log(url)
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

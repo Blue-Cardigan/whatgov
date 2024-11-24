@@ -9,8 +9,8 @@ import type { UserProfile } from '@/types/supabase';
 interface SignUpData extends Omit<UserProfile, 'email' | 'email_verified'> {
   first_name?: string;
   last_name?: string;
-  avatar_url?: string;
   mp_id?: number;
+  newsletter?: boolean;
 }
 
 export function useAuth() {
@@ -179,9 +179,13 @@ export function useAuth() {
 
       const response = await signUpWithEmail(email, password, profile);
       
+      if (response.status === 'redirect_to_login') {
+        router.push('/login?email=' + encodeURIComponent(email));
+        return null;
+      }
+
       if (response.status === 'verify_email') {
-        // Include email in redirect
-        router.push(`/accounts/verify`);
+        router.push('/accounts/verify');
         localStorage.setItem('verification_email', email);
         return response;
       }
@@ -236,6 +240,40 @@ export function useAuth() {
     return session.access_token;
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send reset email'
+      };
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Password update error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update password'
+      };
+    }
+  };
+
   return {
     user,
     profile,
@@ -250,5 +288,7 @@ export function useAuth() {
     updateProfile,
     signOut: handleSignOut,
     getAuthHeader,
+    resetPassword,
+    updatePassword,
   };
 }

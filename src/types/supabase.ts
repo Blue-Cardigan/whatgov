@@ -10,7 +10,7 @@ export type AuthResponse = {
   user: User | null;
   session: Session | null;
   error?: string;
-  status?: 'verify_email' | 'error' | 'success';
+  status?: 'verify_email' | 'error' | 'success' | 'redirect_to_login';
 };
 
 export type UserProfile = {
@@ -24,6 +24,7 @@ export type UserProfile = {
   selected_topics: string[];
   email: string;
   email_verified?: boolean;
+  newsletter?: boolean;
 };
 
 export type Json =

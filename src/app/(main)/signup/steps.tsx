@@ -10,6 +10,8 @@ import { Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import { lookupPostcode } from "@/lib/supabase";
 import { ChartBarIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 type FormData = {
   name: string;
@@ -20,6 +22,7 @@ type FormData = {
   age: string;
   postcode: string;
   selectedTopics: string[];
+  newsletter: boolean;
 };
 
 interface StepsProps {
@@ -391,6 +394,24 @@ export default function Steps({
               animate={{ opacity: 1, y: 0 }}
               className="rounded-xl border bg-muted/50 p-6"
             >
+              <div className="flex items-center justify-between space-x-4">
+                <div className="space-y-1">
+                  <Label htmlFor="newsletter" className="font-medium">Stay Updated</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receive a weekly email with the juciest Hansard highlights
+                  </p>
+                </div>
+                <Switch
+                  id="newsletter"
+                  checked={formData.newsletter}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, newsletter: checked }))
+                  }
+                />
+              </div>
+            </motion.div>
+
+            <motion.div className="rounded-xl border bg-muted/50 p-6">
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <ChartBarIcon className="h-5 w-5 text-primary" />

@@ -26,6 +26,7 @@ export default function SignUp() {
     age: "",
     postcode: "",
     selectedTopics: TOPICS.map(topic => topic.id),
+    newsletter: true,
   });
 
   const [postcodeError, setPostcodeError] = useState("");
@@ -99,6 +100,7 @@ export default function SignUp() {
         constituency: mpDetails?.constituency || "",
         mp: mpDetails?.mp || "",
         selected_topics: topicLabels,
+        newsletter: formData.newsletter,
       });
 
       if (!response) {

@@ -18,6 +18,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { UserProfile } from '@/types/supabase';
 import { createClient } from '@/lib/supabase-client';
 import { useRouter } from 'next/navigation';
+import { Switch } from "@/components/ui/switch";
+import { Mail, BellRing } from "lucide-react";
 
 export function ProfileSettings() {
   const { user, profile: originalProfile, updateProfile } = useAuth();
@@ -65,6 +67,7 @@ export function ProfileSettings() {
         gender: profile.gender,
         age: profile.age,
         selected_topics: profile.selected_topics,
+        newsletter: profile.newsletter,
       });
 
       toast({
@@ -393,6 +396,50 @@ export function ProfileSettings() {
                   </Badge>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Communication Preferences section */}
+          <div className="space-y-3">
+            <Label>Communication Preferences</Label>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="newsletter" className="font-medium">Weekly Newsletter</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Receive our weekly digest with the latest updates and insights
+                  </p>
+                </div>
+                <Switch
+                  id="newsletter"
+                  checked={profile.newsletter}
+                  onCheckedChange={(checked) => 
+                    setProfile({ ...profile, newsletter: checked })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center space-x-2">
+                    <BellRing className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="notifications" className="font-medium">Email Notifications</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified about important updates and responses
+                  </p>
+                </div>
+                <Switch
+                  id="notifications"
+                  checked={profile.newsletter}
+                  onCheckedChange={(checked) => 
+                    setProfile({ ...profile, newsletter: checked })
+                  }
+                />
+              </div>
             </div>
           </div>
 

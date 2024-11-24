@@ -18,18 +18,41 @@ export const signUpWithEmail = async (
   const serviceClient = createClient();
 
   try {
+    // First check if user exists and is verified
+    const { data: existingUser, error: checkError } = await serviceClient
+      .from('user_profiles')
+      .select('email_verified')
+      .eq('email', email)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError;
+    }
+
+    // If user exists and is verified, return special status
+    if (existingUser?.email_verified) {
+      return {
+        user: null,
+        session: null,
+        error: 'An account with this email already exists',
+        status: 'redirect_to_login'
+      };
+    }
+
+    // Proceed with signup
     const { data, error } = await serviceClient.rpc(
       'create_user_with_profile',
       {
         user_email: email,
         user_password: password,
-        user_name: profile.name,
-        user_gender: profile.gender,
-        user_postcode: profile.postcode,
-        user_constituency: profile.constituency,
-        user_mp: profile.mp,
-        user_mp_id: profile.mp_id,
-        user_selected_topics: profile.selected_topics
+        user_name: profile.name || '',
+        user_gender: profile.gender || '',
+        user_postcode: profile.postcode || '',
+        user_constituency: profile.constituency || '',
+        user_mp: profile.mp || '',
+        user_mp_id: profile.mp_id || null,
+        user_selected_topics: profile.selected_topics || [],
+        user_newsletter: profile.newsletter ?? true
       }
     );
 
@@ -167,8 +190,6 @@ export async function getFeedItems(
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
     } : {};
-
-    console.log('filterParams', filterParams);
 
     if (user) {
       // Authenticated user flow
