@@ -21,7 +21,6 @@ import {
 export function QueryBuilder({ 
   searchParams,
   onSearch,
-  onClear,
 }: {
   searchParams: SearchParams;
   onSearch: (params: Partial<SearchParams>) => void;

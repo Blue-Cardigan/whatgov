@@ -1,8 +1,4 @@
-import { Search, Quote, User, MessageSquare, CalendarIcon, Building2, Filter, Vote, Users } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { SearchParams } from "@/lib/hansard-api";
+import { Search, Quote, User, MessageSquare } from "lucide-react";
 
 export const searchTypes = [
     {
