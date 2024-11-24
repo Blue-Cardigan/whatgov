@@ -17,6 +17,11 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { dev, isServer }) => {
+    // Disable webpack caching in production
+    config.cache = false;
+    return config;
+  },
 };
 
 export default nextConfig;

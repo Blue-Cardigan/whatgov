@@ -44,39 +44,26 @@ export default function Search() {
   const handleSearch = useCallback((params: Partial<SearchParams>) => 
     performSearch(params), [performSearch]);
 
-  const handleClear = useCallback(() => {
-    setSearchParams(prev => ({
-      ...prev,
-      searchTerm: undefined,
-      date: undefined,
-      startDate: undefined,
-      endDate: undefined,
-      department: undefined,
-      committeeTitle: undefined,
-      committeeType: undefined
-    }));
-    setResults(null);
-  }, []);
-
   return (
-    <div className="container py-4 px-4 lg:py-8 lg:px-8">
-      <div className="mb-8 lg:mb-12">
-        <QueryBuilder
+    <div className="flex justify-center min-h-screen bg-background">
+      <div className="container max-w-2xl py-4 px-4 lg:py-8 lg:px-8">
+        <div className="mb-8 lg:mb-12">
+          <QueryBuilder
+            searchParams={searchParams}
+            onSearch={handleSearch}
+          />
+        </div>
+
+        <SearchResults
+          results={results?.Contributions || []}
+          isLoading={isLoading}
+          totalResults={results?.TotalContributions || 0}
           searchParams={searchParams}
           onSearch={handleSearch}
-          onClear={handleClear}
+          onLoadMore={() => performSearch(undefined, true)}
+          hasMore={Boolean(results?.TotalContributions && results.Contributions.length < results.TotalContributions)}
         />
       </div>
-
-      <SearchResults
-        results={results?.Contributions || []}
-        isLoading={isLoading}
-        totalResults={results?.TotalContributions || 0}
-        searchParams={searchParams}
-        onSearch={handleSearch}
-        onLoadMore={() => performSearch(undefined, true)}
-        hasMore={Boolean(results?.TotalContributions && results.Contributions.length < results.TotalContributions)}
-      />
     </div>
   );
 }
