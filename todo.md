@@ -1,8 +1,8 @@
-1) Implement email subscription option
-2) Point whatgov.co.uk to new site
-3) Fix stripe webhook
-4) Write welcome email
-5) Implement newsletter sending from backend
+2) Ensure email verification link is whatgov not localhost
+3) Point whatgov.co.uk to new site
+4) reactivate stripe webhook
+5) Write welcome email(s)
+6) Implement newsletter sending from backend
 
 #Optimizations
 Reduce middleware build size for edge runtime

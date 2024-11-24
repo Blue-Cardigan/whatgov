@@ -12,8 +12,9 @@ import { motion } from "framer-motion";
 function VerifiedMessage() {
   const searchParams = useSearchParams();
   const verified = searchParams.get('verified');
+  const reset = searchParams.get('reset');
 
-  if (!verified) return null;
+  if (!verified && !reset) return null;
 
   return (
     <motion.div
@@ -23,13 +24,16 @@ function VerifiedMessage() {
     >
       <div className="flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4" />
-        <span>Email verified successfully! Please sign in.</span>
+        <span>
+          {verified ? "Email verified successfully! Please sign in." : 
+           "Password reset successfully! Please sign in with your new password."}
+        </span>
       </div>
     </motion.div>
   );
 }
 
-export default function SignIn() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -39,8 +43,7 @@ export default function SignIn() {
   const { signIn, resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Pre-fill email if provided in URL
+
   useEffect(() => {
     const emailParam = searchParams.get('email');
     if (emailParam) setEmail(emailParam);
@@ -92,13 +95,7 @@ export default function SignIn() {
   };
 
   return (
-    <div className="container max-w-md mx-auto mt-16 px-4">
-      <h1 className="text-2xl font-bold mb-8">Sign In</h1>
-      
-      <Suspense fallback={null}>
-        <VerifiedMessage />
-      </Suspense>
-
+    <div>
       {resetSent && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -169,6 +166,26 @@ export default function SignIn() {
           {loading ? "Signing in..." : "Sign In"}
         </Button>
       </form>
+    </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <div className="container max-w-md mx-auto mt-16 px-4">
+      <h1 className="text-2xl font-bold mb-8">Sign In</h1>
+      
+      <Suspense fallback={null}>
+        <VerifiedMessage />
+      </Suspense>
+
+      <Suspense fallback={
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      }>
+        <LoginForm />
+      </Suspense>
 
       <p className="mt-4 text-center text-sm">
         Don&apos;t have an account?{" "}
