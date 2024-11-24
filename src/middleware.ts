@@ -1,33 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { getSubscriptionFromCache, isSubscriptionActive } from '@/lib/subscription';
-
-// Create a memoized client factory
-const getSupabaseClient = (() => {
-  let client: SupabaseClient<Database> | null = null;
-  return (req: NextRequest, res: NextResponse) => {
-    if (client) return client;
-    client = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get: (name: string) => req.cookies.get(name)?.value,
-          set: (name: string, value: string, options: CookieOptions) => {
-            res.cookies.set({ name, value, ...options })
-          },
-          remove: (name: string, options: CookieOptions) => {
-            res.cookies.set({ name, value: '', ...options })
-          },
-        },
-      }
-    );
-    return client;
-  };
-})();
 
 // Create custom error types
 class MiddlewareError extends Error {
@@ -36,70 +11,113 @@ class MiddlewareError extends Error {
   }
 }
 
-export async function middleware(req: NextRequest) {
+class AuthError extends MiddlewareError {
+  constructor(message: string) {
+    super(401, message);
+  }
+}
+
+class SubscriptionError extends MiddlewareError {
+  constructor(message: string) {
+    super(403, message);
+  }
+}
+
+// Create Supabase client for each request
+const getSupabaseClient = (req: NextRequest, res: NextResponse) => {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => req.cookies.get(name)?.value,
+        set: (name: string, value: string, options: CookieOptions) => {
+          res.cookies.set({ name, value, ...options })
+        },
+        remove: (name: string, options: CookieOptions) => {
+          res.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  );
+};
+
+// Validate token and return user
+const validateToken = async (req: NextRequest, res: NextResponse, token: string) => {
+  const supabase = getSupabaseClient(req, res);
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) throw new AuthError('Invalid token');
+  return user;
+};
+
+// Handle API route authentication
+const handleApiAuth = async (req: NextRequest, res: NextResponse) => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    throw new AuthError('Missing or invalid authorization header');
+  }
+
+  const token = authHeader.split(' ')[1];
+  const user = await validateToken(req, res, token);
+  
+  // Create new response with user headers
   const response = NextResponse.next();
+  const headers = new Headers(response.headers);
+  headers.set('x-user-id', user.id);
+  headers.set('x-user-email', user.email ?? '');
+  headers.set('x-user-role', user.role ?? 'user');
+  
+  return { user, response: NextResponse.next({ headers }) };
+};
 
-  // Add this helper function
-  const validateToken = async (token: string) => {
-    const supabase = getSupabaseClient(req, response);
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) throw new Error('Invalid token');
-    return user;
-  };
+// Handle page authentication
+const handlePageAuth = async (req: NextRequest, res: NextResponse) => {
+  const supabase = getSupabaseClient(req, res);
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+};
 
+export async function middleware(req: NextRequest) {
   try {
-    // Early return for non-matching routes
-    if (!req.nextUrl.pathname.startsWith('/api/') && 
-        !req.nextUrl.pathname.startsWith('/settings/') && 
-        req.nextUrl.pathname !== '/') {
+    const pathname = req.nextUrl.pathname;
+
+    // API routes
+    if (pathname.startsWith('/api/')) {
+      const { user, response } = await handleApiAuth(req, NextResponse.next());
+
+      // Check premium routes
+      if (pathname.startsWith('/api/premium/')) {
+        const cached = getSubscriptionFromCache(user.id);
+        if (cached && !isSubscriptionActive(cached)) {
+          throw new SubscriptionError('Subscription required');
+        }
+      }
+
       return response;
     }
 
-    // For API routes, check Authorization header
-    if (req.nextUrl.pathname.startsWith('/api/')) {
-      const authHeader = req.headers.get('authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
-        throw new MiddlewareError(401, 'Missing or invalid authorization header');
-      }
-
-      const token = authHeader.split(' ')[1];
-      const user = await validateToken(token);
-
-      // Add user data to request headers
-      response.headers.set('x-user-id', user.id);
-      response.headers.set('x-user-email', user.email ?? '');
-      response.headers.set('x-user-role', user.role ?? 'user');
-
-      // Check premium routes
-      if (req.nextUrl.pathname.startsWith('/api/premium/')) {
-        const cached = getSubscriptionFromCache(user.id);
-        if (cached && !isSubscriptionActive(cached)) {
-          return NextResponse.json(
-            { error: 'Subscription required' },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
-    // Handle protected page routes
-    if (req.nextUrl.pathname.startsWith('/settings/')) {
-      const supabase = getSupabaseClient(req, response);
-      const { data: { session } } = await supabase.auth.getSession();
+    // Protected page routes
+    if (pathname.startsWith('/settings/')) {
+      const session = await handlePageAuth(req, NextResponse.next());
       if (!session) {
-        return NextResponse.redirect(new URL('/accounts/login', req.url));
+        return NextResponse.redirect(new URL('/login', req.url));
       }
+      return NextResponse.next();
     }
 
-    return response;
+    // All other routes
+    return NextResponse.next();
+
   } catch (error) {
+    console.error('Middleware error:', error);
+    
     if (error instanceof MiddlewareError) {
       return NextResponse.json(
         { error: error.message },
         { status: error.status }
       );
     }
-    console.error('Middleware error:', error);
+
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -109,9 +127,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/stripe/:path*',
-    '/api/premium/:path*',
+    '/api/(stripe|premium)/:path*',
     '/settings/:path*',
-    '/',  // Add home page to check first visit
   ],
 } 

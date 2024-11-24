@@ -65,9 +65,6 @@ export async function POST(req: Request) {
 
     const headersList = await headers();
     const origin = headersList.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL;
-
-    // Add request rate limiting
-    // Add input validation middleware
     
     // Add proper error types and handling
     if (!process.env.STRIPE_SECRET_KEY) {

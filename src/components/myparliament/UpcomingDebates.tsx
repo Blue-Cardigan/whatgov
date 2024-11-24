@@ -388,7 +388,7 @@ export function UpcomingDebates() {
     <div className="flex justify-between items-center">
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {actualWeek === 'next' ? "Next Week&apos;s Questions" : "This Week&apos;s Questions"}
+          {actualWeek === 'next' ? "Next Week's Questions" : "This Week's Questions"}
         </h2>
         <p className="text-sm text-muted-foreground">
           Scheduled oral questions in the House of Commons
