@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { sendWelcomeEmail } from '@/app/api/_lib/welcome-email';
 
 // Only enable in development
 const isDev = process.env.NODE_ENV === 'development';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   if (!isDev) {
     return NextResponse.json({ error: 'Only available in development' }, { status: 403 });
   }
