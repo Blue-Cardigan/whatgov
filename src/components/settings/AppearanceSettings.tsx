@@ -109,9 +109,6 @@ export function AppearanceSettings() {
               <div className="bg-secondary text-secondary-foreground p-2 rounded">
                 Secondary
               </div>
-              <div className="bg-accent text-accent-foreground p-2 rounded">
-                Accent
-              </div>
               <div className="bg-destructive text-destructive-foreground p-2 rounded">
                 Destructive
               </div>

@@ -82,8 +82,8 @@ Our content goes through:
 ### Feedback
 We're constantly improving. Share your thoughts:
 - Email: hi@whatgov.co.uk
-- Twitter: @WhatGov
-- User feedback form
+- Twitter: @WhatGovUK
+- Instagram: @WhatGov
 
 ### Partners
 We work with:
