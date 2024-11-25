@@ -1,14 +1,11 @@
-2) Ensure email verification link is whatgov not localhost
-3) Point whatgov.co.uk to new site
-4) reactivate stripe webhook
-5) Write welcome email(s)
-6) Implement newsletter sending from backend
+2) Write welcome email(s)
+3) Implement newsletter sending from backend
 
 #Optimizations
-Reduce middleware build size for edge runtime
+- Reduce middleware build size for edge runtime
+- Split Auth hook into more focused hooks
+- Shared auth layout
 Replace twfy image urls with hansard: https://members-api.parliament.uk/api/Members/5071/Portrait
-Auth context when loading feed, to show all filters when page is loading
-
 
 ## Feature tiers
 Free Features for Signed in Users
