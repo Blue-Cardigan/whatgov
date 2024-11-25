@@ -3,7 +3,7 @@
 import { createClient } from './supabase-client'
 import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
 import type { Database, Json } from '@/types/supabase';
-import type { DemographicStats, RawTopicStats, RawUserVotingStats } from '@/types/VoteStats';
+import type { DemographicStats, RawTopicStats, RawUserVotingStats, VoteData } from '@/types/VoteStats';
 import type { AuthResponse, UserProfile } from '@/types/supabase';
 import { User } from '@supabase/supabase-js';
 import { MPData, MPKeyPoint } from '@/types';
@@ -705,6 +705,44 @@ export const verifyEmail = async (token: string): Promise<{ success: boolean; er
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to verify email'
+    };
+  }
+};
+
+export const migrateAnonymousVotes = async (votes: VoteData[]): Promise<{ success: boolean; error?: string }> => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error('Authentication required');
+
+    // Batch votes into groups of 10 to avoid overwhelming the server
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < votes.length; i += batchSize) {
+      batches.push(votes.slice(i, i + batchSize));
+    }
+
+    // Process each batch sequentially
+    for (const batch of batches) {
+      const { error } = await supabase.rpc('migrate_anonymous_votes', {
+        p_votes: batch.map(vote => ({
+          debate_id: vote.debate_id,
+          question_number: vote.question_number,
+          vote: vote.vote,
+          created_at: vote.timestamp
+        }))
+      });
+
+      if (error) throw error;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Vote migration error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to migrate votes'
     };
   }
 };
