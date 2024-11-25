@@ -78,12 +78,12 @@ export const TOPICS: {
   }
 ];
 
-export const FREE_LIMITS = {
+export const ANON_LIMITS = {
   DAILY_VOTES: 12,
 }
 
 export const ENGAGEMENT_TRIGGERS = {
-  VOTES_REMAINING: [1, 3, 6, FREE_LIMITS.DAILY_VOTES - 1]
+  VOTES_REMAINING: [1, 3, 6, ANON_LIMITS.DAILY_VOTES - 1]
 }
 
 export type PartyColoursType = {

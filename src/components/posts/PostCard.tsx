@@ -21,6 +21,7 @@ interface PostCardProps {
   readOnly?: boolean;
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
+  remainingVotes?: number;
 }
 
 // Helper function to format the URL
@@ -36,6 +37,8 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
 export const PostCard = memo(function PostCard({ 
   item, 
   onExpandChange,
+  hasReachedLimit,
+  remainingVotes,
   ...props 
 }: PostCardProps) {
   const hasDivisions = useMemo(() => 
@@ -231,7 +234,7 @@ export const PostCard = memo(function PostCard({
             debate={item}
             onVote={props.onVote}
             readOnly={props.readOnly}
-            hasReachedLimit={props.hasReachedLimit}
+            hasReachedLimit={hasReachedLimit}
           />
         </motion.div>
       </div>
@@ -289,7 +292,8 @@ export const PostCard = memo(function PostCard({
   return (
     prev.item.id === next.item.id &&
     prev.readOnly === next.readOnly &&
-    prev.hasReachedLimit === next.hasReachedLimit
+    prev.hasReachedLimit === next.hasReachedLimit &&
+    prev.remainingVotes === next.remainingVotes
   );
 });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { FREE_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
+import { ANON_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
 
 const STORAGE_KEY = 'whatgov_engagement';
 const RESET_HOUR = 0; // Reset at midnight UTC
@@ -75,7 +75,7 @@ export function useEngagement() {
     if (user) return Infinity;
     
     checkAndResetDaily();
-    return Math.max(0, FREE_LIMITS.DAILY_VOTES - stats.votes);
+    return Math.max(0, ANON_LIMITS.DAILY_VOTES - stats.votes);
   }, [user, stats.votes, checkAndResetDaily]);
 
   const shouldShowVotePrompt = useCallback((): boolean => {

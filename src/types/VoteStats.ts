@@ -196,12 +196,18 @@ export interface TopicWithName extends TopicStatsEntry {
 
 // Add type for the hook's return value
 export interface UseVotesReturn {
-  submitVote: (voteData: Parameters<typeof submitVote>[0]) => void;
+  submitVote: (voteData: {
+    debate_id: string;
+    question_number: number;
+    vote: boolean;
+  }) => void;
   hasVoted: (debate_id: string, question_number: number) => boolean;
   topicVoteStats: TopicStats | undefined;
   userTopicVotes: UserTopicStats | undefined;
   demographicStats: DemographicStats | undefined;
   isLoading: boolean;
+  getRemainingVotes: () => number;
+  hasReachedVoteLimit: () => boolean;
 }
 
 // Define the props interface for the DemographicComparison component

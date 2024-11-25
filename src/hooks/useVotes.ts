@@ -14,6 +14,8 @@ import type {
   UseVotesReturn
 } from '@/types/VoteStats';
 import { useCache } from '@/hooks/useCache';
+import { useEngagement } from './useEngagement';
+import { toast } from '@/hooks/use-toast';
 
 const ANON_VOTES_KEY = 'whatgov_anon_votes';
 
@@ -94,6 +96,7 @@ type TopicVoteStatsKey = readonly ['topicVoteStats'];
 
 export function useVotes(): UseVotesReturn {
   const { user } = useAuth();
+  const { recordVote, hasReachedVoteLimit, getRemainingVotes } = useEngagement();
   const queryClient = useQueryClient();
   const { getCache, setCache, CACHE_KEYS } = useCache();
 
@@ -255,6 +258,11 @@ export function useVotes(): UseVotesReturn {
 
   const { mutate: submitVoteMutation } = useMutation({
     mutationFn: async (voteData: Parameters<typeof submitVote>[0]) => {
+      // Check vote limit for anonymous users
+      if (!user && hasReachedVoteLimit()) {
+        throw new Error('Daily vote limit reached');
+      }
+
       if (user) {
         await submitVote(voteData);
         // Invalidate caches after successful vote
@@ -267,12 +275,14 @@ export function useVotes(): UseVotesReturn {
         queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] });
         queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] });
         queryClient.invalidateQueries({ queryKey: ['demographicStats'] });
+        recordVote(); // Record the vote in engagement stats
       } else {
         const anonVoteData: VoteData = {
           ...voteData,
           timestamp: new Date().toISOString()
         };
         saveAnonVote(anonVoteData);
+        recordVote(); // Record the vote in engagement stats
       }
     },
     onMutate: async ({ debate_id, question_number, vote }) => {
@@ -352,12 +362,22 @@ export function useVotes(): UseVotesReturn {
         );
         localStorage.setItem(ANON_VOTES_KEY, JSON.stringify(filteredVotes));
       }
+
+      // Show appropriate error message
+      if (err instanceof Error && err.message === 'Daily vote limit reached') {
+        toast({
+          title: "Vote Limit Reached",
+          description: "Create an account to vote on unlimited debates"
+        });
+      }
     }
   });
 
   return {
     submitVote: submitVoteMutation,
     hasVoted,
+    getRemainingVotes, // Expose this to components
+    hasReachedVoteLimit, // Expose this to components
     topicVoteStats: topicVoteStats.data,
     userTopicVotes: userTopicVotes.data,
     demographicStats: demographicStats.data,

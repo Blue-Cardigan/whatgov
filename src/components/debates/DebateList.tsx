@@ -9,7 +9,7 @@ import { DebateSkeleton } from './DebateSkeleton';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { FREE_LIMITS } from '@/lib/utils';
+import { ANON_LIMITS } from '@/lib/utils';
 import dynamic from 'next/dynamic'
 import { useToast } from "@/hooks/use-toast";
 import { useVirtualizedFeed } from '@/hooks/useFeed';
@@ -25,6 +25,7 @@ interface DebateListProps {
 }
 
 export function DebateList({ items, isLoading, loadMoreRef, ...props }: DebateListProps) {
+  const { hasReachedVoteLimit, getRemainingVotes } = useEngagement();
   const { virtualizer, parentRef, updateItemState } = useVirtualizedFeed(items);
   
   if (isLoading) {
@@ -67,6 +68,8 @@ export function DebateList({ items, isLoading, loadMoreRef, ...props }: DebateLi
               <PostCard
                 item={item}
                 {...props}
+                hasReachedLimit={hasReachedVoteLimit()}
+                remainingVotes={getRemainingVotes()}
                 onExpandChange={(isExpanded) => {
                   updateItemState(item.id, isExpanded);
                 }}
