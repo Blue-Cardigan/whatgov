@@ -1,5 +1,6 @@
-2) Write welcome email(s)
-3) Implement newsletter sending from backend
+1) Implement newsletter sending from backend
+2) Store unauth votes when the user signs in
+3) Remove spacing/ move up feed items when questions all answered
 
 #Optimizations
 - Reduce middleware build size for edge runtime

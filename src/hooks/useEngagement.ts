@@ -8,6 +8,7 @@ const RESET_HOUR = 0; // Reset at midnight UTC
 interface EngagementStats {
   votes: number;
   lastResetDate: string;
+  shownPrompts: number[];
 }
 
 export function useEngagement() {
@@ -23,7 +24,10 @@ export function useEngagement() {
       if (shouldReset(new Date(parsed.lastResetDate))) {
         return initializeStats();
       }
-      return parsed;
+      return {
+        ...parsed,
+        shownPrompts: parsed.shownPrompts || []
+      };
     }
     return initializeStats();
   });
@@ -38,6 +42,7 @@ export function useEngagement() {
     return {
       votes: 0,
       lastResetDate: new Date().toISOString(),
+      shownPrompts: [],
     };
   }
 
@@ -67,20 +72,36 @@ export function useEngagement() {
   }, [checkAndResetDaily]);
 
   const getRemainingVotes = useCallback((): number => {
-    if (user && isEngagedCitizen) return Infinity;
+    if (user) return Infinity;
+    
     checkAndResetDaily();
     return Math.max(0, FREE_LIMITS.DAILY_VOTES - stats.votes);
-  }, [user, isEngagedCitizen, stats.votes, checkAndResetDaily]);
+  }, [user, stats.votes, checkAndResetDaily]);
 
   const shouldShowVotePrompt = useCallback((): boolean => {
     if (user) return false;
     const remaining = getRemainingVotes();
-    return remaining <= ENGAGEMENT_TRIGGERS.VOTES_REMAINING && remaining > 0;
-  }, [user, getRemainingVotes]);
+    
+    // Only show if we haven't shown this prompt before
+    const shouldShow = ENGAGEMENT_TRIGGERS.VOTES_REMAINING.includes(remaining) && 
+      !stats.shownPrompts.includes(remaining);
+    
+    // If we should show, record that we've shown it
+    if (shouldShow) {
+      setStats(prev => ({
+        ...prev,
+        shownPrompts: [...prev.shownPrompts, remaining]
+      }));
+    }
+    
+    return shouldShow;
+  }, [user, getRemainingVotes, stats.shownPrompts]);
 
   const hasReachedVoteLimit = useCallback((): boolean => {
+    if (user) return false;
+    
     return getRemainingVotes() <= 0;
-  }, [getRemainingVotes]);
+  }, [user, getRemainingVotes]);
 
   return {
     recordVote,

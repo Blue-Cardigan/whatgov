@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FREE_LIMITS } from '@/lib/utils';
 import dynamic from 'next/dynamic'
+import { useToast } from "@/hooks/use-toast";
 
 interface DebateListProps {
   items: FeedItem[];
@@ -221,6 +222,14 @@ export function DebateList({
     return () => observer.disconnect();
   }, [items, virtualizer]);
 
+  // Get both toast and dismiss from useToast hook
+  const { toast, dismiss } = useToast();
+  
+  const handleSignUpClick = useCallback(() => {
+    dismiss(); // Dismiss all toasts
+    router.push('/signup');
+  }, [router, dismiss]);
+
   const handleVote = useCallback(async (
     debateId: string, 
     questionNumber: number, 
@@ -236,6 +245,7 @@ export function DebateList({
       return;
     }
 
+    // Only check vote limits for unauthenticated users
     if (!user && hasReachedVoteLimit()) {
       toast({
         title: "Daily vote limit reached",
@@ -244,7 +254,7 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/signup')}
+            onClick={handleSignUpClick}
           >
             Create an account to continue voting
           </Button>
@@ -254,6 +264,7 @@ export function DebateList({
     }
 
     try {
+      // Only record votes for unauthenticated users
       if (!user) {
         recordVote();
       }
@@ -264,15 +275,16 @@ export function DebateList({
         await submitVote({ debate_id: debateId, question_number: questionNumber, vote });
       }
 
-      if (!user) {
+      // Only show remaining votes toast for unauthenticated users
+      if (!user && !shouldShowVotePrompt()) {
         toast({
           title: "Vote recorded",
-          description: `${getRemainingVotes()-1}/${FREE_LIMITS.DAILY_VOTES} votes remaining today. Sign up for more!`,
+          description: `${getRemainingVotes()-1}/${FREE_LIMITS.DAILY_VOTES} votes remaining today. Create an account for unlimited daily votes!`,
           action: (
             <Button 
               variant="default" 
               size="sm" 
-              onClick={() => router.push('/signup')}
+              onClick={handleSignUpClick}
             >
               Sign up
             </Button>
@@ -295,7 +307,9 @@ export function DebateList({
     onVote,
     submitVote,
     getRemainingVotes,
-    router
+    shouldShowVotePrompt,
+    handleSignUpClick,
+    toast
   ]);
 
   // Only show engagement prompt for unauthenticated users
@@ -308,14 +322,14 @@ export function DebateList({
           <Button 
             variant="default" 
             size="sm" 
-            onClick={() => router.push('/signup')}
+            onClick={handleSignUpClick}
           >
             Create an account
           </Button>
         ),
       });
     }
-  }, [shouldShowVotePrompt, getRemainingVotes, router, user]);
+  }, [shouldShowVotePrompt, getRemainingVotes, router, user, handleSignUpClick, toast]);
 
   if (items.length === 0 && !isLoading) {
     return (
