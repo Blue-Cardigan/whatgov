@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import Steps from "./steps";
+import { migrateAnonymousVotes } from "@/lib/supabase";
 
 export default function SignUp() {
   const [error, setError] = useState("");
@@ -43,6 +44,11 @@ export default function SignUp() {
     submission: false
   });
 
+  const [migrationStatus, setMigrationStatus] = useState<{
+    total: number;
+    migrated: number;
+  } | null>(null);
+
   const TOTAL_STEPS = 5;
 
   useEffect(() => {
@@ -70,6 +76,32 @@ export default function SignUp() {
         break;
     }
   }, [step, formData]);
+
+  const migrateVotes = async () => {
+    const ANON_VOTES_KEY = 'whatgov_anon_votes';
+    try {
+      // Get anonymous votes from localStorage
+      const votes = JSON.parse(localStorage.getItem(ANON_VOTES_KEY) || '[]');
+      if (!votes.length) return true;
+
+      setMigrationStatus({ total: votes.length, migrated: 0 });
+      
+      const { success, error } = await migrateAnonymousVotes(votes);
+      
+      if (success) {
+        // Clear anonymous votes after successful migration
+        localStorage.removeItem(ANON_VOTES_KEY);
+        return true;
+      } else {
+        throw new Error(error || 'Failed to migrate votes');
+      }
+    } catch (error) {
+      console.error('Vote migration error:', error);
+      return false;
+    } finally {
+      setMigrationStatus(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +144,12 @@ export default function SignUp() {
       }
 
       if (response.status === 'verify_email') {
+        // Attempt to migrate votes before redirecting
+        const migrationSuccess = await migrateVotes();
+        if (!migrationSuccess) {
+          console.warn('Vote migration failed - votes will remain in localStorage');
+        }
+        
         localStorage.setItem('verification_email', formData.email);
         router.push('/accounts/verify');
       } else {
@@ -308,6 +346,20 @@ export default function SignUp() {
           </Link>
         </p>
       </div>
+      {migrationStatus && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center"
+        >
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">
+              Migrating your votes ({migrationStatus.migrated}/{migrationStatus.total})
+            </p>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 } 
