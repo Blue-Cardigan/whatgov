@@ -18,4 +18,4 @@ Cookies are small text files placed on your device when you visit our website. T
 We may update this cookie policy periodically. Last updated: [Date]
 
 ## Questions?
-If you have questions about our cookie usage, please contact us at legal@whatgov.co.uk
+If you have questions about our cookie usage, please contact us at support@whatgov.co.uk

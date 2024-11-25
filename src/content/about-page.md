@@ -114,7 +114,7 @@ We work with:
 - General: hi@whatgov.co.uk
 - Accounts: verify@whatgov.co.uk
 - Sales: enterprise@whatgov.co.uk
-- Legal: legal@whatgov.co.uk
+- Legal: support@whatgov.co.uk
 
 ---
 

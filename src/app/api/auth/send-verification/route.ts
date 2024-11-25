@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendConfirmationEmail } from '../../_lib/email';
+import { sendConfirmationEmail } from '../../_lib/confirmation-email';
 import { rateLimiter } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {

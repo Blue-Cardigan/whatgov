@@ -10,7 +10,7 @@ WhatGov is committed to protecting your privacy and personal data. This policy e
 
 ### 1.1 Who We Are
 - **Registration**: [Pending]
-- **Data Protection Officer**: legal@whatgov.co.uk
+- **Data Protection Officer**: support@whatgov.co.uk
 
 ### 1.2 Changes to This Policy
 We will notify you of any material changes to this policy through:
@@ -157,7 +157,7 @@ You have the right to:
 - Lodge complaints
 
 ### 7.2 How to Exercise Your Rights
-Email: legal@whatgov.co.uk
+Email: support@whatgov.co.uk
 Response time: Within one month
 ID verification may be required
 
@@ -216,10 +216,10 @@ We use AI for:
 ## 12. Contact Us
 
 ### For Privacy Matters
-- Email: [legal@whatgov.co.uk]
+- Email: [support@whatgov.co.uk]
 
 ### For Complaints
-- First contact: legal@whatgov.co.uk
+- First contact: support@whatgov.co.uk
 - ICO: www.ico.org.uk
 
 ## 13. Additional Information
