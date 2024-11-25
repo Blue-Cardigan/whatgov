@@ -6,6 +6,7 @@ SET search_path = auth, public
 AS $$
 DECLARE
   usr record;
+  usr_profile record;
   result json;
 BEGIN
   -- Find user with matching confirmation token
@@ -20,6 +21,11 @@ BEGIN
       'error', 'Invalid or expired token'
     );
   END IF;
+
+  -- Get user profile
+  SELECT * INTO usr_profile
+  FROM public.user_profiles
+  WHERE id = usr.id;
 
   -- Update user email confirmation
   UPDATE auth.users
@@ -41,7 +47,9 @@ BEGIN
 
   RETURN json_build_object(
     'success', true,
-    'user_id', usr.id
+    'user_id', usr.id,
+    'email', usr.email,
+    'name', usr_profile.name
   );
 END;
 $$;

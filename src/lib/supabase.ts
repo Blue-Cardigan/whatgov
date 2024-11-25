@@ -668,3 +668,43 @@ export const getDemographicVoteStats = async (
   if (error) throw error;
   return data as DemographicStats;
 };
+
+export const verifyEmail = async (token: string): Promise<{ success: boolean; error?: string }> => {
+  const supabase = getSupabase();
+  
+  try {
+    const { data, error } = await supabase.rpc('verify_user_email', {
+      token
+    });
+
+    if (error) throw error;
+    if (!data.success) {
+      throw new Error(data.error || 'Verification failed');
+    }
+
+    // Send welcome email
+    const welcomeResponse = await fetch('/api/auth/send-welcome', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: data.email,
+        name: data.name,
+        newsletter: data.newsletter
+      }),
+    });
+
+    if (!welcomeResponse.ok) {
+      console.error('Failed to send welcome email');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to verify email'
+    };
+  }
+};

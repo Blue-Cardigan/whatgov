@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 // Initialize SendGrid with your API key
 if (!process.env.SENDGRID_API_KEY) {
@@ -19,84 +20,167 @@ const EMAIL_CONFIG = {
   }
 };
 
-// Define the three color schemes from DebateCard
+// Define the three color schemes with web-safe colors and RGB values
 const colorSchemes = [
   {
     // Blue theme
-    border: 'hsl(213, 93%, 85%)',
-    background: 'hsl(213, 100%, 96%)',
+    border: '#bfd9ff',
+    background: '#f0f7ff',
     badge: {
-      text: 'hsl(213, 76%, 56%)',
-      border: 'hsl(213, 70%, 80%)',
-      background: 'hsl(213, 100%, 98%)'
-    }
+      text: '#1a6dff',
+      border: '#bfd9ff',
+      background: '#f5faff'
+    },
+    primary: '#0066ff'
   },
   {
     // Emerald theme
-    border: 'hsl(160, 93%, 85%)',
-    background: 'hsl(160, 100%, 96%)',
+    border: '#b7f4d8',
+    background: '#ecfdf5',
     badge: {
-      text: 'hsl(160, 76%, 56%)',
-      border: 'hsl(160, 70%, 80%)',
-      background: 'hsl(160, 100%, 98%)'
-    }
+      text: '#059669',
+      border: '#b7f4d8',
+      background: '#f0fdf9'
+    },
+    primary: '#059669'
   },
   {
     // Amber theme
-    border: 'hsl(45, 93%, 85%)',
-    background: 'hsl(45, 100%, 96%)',
+    border: '#fde68a',
+    background: '#fefce8',
     badge: {
-      text: 'hsl(45, 76%, 56%)',
-      border: 'hsl(45, 70%, 80%)',
-      background: 'hsl(45, 100%, 98%)'
-    }
+      text: '#d97706',
+      border: '#fde68a',
+      background: '#fffbeb'
+    },
+    primary: '#d97706'
   }
 ];
 
 
-export async function sendWelcomeEmail(email: string, name: string) {
+export async function sendWelcomeEmail(email: string, name: string, newsletter: boolean = false) {
   if (!process.env.SENDGRID_WELCOME_EMAIL_SENDER) {
     throw new Error('SENDGRID_WELCOME_EMAIL_SENDER is not set');
   }
 
+  // Randomly select a color scheme
+  const colors = colorSchemes[Math.floor(Math.random() * colorSchemes.length)];
+
+  // Generate unsubscribe token if newsletter is true
+  let unsubscribeUrl = '';
+  if (newsletter) {
+    console.log('Generating unsubscribe token');
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase.rpc('create_unsubscribe_token', {
+        user_email: email
+      });
+      
+      if (error) throw error;
+      if (data) {
+        unsubscribeUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/unsubscribe?token=${data}`;
+      }
+      console.log('Unsubscribe URL:', unsubscribeUrl);
+    } catch (error) {
+      console.error('Error generating unsubscribe token:', error);
+      // Continue without unsubscribe link if there's an error
+    }
+  }
+
   const msg = {
     to: email,
-    from: {
-      email: process.env.SENDGRID_WELCOME_EMAIL_SENDER,
-      name: 'WhatGov'
-    },
-    subject: 'Welcome to WhatGov!',
-    text: `Welcome to WhatGov, ${name}! We're excited to have you join the conversation about UK politics.`,
+    from: EMAIL_CONFIG.from,
+    replyTo: EMAIL_CONFIG.replyTo,
+    subject: 'Welcome to WhatGov',
+    text: `Hey, ${name}. Democracy is built on understanding, and we're here to help you understand Parliament better, one debate at a time.`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
-        <h1 style="color: hsl(240, 5.9%, 10%); margin-bottom: 24px;">Welcome to WhatGov!</h1>
-        
-        <p style="color: hsl(240, 3.8%, 46.1%); font-size: 16px; line-height: 1.6;">
-          Hi ${name},
-        </p>
-        
-        <p style="color: hsl(240, 3.8%, 46.1%); font-size: 16px; line-height: 1.6;">
-          Thank you for joining WhatGov! We're excited to have you as part of our community 
-          dedicated to making UK politics more accessible and engaging.
-        </p>
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f9fafb;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; margin-top: 20px;">
+            <h1 style="color: #18181b; margin-bottom: 24px; font-size: 28px; text-align: center;">
+              Welcome to WhatGov, ${name}!
+            </h1>
+            
+            <p style="color: #71717a; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+              What happens in Parliament matters. Understanding it shouldn't be hard.
+            </p>
 
-        <div style="margin: 32px 0;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/feed" 
-             style="background-color: hsl(213, 76%, 56%); 
-                    color: white; 
-                    padding: 12px 24px; 
-                    text-decoration: none; 
-                    border-radius: 6px;
-                    display: inline-block;">
-            Start Exploring
-          </a>
-        </div>
+            <!-- Next Steps Section -->
+            <div style="background-color: ${colors.background}; border: 1px solid ${colors.border}; padding: 24px; border-radius: 8px; margin: 32px 0;">
+              <h2 style="color: ${colors.badge.text}; font-size: 18px; margin: 0 0 16px 0; font-weight: 600;">
+                Ready to get started?
+              </h2>
+              <ul style="color: #71717a; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li style="margin-bottom: 8px;">
+                  Visit your <a href="${process.env.NEXT_PUBLIC_SITE_URL}/myparliament" style="color: ${colors.primary}; font-weight: 500;">MP's profile</a> to see their recent activity
+                </li>
+                <li style="margin-bottom: 8px;">
+                  Explore how your MP voted on key issues in Parliament using the "Divisions" filter at the top of your feed
+                </li>
+                <li>
+                  See how your votes stack up against the rest of your constituency in <a href="${process.env.NEXT_PUBLIC_SITE_URL}/myparliament" style="color: ${colors.primary}; font-weight: 500;">My Parliament</a>
+                </li>
+              </ul>
+            </div>
 
-        <p style="color: hsl(240, 3.8%, 46.1%); font-size: 14px; margin-top: 32px;">
-          If you have any questions, just reply to this email - we're here to help!
-        </p>
-      </div>
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL}" 
+                 style="background-color: #0066ff; 
+                        color: #ffffff; 
+                        padding: 16px 32px; 
+                        text-decoration: none; 
+                        border-radius: 6px;
+                        font-weight: 500;
+                        display: inline-block;
+                        mso-padding-alt: 0;
+                        text-underline-color: #0066ff;">
+                <!--[if mso]>
+                <i style="letter-spacing: 25px; mso-font-width: -100%; mso-text-raise: 30pt;">&nbsp;</i>
+                <![endif]-->
+                <span style="mso-text-raise: 15pt;">Go to Your Feed</span>
+                <!--[if mso]>
+                <i style="letter-spacing: 25px; mso-font-width: -100%;">&nbsp;</i>
+                <![endif]-->
+              </a>
+            </div>
+
+            <!-- Trust Badge -->
+            <div style="background-color: ${colors.background}; border: 1px solid ${colors.border}; padding: 24px; border-radius: 8px; text-align: center; margin: 32px 0;">
+              <p style="color: #71717a; font-size: 14px; font-style: italic; margin: 0;">
+                "Democracy is built on understanding. WhatGov helps build that understanding, one debate at a time."
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+              <p style="color: #71717a; font-size: 14px; margin-bottom: 16px;">
+                We use official Parliamentary data from Hansard and AI technology to make parliamentary proceedings accessible.
+              </p>
+              <p style="color: #71717a; font-size: 14px;">
+                Questions? Just reply to this email - we're here to help!
+              </p>
+              <div style="color: #71717a; font-size: 12px; margin-top: 24px;">
+                WhatGov - Making UK Politics More Accessible<br>
+                ${newsletter && unsubscribeUrl ? `
+                  You're subscribed to our newsletter to stay updated with the latest from Parliament.<br>
+                  You can update your preferences or <a href="${unsubscribeUrl}" style="color: #71717a; text-decoration: underline;">unsubscribe</a> at any time.
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
     `,
+    trackingSettings: {
+      clickTracking: { enable: true },
+      openTracking: { enable: true }
+    }
   };
 
   try {

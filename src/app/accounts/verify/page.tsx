@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase-client";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { resendVerificationEmail } from "@/lib/supabase";
+import { resendVerificationEmail, verifyEmail } from "@/lib/supabase";
 
 // Create a separate component for the verification logic
 function VerificationHandler() {
@@ -55,10 +55,9 @@ function VerificationHandler() {
     const verifyToken = async (token: string, type: string) => {
       setIsVerifying(true);
       try {
-        const supabase = createClient();
-        
         if (type === 'email_change') {
-          // Handle email change confirmation
+          // Handle email change confirmation through Supabase Auth
+          const supabase = createClient();
           const { error } = await supabase.auth.verifyOtp({
             token_hash: token,
             type: 'email_change'
@@ -71,17 +70,13 @@ function VerificationHandler() {
             description: "Your email has been successfully updated.",
           });
           
-          // Redirect to profile page after successful email change
           router.push('/accounts/profile');
         } else {
-          // Handle initial email verification
-          const { data, error } = await supabase.rpc('verify_user_email', {
-            token: token
-          });
-
-          if (error) throw error;
-          if (!data.success) throw new Error(data.error || 'Verification failed');
-
+          // Use the centralized verification function
+          const { success, error } = await verifyEmail(token);
+          
+          if (!success) throw new Error(error);
+          
           setVerificationStatus('success');
           localStorage.removeItem('verification_email');
           
@@ -102,7 +97,6 @@ function VerificationHandler() {
       }
     };
 
-    // Parse URL parameters
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const type = params.get('type');
