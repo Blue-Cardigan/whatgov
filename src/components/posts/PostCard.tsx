@@ -12,6 +12,7 @@ import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
 import { locationColors, getDebateType, TOPICS } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { memo } from 'react';
 
 interface PostCardProps {
   item: FeedItem;
@@ -32,7 +33,11 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 }
 
-export function PostCard({ item, userMp, ...props }: PostCardProps) {
+export const PostCard = memo(function PostCard({ 
+  item, 
+  onExpandChange,
+  ...props 
+}: PostCardProps) {
   const hasDivisions = useMemo(() => 
     item.divisions && item.divisions.length > 0
   , [item.divisions]);
@@ -142,8 +147,8 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
 
   // Check if MP spoke in the debate
   const mpSpoke = useMemo(() => 
-    userMp && item.speakers?.includes(userMp)
-  , [userMp, item.speakers]);
+    props.userMp && item.speakers?.includes(props.userMp)
+  , [props.userMp, item.speakers]);
 
   return (
     <Card 
@@ -159,7 +164,7 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
     >
       <CardHeader className="pb-2 flex-shrink-0">
         {/* Only show MP indicator if we have both an MP and they spoke */}
-        {userMp && mpSpoke && (
+        {props.userMp && mpSpoke && (
           <div className="flex items-center gap-2 text-primary mb-2">
             <div className="flex items-center gap-1.5 text-xs font-medium">
               <UserIcon className="h-3.5 w-3.5" />
@@ -279,7 +284,14 @@ export function PostCard({ item, userMp, ...props }: PostCardProps) {
       )}
     </Card>
   );
-}
+}, (prev, next) => {
+  // Custom comparison to determine if re-render is needed
+  return (
+    prev.item.id === next.item.id &&
+    prev.readOnly === next.readOnly &&
+    prev.hasReachedLimit === next.hasReachedLimit
+  );
+});
 
 // Extracted components for better organisation
 function MetaInformation({ item }: { item: FeedItem }) {

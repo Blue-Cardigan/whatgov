@@ -1,15 +1,26 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getFeedItems, type FeedCursor } from '@/lib/supabase';
-import { FeedFilters } from '@/types';
+import { FeedFilters, FeedItem } from '@/types';
 import { useCache } from './useCache';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef, useCallback } from 'react';
 
 interface UseFeedOptions {
   votedOnly?: boolean;
   pageSize?: number;
   userTopics?: string[];
   filters?: FeedFilters;
+}
+
+interface VirtualizedFeedState {
+  measurements: Map<string, {
+    compact: number;
+    expanded: number;
+    current: number;
+  }>;
+  expandedStates: Map<string, boolean>;
 }
 
 export function useFeed({ 
@@ -120,4 +131,84 @@ export function useFeed({
       });
     },
   });
+}
+
+export function useVirtualizedFeed(items: FeedItem[]) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  
+  // Consolidated state management
+  const feedState = useRef<VirtualizedFeedState>({
+    measurements: new Map(),
+    expandedStates: new Map()
+  });
+
+  const estimateSize = useCallback((index: number) => {
+    const item = items[index];
+    if (!item) return 300; // Default height
+    
+    const measurement = feedState.current.measurements.get(item.id);
+    if (measurement) {
+      return measurement.current;
+    }
+
+    // Base height calculation
+    const baseHeight = 150;
+    const questionsHeight = [
+      item.ai_question_1,
+      item.ai_question_2,
+      item.ai_question_3
+    ].filter(Boolean).length * 100;
+    
+    const divisionsHeight = item.divisions?.length ? 200 : 0;
+    
+    return baseHeight + questionsHeight + divisionsHeight;
+  }, [items]);
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize,
+    overscan: 3,
+    measureElement: useCallback((element: HTMLElement) => {
+      const height = element.getBoundingClientRect().height;
+      const debateId = element.getAttribute('data-debate-id');
+      
+      if (debateId) {
+        const isExpanded = feedState.current.expandedStates.get(debateId);
+        const measurement = feedState.current.measurements.get(debateId) || {
+          compact: height,
+          expanded: height,
+          current: height
+        };
+
+        if (isExpanded) {
+          measurement.expanded = height;
+        } else {
+          measurement.compact = height;
+        }
+        measurement.current = height;
+        
+        feedState.current.measurements.set(debateId, measurement);
+      }
+      
+      return height;
+    }, [])
+  });
+
+  // Expose a clean API for state updates
+  const updateItemState = useCallback((itemId: string, isExpanded: boolean) => {
+    feedState.current.expandedStates.set(itemId, isExpanded);
+    
+    const measurement = feedState.current.measurements.get(itemId);
+    if (measurement) {
+      measurement.current = isExpanded ? measurement.expanded : measurement.compact;
+      virtualizer.measure();
+    }
+  }, [virtualizer]);
+
+  return {
+    virtualizer,
+    parentRef,
+    updateItemState
+  };
 } 
