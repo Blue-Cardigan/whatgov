@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
@@ -30,6 +30,20 @@ interface TopBarProps {
 
 // Enhanced filter items with access level information
 export const filterItems = [
+  {
+    id: 'location' as const,
+    icon: MapPin,
+    label: "Location",
+    tier: 'premium' as const,
+    description: "Filter by parliamentary location",
+    type: 'array' as const,
+    options: Object.entries(locationColors).map(([location, color]) => ({
+      value: location,
+      label: location,
+      color: color as string,
+      icon: MapPin
+    }))
+  },
   {
     id: 'topics' as const,
     icon: Tags,
@@ -68,20 +82,6 @@ export const filterItems = [
       label,
       icon: LayoutList
     }))
-  },
-  {
-    id: 'location' as const,
-    icon: MapPin,
-    label: "Location",
-    tier: 'premium' as const,
-    description: "Filter by parliamentary location",
-    type: 'array' as const,
-    options: Object.entries(locationColors).map(([location, color]) => ({
-      value: location,
-      label: location,
-      color: color as string,
-      icon: MapPin
-    }))
   }
 ] satisfies ArrayFilterItem[];
 
@@ -106,11 +106,14 @@ export const booleanFilters = [
 ] satisfies BooleanFilterItem[];
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
-  const { isEngagedCitizen, user, profile, getAuthHeader } = useAuth();
+  const { isEngagedCitizen, user, profile, getAuthHeader, loading } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const router = useRouter();
 
   const handleFilterChange = (updatedFilters: Omit<FeedFilters, 'house'>) => {
+    // Don't process filter changes while loading
+    if (loading) return;
+
     // If user is not authenticated or doesn't have an MP, ignore mpOnly filter
     if (!user || !profile?.mp_id) {
       onChange({
@@ -141,6 +144,50 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
       ...updatedFilters
     });
   };
+
+  // Initialize filters based on auth state
+  useEffect(() => {
+    if (!loading) {
+      // If user is not authenticated or doesn't have an MP, reset mpOnly filter
+      if (!user || !profile?.mp_id) {
+        onChange({
+          ...filters,
+          mpOnly: false
+        });
+        return;
+      }
+
+      // If user is not subscribed, reset premium filters
+      if (isEngagedCitizen === false) {
+        onChange({
+          ...filters,
+          type: [],
+          location: [],
+          days: [],
+          topics: []
+        });
+      }
+    }
+  }, [loading, user, profile?.mp_id, isEngagedCitizen]);
+
+  // Don't render filters until auth state is determined
+  if (loading) {
+    return (
+      <div className={cn(
+        "w-full",
+        "md:fixed md:right-8 md:w-14 md:top-0 md:h-auto",
+        className
+      )}>
+        <DebateFilters 
+          filters={omitHouse(filters)}
+          onChange={handleFilterChange} 
+          filterItems={[...filterItems, ...booleanFilters]}
+          isEnabled={true}
+          onUpgrade={() => setShowUpgradeDialog(true)}
+        />
+      </div>
+    );
+  }
 
   const handleSubscribe = async () => {
     if (!user) {

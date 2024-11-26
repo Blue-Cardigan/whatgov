@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Vote } from "lucide-react";
 import { Lock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface FiltersProps {
   filters: Omit<FeedFilters, 'house'>;
@@ -130,8 +131,40 @@ export function DebateFilters({
 }: FiltersProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [isMobile] = useState(true);
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+
+  // Show skeletons while loading auth state
+  if (loading) {
+    return (
+      <div className="relative w-full">
+        <div className={cn(
+          "w-full px-4 md:px-0",
+          "py-3 md:pt-6",
+          "flex md:block",
+          "overflow-x-auto md:overflow-visible",
+          "snap-x snap-mandatory md:snap-none",
+        )}>
+          <div className={cn(
+            "flex gap-6",
+            "md:flex md:flex-col md:gap-6",
+            "px-4 md:px-0",
+            "ml-[-16px] md:ml-0"
+          )}>
+            {/* Generate skeletons for all filter buttons */}
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="snap-start">
+                <div className="flex flex-col items-center gap-1.5">
+                  <Skeleton className="h-[52px] w-[52px] rounded-full" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Check if MP filter is available (user is authenticated and has an MP)
   const isMpFilterAvailable = user && profile?.mp_id;
