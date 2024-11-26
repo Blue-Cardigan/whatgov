@@ -47,6 +47,8 @@ export default function Search() {
   return (
     <div className="flex justify-center min-h-screen bg-background">
       <div className="container max-w-2xl py-4 px-4 lg:py-8 lg:px-8">
+        <h1 className="text-2xl font-bold">Search Hansard</h1>
+        <p className="text-muted-foreground mb-4">The Official Parliamentary Record</p>
         <div className="mb-8 lg:mb-12">
           <QueryBuilder
             searchParams={searchParams}
