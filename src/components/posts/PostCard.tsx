@@ -36,9 +36,8 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
 
 export const PostCard = memo(function PostCard({ 
   item, 
-  onExpandChange,
   hasReachedLimit,
-  remainingVotes,
+  userMp,
   ...props 
 }: PostCardProps) {
   const hasDivisions = useMemo(() => 
@@ -150,14 +149,15 @@ export const PostCard = memo(function PostCard({
 
   // Check if MP spoke in the debate
   const mpSpoke = useMemo(() => 
-    props.userMp && item.speakers?.includes(props.userMp)
-  , [props.userMp, item.speakers]);
+    userMp && item.speakers?.includes(userMp)
+  , [userMp, item.speakers]);
 
   return (
     <Card 
       className={cn(
         "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
-        "flex flex-col"
+        "flex flex-col",
+        mpSpoke && "ring-1 ring-primary/20"
       )}
       style={{ 
         borderLeftColor: locationColors[item.location] || '#2b2b2b',
@@ -165,24 +165,45 @@ export const PostCard = memo(function PostCard({
         backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
       }}
     >
-      <CardHeader className="pb-2 flex-shrink-0">
-        {/* Only show MP indicator if we have both an MP and they spoke */}
-        {props.userMp && mpSpoke && (
-          <div className="flex items-center gap-2 text-primary mb-2">
-            <div className="flex items-center gap-1.5 text-xs font-medium">
-              <UserIcon className="h-3.5 w-3.5" />
-              Your MP spoke in this debate
-            </div>
-          </div>
-        )}
+      {userMp && mpSpoke && (
+        <div className="absolute left-0 top-0 p-3 z-10">
+          <Badge 
+            variant="secondary"
+            className={cn(
+              "flex items-center gap-1.5",
+              "bg-primary text-primary-foreground hover:bg-primary/90",
+              "shadow-sm"
+            )}
+          >
+            <UserIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline text-xs font-medium">Your MP spoke</span>
+            <span className="sm:hidden text-xs font-medium">MP</span>
+          </Badge>
+        </div>
+      )}
+
+      <CardHeader className={cn(
+        "pb-2 flex-shrink-0",
+        userMp && mpSpoke ? "pt-8 sm:pt-10" : "pt-10"
+      )}>
         <div className="flex justify-between items-start gap-4">
-          <CardTitle className="text-xl font-bold">{item.ai_title}</CardTitle>
+          <div className="flex flex-col">
+            <CardTitle className="text-xl font-bold">
+              {item.ai_title}
+            </CardTitle>
+            {userMp && mpSpoke && (
+              <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
+                <UserIcon className="h-3.5 w-3.5" />
+                Your MP spoke
+              </span>
+            )}
+          </div>
           {item.ext_id && (
             <a
               href={constructDebateUrl(item.ext_id, item.title, item.date)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
             >
               <ExternalLink className="h-3 w-3" />
             </a>

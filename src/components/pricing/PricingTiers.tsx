@@ -31,7 +31,7 @@ const tiers = [
       "See MPs battle it out in the comments",
       "View your MP's profile",
       "View your constituency's voting record",
-      "See upcoming questions to Parliament",
+      "See upcoming questions being asked to Parliament",
       "Basic debate search and filtering",
     ],
     color: "text-blue-500",
@@ -45,7 +45,7 @@ const tiers = [
     icon: Crown,
     features: [
       "See how MPs voted in Parliamentary Divisions",
-      "Filter your feed by day, type, and topic",
+      "Filter your feed by House, day, session type, and topics covered",
       "Track what your MP talks about in debates",
       "Access advanced voting analytics",
       "Advanced Hansard search capabilities",

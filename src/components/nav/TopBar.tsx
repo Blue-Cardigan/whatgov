@@ -38,7 +38,7 @@ export const filterItems = [
     description: "Filter debates by topic areas",
     type: 'array' as const,
     options: TOPICS.map(topic => ({
-      value: topic.id,
+      value: topic.label,
       label: topic.label,
       icon: topic.icon
     }))
@@ -238,9 +238,8 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
                 <CardContent>
                   <ul className="space-y-3">
                     {[
-                      "Filter your feed by day, type, and topic",
+                      "Filter your feed by House, day, session type, and topics covered",
                       "Track your MP's votes, key points, and top topics",
-                      "Access the upcoming Parliamentary schedule",
                       "See how others voted on key issues",
                       "Access your voting analytics",
                       "Advanced Hansard search capabilities",

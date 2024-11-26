@@ -69,7 +69,6 @@ export async function sendWelcomeEmail(email: string, name: string, newsletter: 
   // Generate unsubscribe token if newsletter is true
   let unsubscribeUrl = '';
   if (newsletter) {
-    console.log('Generating unsubscribe token');
     try {
       const supabase = await createServerSupabaseClient();
       const { data, error } = await supabase.rpc('create_unsubscribe_token', {
@@ -80,7 +79,6 @@ export async function sendWelcomeEmail(email: string, name: string, newsletter: 
       if (data) {
         unsubscribeUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/unsubscribe?token=${data}`;
       }
-      console.log('Unsubscribe URL:', unsubscribeUrl);
     } catch (error) {
       console.error('Error generating unsubscribe token:', error);
       // Continue without unsubscribe link if there's an error

@@ -55,7 +55,7 @@ const plans = [
       { icon: <Target />, title: "Follow What Matters", items: [
         "Unlimited votes on key questions",
         "See MPs battle it out in the comments",
-        "View basic MP profiles"
+        "View basic MP profiles",
       ]},
       { icon: <Calendar />, title: "Stay Updated", items: [
         "Parliamentary calendar and upcoming debates",
@@ -76,7 +76,7 @@ const plans = [
         "View your voting analytics",
       ]},
       { icon: <Search />, title: "Deeper Access", items: [
-        "Filter your feed by day, type, and topic",
+        "Filter your feed by House, day, session type, and topics covered",
         "Advanced Hansard search capabilities",
         "See what's coming up in Parliament",
       ]}

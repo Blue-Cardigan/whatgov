@@ -361,15 +361,39 @@ export function DebateFilters({
                                       !filters[filter.id]
                                     );
                                   } else {
-                                    // Clear array filters
-                                    handleFilterChange(
-                                      filter.id,
-                                      Array.isArray(filters[filter.id]) ? [] : filters[filter.id]
-                                    );
+                                    // Toggle between all items and no items
+                                    const currentFilter = filters[filter.id];
+                                    if (Array.isArray(currentFilter)) {
+                                      if (currentFilter.length === 0) {
+                                        // Select all available items
+                                        if (filter.id === 'type') {
+                                          // For type filter, get all available types based on location
+                                          const availableTypes = filters.location.length > 0
+                                            ? getAvailableTypes(filters.location)
+                                            : Object.values(DEBATE_TYPES).flatMap(types => types.map(t => t.type));
+                                          handleFilterChange(filter.id, availableTypes);
+                                        } else if (filter.id === 'location') {
+                                          // For location filter, get all available locations based on type
+                                          const availableLocations = filters.type.length > 0
+                                            ? getAvailableLocations(filters.type)
+                                            : filter.options.map(opt => opt.value);
+                                          handleFilterChange(filter.id, availableLocations);
+                                        } else {
+                                          // For other array filters, select all options
+                                          handleFilterChange(
+                                            filter.id,
+                                            filter.options.map(opt => opt.value)
+                                          );
+                                        }
+                                      } else {
+                                        // Clear selection
+                                        handleFilterChange(filter.id, []);
+                                      }
+                                    }
                                   }
                                 }
                               }}
-                              title="Clear"
+                              title={isFilterActive(filter.id) ? "Clear all" : "Select all"}
                             >
                               <CheckCheck className={cn(
                                 "w-4 h-4",

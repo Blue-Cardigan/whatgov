@@ -2,10 +2,13 @@
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFeed } from '@/hooks/useFeed';
+import { useAuth } from '@/hooks/useAuth';
 import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
 import type { FeedFilters } from '@/types';
+
 export function DebateFeed() {
+  const { profile } = useAuth();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState<FeedFilters>({
     house: [],
@@ -113,6 +116,7 @@ export function DebateFeed() {
           loadMoreRef={loadMoreRef}
           isFetchingNextPage={isFetchingNextPage}
           hasMore={hasNextPage}
+          userMp={profile?.mp}
         />
       </div>
     </div>

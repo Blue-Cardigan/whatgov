@@ -1,17 +1,6 @@
 import { FeedItem } from '@/types';
 import { PostCard } from '@/components/posts/PostCard';
-import { useVotes } from '@/hooks/useVotes';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef, useCallback, useEffect } from 'react';
 import { DebateSkeleton } from './DebateSkeleton';
-import { useEngagement } from '@/hooks/useEngagement';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { ANON_LIMITS } from '@/lib/utils';
-import dynamic from 'next/dynamic'
-import { useToast } from "@/hooks/use-toast";
 import { useVirtualizedFeed } from '@/hooks/useFeed';
 
 interface DebateListProps {
@@ -22,10 +11,10 @@ interface DebateListProps {
   onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
   readOnly?: boolean;
   hasMore?: boolean;
+  userMp?: string | null;
 }
 
-export function DebateList({ items, isLoading, loadMoreRef, ...props }: DebateListProps) {
-  const { hasReachedVoteLimit, getRemainingVotes } = useEngagement();
+export function DebateList({ items, isLoading, loadMoreRef, userMp, ...props }: DebateListProps) {
   const { virtualizer, parentRef, updateItemState } = useVirtualizedFeed(items);
   
   if (isLoading) {
@@ -67,9 +56,8 @@ export function DebateList({ items, isLoading, loadMoreRef, ...props }: DebateLi
             >
               <PostCard
                 item={item}
+                userMp={userMp}
                 {...props}
-                hasReachedLimit={hasReachedVoteLimit()}
-                remainingVotes={getRemainingVotes()}
                 onExpandChange={(isExpanded) => {
                   updateItemState(item.id, isExpanded);
                 }}

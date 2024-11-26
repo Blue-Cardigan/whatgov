@@ -1,4 +1,4 @@
-import { submitVote } from "@/lib/supabase";
+
 
 // Core Question Types
 export interface TopicQuestion {
