@@ -286,6 +286,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
                   <ul className="space-y-3">
                     {[
                       "Filter your feed by House, day, session type, and topics covered",
+                      "See key points from debates (as well as the comments section)",
                       "Track your MP's votes, key points, and top topics",
                       "See how others voted on key issues",
                       "Access your voting analytics",

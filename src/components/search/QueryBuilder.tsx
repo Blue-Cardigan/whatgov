@@ -372,6 +372,7 @@ export function QueryBuilder({
                   <ul className="space-y-3">
                     {[
                       "Filter debates by speaker, type, and topic",
+                      "See key points from debates (+ comments section)",
                       "Advanced Hansard search capabilities",
                       "Track your MP's votes and speeches",
                       "Access the upcoming Parliamentary schedule",

@@ -46,6 +46,7 @@ const tiers = [
     features: [
       "See how MPs voted in Parliamentary Divisions",
       "Filter your feed by House, day, session type, and topics covered",
+      "See key points from debates (as well as the comments section)",
       "Track what your MP talks about in debates",
       "Access advanced voting analytics",
       "Advanced Hansard search capabilities",
