@@ -130,8 +130,6 @@ These terms are governed by:
 
 For questions about these terms:
 - Email: support@whatgov.co.uk
-- Post: [Physical Address]
-- Support: [Support URL]
 
 ## 14. Dispute Resolution
 

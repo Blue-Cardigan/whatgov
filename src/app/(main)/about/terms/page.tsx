@@ -19,7 +19,7 @@ export default async function TermsPage() {
   return (
     <div className="container max-w-3xl mx-auto py-12 px-4">
       <article 
-        className="prose prose-slate max-w-none"
+        className="prose prose-slate dark:prose-dark max-w-none"
         dangerouslySetInnerHTML={{ __html: content }}
       />
     </div>
