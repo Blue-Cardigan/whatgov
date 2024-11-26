@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useMemo } from 'react';
 import { cn } from "@/lib/utils";
-import { fadeIn, slideIn } from './animations';
+import { fadeIn } from './animations';
 
 interface BaseContentProps {
   isActive?: boolean;
@@ -25,6 +25,7 @@ export function DebateContent({
   hasReachedLimit = false,
   className
 }: DebateContentProps & { className?: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<number | null>(null);
   const [votedQuestions, setVotedQuestions] = useState<Set<number>>(new Set());
   
@@ -49,16 +50,15 @@ export function DebateContent({
   }, [debate, votedQuestions]);
 
   const content = useMemo(() => {
+    const summaryPoints = debate.ai_summary
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
     const questions = Array.from({ length: 3 }, (_, i) => {
       const key = `ai_question_${i + 1}` as keyof FeedItem;
       const question = debate[key] as string | undefined;
       return question ? { number: i + 1, text: question } : null;
     }).filter(Boolean);
-
-    const summaryPoints = debate.ai_summary
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
 
     if (currentQuestion === null && questions.length > 0) {
       const firstQuestion = questions.find(q => !votedQuestions.has(q!.number));
@@ -66,58 +66,25 @@ export function DebateContent({
         setCurrentQuestion(firstQuestion.number);
       }
     }
-
-    const contentBlocks = [];
-    const questionCount = questions.length;
-    const summaryLength = summaryPoints.length;
+    const breakPattern = Math.floor(Math.random() * 4);
     
-    // Adjust spacing based on whether there are questions
-    const hasQuestions = questionCount > 0;
-    const questionSpacing = hasQuestions 
-      ? Math.max(1, Math.floor(summaryLength / (questionCount + 1)))
-      : summaryLength; // If no questions, use full length
-    
-    let questionIndex = 0;
-    let summaryIndex = 0;
+    const formattedSummary = summaryPoints.map((point, idx) => {
+      const isFirst = idx === 0;
+      const isSecond = idx === 1;
+      const shouldBreak = 
+        (breakPattern === 1 && isFirst) || 
+        (breakPattern === 2 && isSecond) || 
+        (breakPattern === 3 && (isFirst || isSecond));
+      
+      return point + (shouldBreak ? '\n\n' : ' ');
+    }).join('');
 
-    while (summaryIndex < summaryLength || questionIndex < questionCount) {
-      // Add summary point with dynamic spacing
-      if (summaryIndex < summaryLength) {
-        contentBlocks.push({
-          type: 'summary' as const,
-          text: summaryPoints[summaryIndex],
-          question: null,
-          isLastInSection: !hasQuestions || 
-            (summaryIndex === summaryLength - 1 && questionIndex >= questionCount)
-        });
-        summaryIndex++;
-      }
-
-      // Add question with dynamic spacing
-      if (hasQuestions && 
-          questionIndex < questionCount && 
-          (summaryIndex % questionSpacing === 0 || summaryIndex === summaryLength)) {
-        const questionData = questions[questionIndex];
-        if (questionData && questionData.number === currentQuestion) {
-          contentBlocks.push({
-            type: 'question' as const,
-            text: '',
-            question: questionData,
-            isLastInSection: questionIndex === questionCount - 1
-          });
-        } else {
-          contentBlocks.push({
-            type: 'placeholder' as const,
-            text: '',
-            question: null,
-            isLastInSection: false
-          });
-        }
-        questionIndex++;
-      }
-    }
-
-    return contentBlocks;
+    return {
+      fullText: formattedSummary,
+      firstPoint: summaryPoints[0],
+      hasMore: summaryPoints.length > 1,
+      questions
+    };
   }, [debate, currentQuestion, votedQuestions]);
 
   const handleVote = useCallback(async (questionNum: number, vote: boolean) => {
@@ -141,59 +108,40 @@ export function DebateContent({
   }, [findNextQuestion]);
 
   return (
-    <CardContent 
-      className={cn(
-        "relative",
-        content.some(item => item.type === 'question') ? "pb-4" : "pb-2",
-        className
-      )}
-    >
-      <motion.div
-        className="relative"
-        {...fadeIn}
-      >
-        {content.map((item, index) => (
-          <motion.div 
-            key={index}
-            className={cn(
-              item.type === 'question' ? "my-3" : "my-1",
-              item.type === 'question' && "pl-4 border-l-2 border-muted",
-              item.type === 'summary' && !item.isLastInSection && "mb-1",
-              item.type === 'question' && "mt-2",
-              "relative"
+    <CardContent className={cn("relative", className)}>
+      <motion.div className="relative" {...fadeIn}>
+        <div className="prose max-w-none mb-4">
+          <p className={cn(
+            "text-muted-foreground leading-relaxed m-0",
+            "text-justify whitespace-pre-line"
+          )}>
+            {isExpanded 
+              ? content.fullText
+              : content.firstPoint}
+            {!isExpanded && content.hasMore && (
+              <button
+                onClick={() => setIsExpanded(true)}
+                className="ml-1 text-primary hover:text-primary/80 text-sm font-medium"
+              >
+                Read more
+              </button>
             )}
-            {...slideIn}
-            transition={{ delay: index * 0.05 }}
-          >
-            {item.type === 'summary' && item.text && (
-              <div className={cn(
-                "prose max-w-none",
-                "break-words",
-                item.text.length > 200 ? "prose-sm" : "prose-base"
-              )}>
-                <p className="text-muted-foreground leading-relaxed m-0">
-                  {item.text}
-                </p>
-              </div>
-            )}
+          </p>
+        </div>
 
-            {item.type === 'question' && item.question && (
-              <Question
-                number={item.question.number}
-                question={item.question.text}
-                onVote={handleVote}
-                onSkip={handleSkip}
-                readOnly={readOnly}
-                hasReachedLimit={hasReachedLimit}
-                totalQuestions={content.filter(i => i.type === 'question').length}
-              />
-            )}
-
-            {item.type === 'placeholder' && (
-              content.some(i => i.type === 'question') ? 
-                <div className="h-2" /> : null
-            )}
-          </motion.div>
+        {content.questions.map((item) => (
+          item && item.number === currentQuestion && (
+            <Question
+              key={item.number}
+              number={item.number}
+              question={item.text}
+              onVote={handleVote}
+              onSkip={handleSkip}
+              readOnly={readOnly}
+              hasReachedLimit={hasReachedLimit}
+              totalQuestions={content.questions.length}
+            />
+          )
         ))}
       </motion.div>
 

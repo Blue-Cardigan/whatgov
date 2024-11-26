@@ -147,18 +147,18 @@ export const DEBATE_TYPES = {
   Commons: [
     // Chamber debates
     { type: "Main", label: "Main Chamber Business", house: "Commons" },
-    { type: "Question", label: "Questions", house: "Commons" },
-    { type: "Urgent Question", label: "Urgent Questions", house: "Commons" },
+    { type: "Question", label: "Question", house: "Commons" },
+    { type: "Urgent Question", label: "Urgent Question", house: "Commons" },
     { type: "Prime Minister's Questions", label: "Prime Minister's Questions", house: "Commons" },
-    { type: "Statement", label: "Ministerial Statements", house: "Commons" },
-    { type: "Opposition Day", label: "Opposition Day Debates", house: "Commons" },
-    { type: "Debated Motion", label: "Motions", house: "Commons" },
-    { type: "Debated Bill", label: "Bill Debates", house: "Commons" },
-    { type: "Bill Procedure", label: "Bill Procedures", house: "Commons" },
+    { type: "Statement", label: "Ministerial Statement", house: "Commons" },
+    { type: "Opposition Day", label: "Opposition Day Debate", house: "Commons" },
+    { type: "Debated Motion", label: "Debated Motion", house: "Commons" },
+    { type: "Debated Bill", label: "Bill Debate", house: "Commons" },
+    { type: "Bill Procedure", label: "Bill Procedure", house: "Commons" },
     { type: "Business Without Debate", label: "Business Without Debate", house: "Commons" },
     { type: "Delegated Legislation", label: "Delegated Legislation", house: "Commons" },
-    { type: "Petition", label: "Petitions", house: "Commons" },
-    { type: "Department", label: "Departmental Business", house: "Commons" },
+    { type: "Petition", label: "Petition", house: "Commons" },
+    { type: "Department", label: "Departmental Questions", house: "Commons" },
     { type: "Generic", label: "Other Business", house: "Commons" },
 
     // Other locations

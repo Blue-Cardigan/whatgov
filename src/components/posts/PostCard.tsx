@@ -1,7 +1,7 @@
-import { FeedItem, PartyCount, CommentThread } from '@/types';
+import { FeedItem, PartyCount } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, Building2, ExternalLink, User, UserIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { CalendarIcon, Users2, ExternalLink, UserIcon, MessageSquare, LightbulbIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -10,11 +10,11 @@ import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
 import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
-import { locationColors, getDebateType, TOPICS } from '@/lib/utils';
+import { locationColors, getDebateType } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
-import { Switch } from "@/components/ui/switch";
 import { KeyPointsContent } from './KeyPointsContent';
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 
 interface PostCardProps {
   item: FeedItem;
@@ -35,13 +35,6 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
     .replace(/\s+/g, '');
 
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
-}
-
-interface KeyPoint {
-  point: string;
-  speaker: string;
-  support: string[];
-  opposition: string[];
 }
 
 export const PostCard = memo(function PostCard({ 
@@ -275,96 +268,111 @@ export const PostCard = memo(function PostCard({
         <MetaInformation item={item} />
       </div>
 
-      {/* Key Points Preview */}
-      {item.ai_comment_thread && item.ai_comment_thread.length > 0 && (
+      {/* Comments & Key Points Section */}
+      {(item.ai_comment_thread?.length > 0 || item.ai_key_points?.length > 0) && (
         <div className="border-t flex-shrink-0">
-          <div className="px-6 py-3">
-            {!showComments ? (
-              <div className="flex items-center justify-between">
-                {props.isEngagedCitizen ? (
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowComments(true)}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      View {showKeyPoints ? 'key points' : `${item.ai_comment_thread.length} comments`}
-                    </button>
-                    <div className="flex items-center gap-2 border-l pl-3">
-                      <Switch
-                        checked={showKeyPoints}
-                        onCheckedChange={setShowKeyPoints}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {showKeyPoints ? 'Key Points' : 'Comments'}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
+          {!showComments ? (
+            <div className="px-6 py-3 flex items-center gap-4">
+              {/* Toggle Buttons */}
+              <div className="flex gap-3">
+                {item.ai_comment_thread?.length > 0 && (
                   <button
-                    onClick={() => setShowComments(true)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      setShowComments(true);
+                      setShowKeyPoints(false);
+                    }}
+                    className={cn(
+                      "text-sm flex items-center gap-1.5 transition-colors",
+                      "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    View all {item.ai_comment_thread.length} comments
+                    <MessageSquare className="h-4 w-4" />
+                    {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'comment' : 'comments'}
+                  </button>
+                )}
+                {item.ai_key_points?.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowComments(true);
+                      setShowKeyPoints(true);
+                    }}
+                    className={cn(
+                      "text-sm flex items-center gap-1.5 transition-colors",
+                      "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LightbulbIcon className="h-4 w-4" />
+                    Key Points
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-sm font-medium">
-                    {showKeyPoints ? 'Key Points' : 'Comments'}
-                  </h3>
-                  {props.isEngagedCitizen && (
-                    <div className="flex items-center gap-2 border-l pl-3">
-                      <Switch
-                        checked={showKeyPoints}
-                        onCheckedChange={setShowKeyPoints}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {showKeyPoints ? 'Key Points' : 'Comments'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowComments(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Hide
-                </button>
+            </div>
+          ) : (
+            <div className="px-6 py-3 flex items-center justify-between border-b">
+              <div className="flex items-center gap-4">
+                {item.ai_comment_thread?.length > 0 && (
+                  <button
+                    onClick={() => setShowKeyPoints(false)}
+                    className={cn(
+                      "text-sm flex items-center gap-1.5 transition-colors",
+                      !showKeyPoints 
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Comments ({item.ai_comment_thread.length})
+                  </button>
+                )}
+                {item.ai_key_points?.length > 0 && (
+                  <button
+                    onClick={() => setShowKeyPoints(true)}
+                    className={cn(
+                      "text-sm flex items-center gap-1.5 transition-colors",
+                      showKeyPoints 
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LightbulbIcon className="h-4 w-4" />
+                    Key Points
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Preview section when collapsed */}
-          {!showComments && (
-            <div className="px-6 pb-3">
-              {showKeyPoints ? (
-                <PreviewKeyPoints keyPoints={item.ai_key_points?.slice(0, 2)} userMp={userMp} />
-              ) : (
-                item.ai_comment_thread.slice(0, 2).map((comment) => (
-                  <PreviewComment key={comment.id} comment={comment} />
-                ))
-              )}
+              <button
+                onClick={() => setShowComments(false)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Hide
+              </button>
             </div>
           )}
 
-          {/* Full content section when expanded */}
+          {/* Content Section */}
           {showComments && (
-            showKeyPoints ? (
-              <KeyPointsContent 
-                keyPoints={item.ai_key_points}
-                isActive={true}
-                userMp={userMp}
-              />
-            ) : (
-              <CommentsContent 
-                comments={item.ai_comment_thread}
-                isActive={true}
-              />
-            )
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {showKeyPoints ? (
+                item.ai_key_points && (
+                  <KeyPointsContent 
+                    keyPoints={item.ai_key_points}
+                    isActive={true}
+                    userMp={userMp}
+                  />
+                )
+              ) : (
+                item.ai_comment_thread && (
+                  <CommentsContent 
+                    comments={item.ai_comment_thread}
+                    isActive={true}
+                  />
+                )
+              )}
+            </motion.div>
           )}
         </div>
       )}
@@ -383,57 +391,28 @@ export const PostCard = memo(function PostCard({
 // Extracted components for better organisation
 function MetaInformation({ item }: { item: FeedItem }) {
   const partyCount = item.party_count as PartyCount;
-  
-  // Get debate type details
-  const debateType = useMemo(() => {
-    return getDebateType(item.type);
-  }, [item.type]);
-  
-  // Get topics from ai_topics array and match with TOPICS array
-  const topics = Object.entries(item.ai_topics || {})
-    .map(([, topicData]) => ({
-      topic: TOPICS.find(t => t.label === topicData.name),
-      frequency: topicData.frequency
-    }))
-    .filter(({ topic }) => topic)
-    .sort((a, b) => b.frequency - a.frequency);
+  const debateType = useMemo(() => getDebateType(item.type), [item.type]);
   
   return (
-    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <CalendarIcon className="h-4 w-4" />
-            {format(new Date(item.date), 'dd MMM yyyy')}
-          </div>
-          <div className="flex items-center gap-1">
-            <Building2 className="h-4 w-4" />
-            {item.location}
-          </div>
-        </div>
-        <PartyDistribution partyCount={partyCount} />
+    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      {/* Date */}
+      <div className="flex items-center gap-1.5">
+        <CalendarIcon className="h-4 w-4" />
+        {format(new Date(item.date), 'dd MMM yyyy')}
       </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        {debateType && (
-          <Badge 
-            variant="secondary"
-            className="text-xs font-normal w-fit"
-          >
-            {debateType.label}
-          </Badge>
-        )}
-        {topics.map(({ topic, frequency }) => topic && (
-          <Badge 
-            key={topic.id}
-            variant="outline" 
-            className="text-xs font-normal w-fit flex items-center gap-1"
-            title={`Mentioned ${frequency} times`}
-          >
-            <topic.icon className="h-3 w-3" />
-            {topic.label}
-          </Badge>
-        ))}
-      </div>
+
+      {/* Debate Type */}
+      {debateType && (
+        <Badge 
+          variant="secondary"
+          className="text-xs font-normal"
+        >
+          {debateType.label}
+        </Badge>
+      )}
+
+      {/* Party Distribution */}
+      <PartyDistribution partyCount={partyCount} />
     </div>
   );
 }
@@ -441,9 +420,8 @@ function MetaInformation({ item }: { item: FeedItem }) {
 function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
   const sortedParties = useMemo(() => {
     return Object.entries(partyCount)
-      .sort(([, a], [, b]) => (b || 0) - (a || 0)) // Sort by count, descending
+      .sort(([, a], [, b]) => (b || 0) - (a || 0))
       .reduce((acc, [party, count]) => {
-        // Group similar parties (e.g., Labour and Labour (Co-op))
         const baseParty = party.split('(')[0].trim();
         if (!acc[baseParty]) {
           acc[baseParty] = { count: 0, color: partyColours[party]?.color || '#808080' };
@@ -457,154 +435,94 @@ function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
     Object.values(sortedParties).reduce((sum, { count }) => sum + count, 0)
   , [sortedParties]);
 
+  // Don't render if no speakers
+  if (totalCount === 0) return null;
+
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1">
         <Users2 className="h-4 w-4" />
         <span className="text-xs font-medium">{totalCount}</span>
       </div>
-      <div className="flex items-center">
-        {/* Party distribution bar */}
-        <div className="flex h-2 w-24 rounded-full overflow-hidden">
-          {Object.entries(sortedParties).map(([party, { count, color }]) => {
-            const width = (count / totalCount) * 100;
-            return (
-              <div
-                key={party}
-                className="h-full first:rounded-l-full last:rounded-r-full hover:brightness-110 transition-all"
-                style={{ 
-                  backgroundColor: color,
-                  width: `${width}%`,
-                }}
-                title={`${party}: ${count} ${count === 1 ? 'member' : 'members'} (${Math.round(width)}%)`}
-              />
-            );
-          })}
-        </div>
-        
-        {/* Show top 2 parties with counts */}
-        <div className="ml-2 hidden sm:flex items-center gap-2">
-          {Object.entries(sortedParties).slice(0, 2).map(([party, { count, color }]) => (
-            <div
-              key={party}
-              className="flex items-center gap-1"
-              title={`${party}: ${count} ${count === 1 ? 'member' : 'members'}`}
-            >
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-xs">
-                {count}
-              </span>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="flex items-center hover:opacity-80 transition-opacity">
+            {/* Party distribution bar */}
+            <div className="flex h-2 w-24 rounded-full overflow-hidden">
+              {Object.entries(sortedParties).map(([party, { count, color }]) => {
+                const width = (count / totalCount) * 100;
+                return (
+                  <div
+                    key={party}
+                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    style={{ 
+                      backgroundColor: color,
+                      width: `${width}%`,
+                    }}
+                  />
+                );
+              })}
             </div>
-          ))}
-          {Object.keys(sortedParties).length > 2 && (
-            <span className="text-xs text-muted-foreground">
-              +{Object.keys(sortedParties).length - 2}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// New component for preview comments
-function PreviewComment({ comment }: { comment: CommentThread }) {
-  return (
-    <div className="flex gap-2 py-1">
-      <User className={cn(
-        "h-6 w-6 p-1 rounded-full shrink-0",
-        comment.party === "Conservative" 
-          ? "bg-blue-500/10" 
-          : "bg-muted"
-      )} />
-      <div className="text-sm">
-        <span className="font-semibold">
-          {comment.author}
-        </span>
-        {' '}
-        <span className="text-muted-foreground line-clamp-1">
-          {comment.content}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Add new PreviewKeyPoints component:
-function PreviewKeyPoints({ keyPoints, userMp }: { 
-  keyPoints?: KeyPoint[];
-  userMp?: string | null;
-}) {
-  if (!keyPoints?.length) return null;
-  
-  return (
-    <>
-      {keyPoints.map((point, index) => {
-        const isUserMp = userMp && point.speaker === userMp;
-        
-        return (
-          <div key={index} className="flex gap-2 py-1">
-            <User className={cn(
-              "h-6 w-6 p-1 rounded-full shrink-0",
-              isUserMp ? "bg-primary/10" : "bg-muted"
-            )} />
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className={cn(
-                  "text-sm font-semibold",
-                  isUserMp && "text-primary"
-                )}>
-                  {point.speaker}
-                </span>
-                {isUserMp && (
-                  <Badge 
-                    variant="secondary"
-                    className={cn(
-                      "flex items-center gap-1 h-4",
-                      "bg-primary text-primary-foreground hover:bg-primary/90"
-                    )}
-                  >
-                    <UserIcon className="h-2.5 w-2.5" />
-                    <span className="text-xs">MP</span>
-                  </Badge>
-                )}
-              </div>
-              <span className="text-sm text-muted-foreground line-clamp-1">
-                {point.point}
-              </span>
-              {(point.support.length > 0 || point.opposition.length > 0) && (
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {point.support.length > 0 && (
-                    <Badge 
-                      variant="outline" 
-                      className="flex items-center gap-1 bg-success/10 text-success hover:bg-success/20 border-success/20"
-                    >
-                      <ThumbsUp className="h-2.5 w-2.5" />
-                      <span className="text-xs">
-                        {point.support.length}
-                      </span>
-                    </Badge>
-                  )}
-                  {point.opposition.length > 0 && (
-                    <Badge 
-                      variant="outline"
-                      className="flex items-center gap-1 bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20"
-                    >
-                      <ThumbsDown className="h-2.5 w-2.5" />
-                      <span className="text-xs">
-                        {point.opposition.length}
-                      </span>
-                    </Badge>
-                  )}
+            {/* Top 2 parties preview */}
+            <div className="ml-2 hidden sm:flex items-center gap-2">
+              {Object.entries(sortedParties).slice(0, 2).map(([party, { count, color }]) => (
+                <div
+                  key={party}
+                  className="flex items-center gap-1"
+                >
+                  <div
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-xs">
+                    {count}
+                  </span>
                 </div>
+              ))}
+              {Object.keys(sortedParties).length > 2 && (
+                <span className="text-xs text-muted-foreground">
+                  +{Object.keys(sortedParties).length - 2}
+                </span>
               )}
             </div>
+          </button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-64" align="start">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Speakers by Party</h4>
+            <div className="space-y-1.5">
+              {Object.entries(sortedParties).map(([party, { count, color }]) => {
+                const percentage = ((count / totalCount) * 100).toFixed(1);
+                return (
+                  <div 
+                    key={party}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-sm">{party}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium">
+                        {count}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({percentage}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        );
-      })}
-    </>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

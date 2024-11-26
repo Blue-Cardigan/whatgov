@@ -1,12 +1,13 @@
 import { Division } from '@/types';
 import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Users } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';
 import { cn } from "@/lib/utils";
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DivisionContentProps {
   division: Division;
@@ -19,77 +20,9 @@ type PartyVotes = Record<string, {
   color: string;
 }>;
 
-function MPVoteIndicator({ 
-  division, 
-  mpId,
-  mpName 
-}: { 
-  division: Division;
-  mpId: number;
-  mpName: string;
-}) {
-  const mpVoted = useMemo(() => {
-    if (!mpId) return null;
-    
-    const votedAye = division.aye_members?.some(
-      member => member.member_id === mpId
-    );
-    const votedNoe = division.noe_members?.some(
-      member => member.member_id === mpId
-    );
-    
-    return votedAye ? 'aye' : votedNoe ? 'noe' : null;
-  }, [division, mpId]);
-
-  if (!mpId || !mpVoted) return null;
-
-  const isAye = mpVoted === 'aye';
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "rounded-lg p-4 flex items-center justify-between",
-        "border-2 shadow-sm",
-        isAye ? "border-emerald-500/20 bg-emerald-500/5" : "border-rose-500/20 bg-rose-500/5"
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "rounded-full p-2",
-          isAye ? "bg-emerald-500/10" : "bg-rose-500/10"
-        )}>
-          {isAye ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          ) : (
-            <XCircle className="h-4 w-4 text-rose-500" />
-          )}
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium">Your MP voted {isAye ? 'Aye' : 'Noe'}</p>
-          <p className="text-xs text-muted-foreground">{mpName}</p>
-        </div>
-      </div>
-      <Badge 
-        variant="outline" 
-        className={cn(
-          "text-xs",
-          isAye ? "border-emerald-500/20 bg-emerald-500/10" : "border-rose-500/20 bg-rose-500/10"
-        )}
-      >
-        {isAye ? 'Supported' : 'Opposed'}
-      </Badge>
-    </motion.div>
-  );
-}
-
 export function DivisionContent({ division, isActive }: DivisionContentProps) {
   const { profile } = useAuth();
-  // Memoize vote calculations
-  const { 
-    partyVotes 
-  } = useMemo(() => {
+  const { partyVotes } = useMemo(() => {
     const total = division.ayes_count + division.noes_count;
     const partyVotesMap: PartyVotes = {};
     
@@ -117,16 +50,35 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
   return (
     <CardContent>
       <motion.div 
-        className="space-y-4"
+        className="space-y-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ 
           opacity: isActive ? 1 : 0.5, 
           y: isActive ? 0 : 10,
-          height: 'auto'
         }}
         transition={{ duration: 0.3 }}
       >
-        <DivisionHeader division={division} />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                Division {division.division_number}
+              </span>
+              {division.time && division.time !== '00:00:00' && (
+                <span className="text-xs text-muted-foreground">
+                  {division.time.slice(0, 5)}
+                </span>
+              )}
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {division.ai_topic}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {division.ai_question}
+          </p>
+        </div>
+
         {profile?.mp_id && profile?.mp && (
           <MPVoteIndicator 
             division={division} 
@@ -134,140 +86,192 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
             mpName={profile.mp}
           />
         )}
-        <QuestionContext division={division} />
-        <VoteSection 
-          type="aye"
-          count={division.ayes_count}
-          partyVotes={partyVotes}
-          argument={division.ai_key_arguments?.for}
-        />
-        <VoteSection 
-          type="noe"
-          count={division.noes_count}
-          partyVotes={partyVotes}
-          argument={division.ai_key_arguments?.against}
-        />
-        <PartyLegend partyVotes={partyVotes} />
+
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-xs font-medium">
+                Aye ({division.ayes_count})
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="w-full text-left">
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(partyVotes)
+                        .filter(([, votes]) => votes.ayes > 0)
+                        .sort((a, b) => b[1].ayes - a[1].ayes)
+                        .slice(0, 3) // Show only top 3 parties
+                        .map(([party, votes]) => (
+                          <div 
+                            key={`aye-${party}`}
+                            className="flex items-center gap-1"
+                          >
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: votes.color }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {votes.ayes}
+                            </span>
+                          </div>
+                        ))}
+                      {Object.entries(partyVotes).filter(([, votes]) => votes.ayes > 0).length > 3 && (
+                        <span className="text-xs text-muted-foreground">+{
+                          Object.entries(partyVotes).filter(([, votes]) => votes.ayes > 0).length - 3
+                        } more</span>
+                      )}
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Aye Votes by Party</h4>
+                    <div className="space-y-1.5">
+                      {Object.entries(partyVotes)
+                        .filter(([, votes]) => votes.ayes > 0)
+                        .sort((a, b) => b[1].ayes - a[1].ayes)
+                        .map(([party, votes]) => (
+                          <div 
+                            key={`aye-${party}`}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <div
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: votes.color }}
+                              />
+                              <span className="text-sm">{party}</span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              {votes.ayes}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {division.ai_key_arguments?.for && (
+                <p className="text-xs text-muted-foreground bg-emerald-500/5 p-2 rounded-md">
+                  {division.ai_key_arguments.for}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <XCircle className="h-3.5 w-3.5 text-rose-500" />
+              <span className="text-xs font-medium">
+                Noe ({division.noes_count})
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="w-full text-left">
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(partyVotes)
+                        .filter(([, votes]) => votes.noes > 0)
+                        .sort((a, b) => b[1].noes - a[1].noes)
+                        .slice(0, 3) // Show only top 3 parties
+                        .map(([party, votes]) => (
+                          <div 
+                            key={`noe-${party}`}
+                            className="flex items-center gap-1"
+                          >
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: votes.color }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {votes.noes}
+                            </span>
+                          </div>
+                        ))}
+                      {Object.entries(partyVotes).filter(([, votes]) => votes.noes > 0).length > 3 && (
+                        <span className="text-xs text-muted-foreground">+{
+                          Object.entries(partyVotes).filter(([, votes]) => votes.noes > 0).length - 3
+                        } more</span>
+                      )}
+                    </div>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Noe Votes by Party</h4>
+                    <div className="space-y-1.5">
+                      {Object.entries(partyVotes)
+                        .filter(([, votes]) => votes.noes > 0)
+                        .sort((a, b) => b[1].noes - a[1].noes)
+                        .map(([party, votes]) => (
+                          <div 
+                            key={`noe-${party}`}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <div
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: votes.color }}
+                              />
+                              <span className="text-sm">{party}</span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              {votes.noes}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {division.ai_key_arguments?.against && (
+                <p className="text-xs text-muted-foreground bg-rose-500/5 p-2 rounded-md">
+                  {division.ai_key_arguments.against}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </motion.div>
     </CardContent>
   );
 }
 
-function DivisionHeader({ division }: { division: Division }) {
-  const formattedTime = useMemo(() => {
-    if (!division.time || division.time === '00:00:00') return null;
-    // Convert HH:MM:SS to HH:MM format
-    return division.time.slice(0, 5);
-  }, [division.time]);
-
-  return (
-    <div className="flex items-start justify-between">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">
-          Division {division.division_number}
-        </h3>
-        {formattedTime && (
-          <div className="text-xs text-muted-foreground">
-            {formattedTime}
-          </div>
-        )}
-      </div>
-      <Badge variant="outline" className="text-xs">
-        {division.ai_topic}
-      </Badge>
-    </div>
-  );
-}
-
-function QuestionContext({ division }: { division: Division }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">
-        {division.ai_question}
-      </p>
-      {division.ai_context && (
-        <p className="text-xs text-muted-foreground border-l-2 border-muted pl-3">
-          {division.ai_context}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function VoteSection({ 
-  type, 
-  count, 
-  partyVotes, 
-  argument 
-}: { 
-  type: 'aye' | 'noe';
-  count: number;
-  partyVotes: PartyVotes;
-  argument?: string;
+function MPVoteIndicator({ division, mpId, mpName }: { 
+  division: Division;
+  mpId: number;
+  mpName: string;
 }) {
-  const isAye = type === 'aye';
-  const Icon = isAye ? CheckCircle2 : XCircle;
-  const colorClass = isAye ? 'text-emerald-500' : 'text-rose-500';
-  const bgClass = isAye ? 'bg-emerald-500/10 dark:bg-emerald-500/5' : 'bg-rose-500/10 dark:bg-rose-500/5';
+  const mpVoted = useMemo(() => {
+    if (!mpId) return null;
+    const votedAye = division.aye_members?.some(m => m.member_id === mpId);
+    const votedNoe = division.noe_members?.some(m => m.member_id === mpId);
+    return votedAye ? 'aye' : votedNoe ? 'noe' : null;
+  }, [division, mpId]);
 
-  // Sort parties by vote count for better visualization
-  const sortedParties = Object.entries(partyVotes)
-    .filter((entry) => isAye ? entry[1].ayes > 0 : entry[1].noes > 0)
-    .sort((a, b) => {
-      const countA = isAye ? a[1].ayes : a[1].noes;
-      const countB = isAye ? b[1].ayes : b[1].noes;
-      return countB - countA;
-    });
-
+  if (!mpId || !mpVoted) return null;
+  const isAye = mpVoted === 'aye';
+  
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs font-medium">
-        <Icon className={cn("h-3 w-3", colorClass)} />
-        <span>{isAye ? 'Aye' : 'Noe'} ({count})</span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {sortedParties.map(([party, votes]) => (
-          <div 
-            key={`${type}-${party}`} 
-            className="flex items-center gap-1"
-            title={`${party}: ${isAye ? votes.ayes : votes.noes} votes`}
-          >
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: votes.color }}
-            />
-            <span className="text-xs text-muted-foreground">
-              {isAye ? votes.ayes : votes.noes}
-            </span>
-          </div>
-        ))}
-      </div>
-      {argument && (
-        <div className={cn("text-xs p-2 rounded-md", bgClass)}>
-          <p className="text-muted-foreground">{argument}</p>
+    <div className={cn(
+      "rounded-lg p-2 flex items-center justify-between",
+      "border shadow-sm",
+      isAye ? "border-emerald-500/20 bg-emerald-500/5" : "border-rose-500/20 bg-rose-500/5"
+    )}>
+      <div className="flex items-center gap-2">
+        {isAye ? (
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+        ) : (
+          <XCircle className="h-3.5 w-3.5 text-rose-500" />
+        )}
+        <div>
+          <p className="text-xs font-medium">Your MP voted {isAye ? 'Aye' : 'Noe'}</p>
+          <p className="text-xs text-muted-foreground">{mpName}</p>
         </div>
-      )}
-    </div>
-  );
-}
-
-function PartyLegend({ partyVotes }: { partyVotes: PartyVotes }) {
-  return (
-    <div className="pt-2 border-t">
-      <div className="flex items-center gap-2 text-xs font-medium mb-2">
-        <Users className="h-3 w-3" />
-        <span>Parties</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(partyVotes).map(([party, votes]) => (
-          <div key={party} className="flex items-center gap-1 text-xs">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: votes.color }}
-            />
-            <span>{party} ({votes.ayes + votes.noes})</span>
-          </div>
-        ))}
       </div>
     </div>
   );
