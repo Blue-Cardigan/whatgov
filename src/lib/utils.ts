@@ -205,3 +205,22 @@ export const DAYS = [
   'Thursday',
   'Friday',
 ]
+
+// Add house groupings for locations
+export const LOCATION_GROUPS = {
+  Commons: [
+    'Commons Chamber',
+    'Westminster Hall',
+    'General Committees',
+    'Public Bill Committees',
+    'Petitions',
+  ],
+  Lords: [
+    'Lords Chamber',
+    'Grand Committee',
+  ],
+  Written: [
+    'Written Statements',
+    'Written Corrections',
+  ],
+} as const;
