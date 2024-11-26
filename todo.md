@@ -1,6 +1,7 @@
-1) Implement newsletter sending from backend
-2) Store unauth votes when the user signs in
-3) Remove spacing/ move up feed items when questions all answered
+1) Send welcome email 
+2) Implement newsletter sending from backend
+3) Implement sponsorship tier
+4) Hover hints for first time users
 
 #Optimizations
 - Reduce middleware build size for edge runtime

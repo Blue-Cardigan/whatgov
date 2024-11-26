@@ -184,7 +184,7 @@ export const PostCard = memo(function PostCard({
 
       <CardHeader className={cn(
         "pb-2 flex-shrink-0",
-        userMp && mpSpoke ? "pt-8 sm:pt-10" : "pt-10"
+        userMp && mpSpoke ? "pt-8 sm:pt-10" : "pt-4"
       )}>
         <div className="flex justify-between items-start gap-4">
           <div className="flex flex-col">

@@ -6,10 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
 import type { FeedFilters } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 export function DebateFeed() {
-  const { profile } = useAuth();
+  const { profile, user, loading } = useAuth();
+  const { toast } = useToast();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [filters, setFilters] = useState<FeedFilters>({
     house: [],
     location: [],
@@ -19,6 +22,30 @@ export function DebateFeed() {
     mpOnly: false,
     divisionsOnly: false
   });
+
+  // Show welcome toast for unauthenticated users
+  useEffect(() => {
+    if (!loading && !user && !hasShownWelcome) {
+      setHasShownWelcome(true);
+      toast({
+        title: "Welcome to the WhatGov feed",
+        description: (
+          <div className="flex flex-col gap-2">
+            <h1 className="text-lg font-bold">Parliament, in everyday language.</h1>
+            <p>
+              Create a free account to:
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-1">
+              <li>Vote on unlimited debates</li>
+              <li>See how MPs voted in divisions</li>
+              <li>Track your MP&apos;s activity</li>
+            </ul>
+          </div>
+        ),
+        duration: 8000,
+      });
+    }
+  }, [loading, user, hasShownWelcome, toast]);
 
   const { 
     data, 

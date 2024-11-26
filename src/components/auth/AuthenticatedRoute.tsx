@@ -62,7 +62,7 @@ export function AuthenticatedRoute({ children }: AuthenticatedRouteProps) {
     return (
       <SignInPrompt
         title="Sign in to access your dashboard"
-        description="Track your voting patterns and see how they align with different topics and MPs"
+        description="Track your MP's activity, and voting patterns of the UK and your constituency"
       />
     );
   }
