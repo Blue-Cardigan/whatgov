@@ -213,6 +213,7 @@ export default function Steps({
                 placeholder="Password"
                 className="text-lg py-6"
                 required
+                autoComplete="new-password"
               />
               <Input
                 id="confirmPassword"
@@ -223,6 +224,7 @@ export default function Steps({
                 placeholder="Confirm password"
                 className="text-lg py-6"
                 required
+                autoComplete="new-password"
               />
             </div>
           </div>
