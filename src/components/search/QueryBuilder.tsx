@@ -19,9 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from '@/hooks/useAuth';
 import { Lock } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Crown, Check } from 'lucide-react';
+import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 
 export function QueryBuilder({ 
   searchParams,
@@ -119,10 +117,6 @@ export function QueryBuilder({
   const handleHouseChange = useCallback((house: 'Commons' | 'Lords' | undefined) => {
     handleLocalOptionsChange({ house });
   }, [handleLocalOptionsChange]);
-
-  const handleSubscribe = useCallback(() => {
-    // Handle subscription logic here
-  }, []);
 
   return (
     <div className="space-y-4">
@@ -335,78 +329,12 @@ export function QueryBuilder({
         )}
       </div>
 
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogTitle className="text-2xl font-semibold mb-4">
-            Upgrade to Engaged Citizen
-          </DialogTitle>
-          
-          <DialogDescription asChild>
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                Access advanced search capabilities with an Engaged Citizen subscription.
-              </p>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={cn(
-                      "p-2 rounded-lg",
-                      "bg-purple-50 dark:bg-purple-500/10",
-                      "text-purple-500"
-                    )}>
-                      <Crown className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <CardTitle>Engaged Citizen</CardTitle>
-                      <CardDescription>For engaged citizens who want deeper insights</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-baseline">
-                    <span className="text-3xl font-bold">£2.49</span>
-                    <span className="text-muted-foreground ml-2">/month</span>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  <ul className="space-y-3">
-                    {[
-                      "Filter debates by speaker, type, and topic",
-                      "See key points from debates (+ comments section)",
-                      "Advanced Hansard search capabilities",
-                      "Track your MP's votes and speeches",
-                      "Access the upcoming Parliamentary schedule",
-                      "See how others voted on key issues",
-                      "Access your voting analytics",
-                    ].map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-
-                <CardFooter className="flex flex-col gap-2">
-                  <Button 
-                    className="w-full" 
-                    onClick={handleSubscribe}
-                  >
-                    Upgrade Now
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full"
-                    onClick={() => setShowUpgradeDialog(false)}
-                  >
-                    Maybe Later
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </DialogDescription>
-        </DialogContent>
-      </Dialog>
+      <UpgradeDialog 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog}
+        title="Upgrade to Engaged Citizen"
+        description="Access advanced search capabilities with an Engaged Citizen subscription."
+      />
     </div>
   );
 }

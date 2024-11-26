@@ -72,7 +72,7 @@ const plans = [
     features: [
       { icon: <BarChart2 />, title: "Better Understanding", items: [
         "See how MPs voted in Parliamentary Divisions",
-        "See key points from debates (as well as the comments section)",
+        "See key points made by MPs (as well as the comments section)",
         "Track what your MP says in Parliament",
         "View your voting analytics",
       ]},

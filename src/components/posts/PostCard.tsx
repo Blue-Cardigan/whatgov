@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { memo } from 'react';
 import { KeyPointsContent } from './KeyPointsContent';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import { useAuth } from "@/hooks/useAuth";
+import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 
 interface PostCardProps {
   item: FeedItem;
@@ -148,235 +150,250 @@ export const PostCard = memo(function PostCard({
     return `keyPoints-${cardIndex}`;
   };
 
+  const { user, subscription } = useAuth();
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showKeyPoints, setShowKeyPoints] = useState(false);
 
-  // Check if MP spoke in the debate
-  const mpSpoke = useMemo(() => 
-    userMp && item.speakers?.includes(userMp)
-  , [userMp, item.speakers]);
+  // Unified handler for key points clicks
+  const handleKeyPointsClick = () => {
+    if (!user || !subscription) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    setShowComments(true);
+    setShowKeyPoints(true);
+  };
 
   return (
-    <Card 
-      className={cn(
-        "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
-        "flex flex-col",
-        mpSpoke && "ring-1 ring-primary/20"
-      )}
-      style={{ 
-        borderLeftColor: locationColors[item.location] || '#2b2b2b',
-        borderLeftStyle: 'solid',
-        backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
-      }}
-    >
-      {userMp && mpSpoke && (
-        <div className="absolute left-0 top-0 p-3 z-10">
-          <Badge 
-            variant="secondary"
-            className={cn(
-              "flex items-center gap-1.5",
-              "bg-primary text-primary-foreground hover:bg-primary/90",
-              "shadow-sm"
-            )}
-          >
-            <UserIcon className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline text-xs font-medium">Your MP spoke</span>
-            <span className="sm:hidden text-xs font-medium">MP</span>
-          </Badge>
-        </div>
-      )}
-
-      <CardHeader className={cn(
-        "pb-2 flex-shrink-0",
-        userMp && mpSpoke ? "pt-8 sm:pt-10" : "pt-4"
-      )}>
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex flex-col">
-            <CardTitle className="text-xl font-bold">
-              {item.ai_title}
-            </CardTitle>
-            {userMp && mpSpoke && (
-              <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
-                <UserIcon className="h-3.5 w-3.5" />
-                Your MP spoke
-              </span>
-            )}
-          </div>
-          {item.ext_id && (
-            <a
-              href={constructDebateUrl(item.ext_id, item.title, item.date)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-        </div>
-      </CardHeader>
-
-      <div 
-        {...swipeHandlers}
-        ref={scrollRef}
+    <>
+      <Card 
         className={cn(
-          "flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none",
-          "scroll-smooth flex-grow"
+          "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
+          "flex flex-col",
+          userMp && userMp === item.speakers[0] ? "ring-1 ring-primary/20" : ""
         )}
         style={{ 
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-          minHeight: maxContentHeight || 'auto',
-          transition: 'min-height 0.3s ease-in-out'
+          borderLeftColor: locationColors[item.location] || '#2b2b2b',
+          borderLeftStyle: 'solid',
+          backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
         }}
       >
-        {/* Division Content */}
-        {hasDivisions && (
+        {userMp && userMp === item.speakers[0] && (
+          <div className="absolute left-0 top-0 p-3 z-10">
+            <Badge 
+              variant="secondary"
+              className={cn(
+                "flex items-center gap-1.5",
+                "bg-primary text-primary-foreground hover:bg-primary/90",
+                "shadow-sm"
+              )}
+            >
+              <UserIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-xs font-medium">Your MP spoke</span>
+              <span className="sm:hidden text-xs font-medium">MP</span>
+            </Badge>
+          </div>
+        )}
+
+        <CardHeader className={cn(
+          "pb-2 flex-shrink-0",
+          userMp && userMp === item.speakers[0] ? "pt-8 sm:pt-10" : "pt-4"
+        )}>
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex flex-col">
+              <CardTitle className="text-xl font-bold">
+                {item.ai_title}
+              </CardTitle>
+              {userMp && userMp === item.speakers[0] && (
+                <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
+                  <UserIcon className="h-3.5 w-3.5" />
+                  Your MP spoke
+                </span>
+              )}
+            </div>
+            {item.ext_id && (
+              <a
+                href={constructDebateUrl(item.ext_id, item.title, item.date)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </CardHeader>
+
+        <div 
+          {...swipeHandlers}
+          ref={scrollRef}
+          className={cn(
+            "flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none",
+            "scroll-smooth flex-grow"
+          )}
+          style={{ 
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            minHeight: maxContentHeight || 'auto',
+            transition: 'min-height 0.3s ease-in-out'
+          }}
+        >
+          {/* Division Content */}
+          {hasDivisions && (
+            <motion.div 
+              key="division" 
+              className="w-full flex-shrink-0 snap-center h-full"
+              ref={el => {
+                contentRefs.current.division = el;
+              }}
+              layout
+            >
+              <DivisionContent 
+                division={item.divisions![currentDivisionIndex]}
+                isActive={activeSlide === 'division'}
+              />
+            </motion.div>
+          )}
+          
+          {/* Debate Content */}
           <motion.div 
-            key="division" 
+            key="debate" 
             className="w-full flex-shrink-0 snap-center h-full"
             ref={el => {
-              contentRefs.current.division = el;
+              contentRefs.current.debate = el;
             }}
             layout
           >
-            <DivisionContent 
-              division={item.divisions![currentDivisionIndex]}
-              isActive={activeSlide === 'division'}
+            <DebateContent 
+              debate={item}
+              onVote={props.onVote}
+              readOnly={props.readOnly}
+              hasReachedLimit={hasReachedLimit}
             />
           </motion.div>
-        )}
-        
-        {/* Debate Content */}
-        <motion.div 
-          key="debate" 
-          className="w-full flex-shrink-0 snap-center h-full"
-          ref={el => {
-            contentRefs.current.debate = el;
-          }}
-          layout
-        >
-          <DebateContent 
-            debate={item}
-            onVote={props.onVote}
-            readOnly={props.readOnly}
-            hasReachedLimit={hasReachedLimit}
-          />
-        </motion.div>
-      </div>
-
-      <div className="px-6 py-4 border-t bg-muted/5 flex-shrink-0">
-        <MetaInformation item={item} />
-      </div>
-
-      {/* Comments & Key Points Section */}
-      {(item.ai_comment_thread?.length > 0 || item.ai_key_points?.length > 0) && (
-        <div className="border-t flex-shrink-0">
-          {!showComments ? (
-            <div className="px-6 py-3 flex items-center gap-4">
-              {/* Toggle Buttons */}
-              <div className="flex gap-3">
-                {item.ai_comment_thread?.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setShowComments(true);
-                      setShowKeyPoints(false);
-                    }}
-                    className={cn(
-                      "text-sm flex items-center gap-1.5 transition-colors",
-                      "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'comment' : 'comments'}
-                  </button>
-                )}
-                {item.ai_key_points?.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setShowComments(true);
-                      setShowKeyPoints(true);
-                    }}
-                    className={cn(
-                      "text-sm flex items-center gap-1.5 transition-colors",
-                      "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <LightbulbIcon className="h-4 w-4" />
-                    Key Points
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="px-6 py-3 flex items-center justify-between border-b">
-              <div className="flex items-center gap-4">
-                {item.ai_comment_thread?.length > 0 && (
-                  <button
-                    onClick={() => setShowKeyPoints(false)}
-                    className={cn(
-                      "text-sm flex items-center gap-1.5 transition-colors",
-                      !showKeyPoints 
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Comments ({item.ai_comment_thread.length})
-                  </button>
-                )}
-                {item.ai_key_points?.length > 0 && (
-                  <button
-                    onClick={() => setShowKeyPoints(true)}
-                    className={cn(
-                      "text-sm flex items-center gap-1.5 transition-colors",
-                      showKeyPoints 
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <LightbulbIcon className="h-4 w-4" />
-                    Key Points
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setShowComments(false)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Hide
-              </button>
-            </div>
-          )}
-
-          {/* Content Section */}
-          {showComments && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {showKeyPoints ? (
-                item.ai_key_points && (
-                  <KeyPointsContent 
-                    keyPoints={item.ai_key_points}
-                    isActive={true}
-                    userMp={userMp}
-                  />
-                )
-              ) : (
-                item.ai_comment_thread && (
-                  <CommentsContent 
-                    comments={item.ai_comment_thread}
-                    isActive={true}
-                  />
-                )
-              )}
-            </motion.div>
-          )}
         </div>
-      )}
-    </Card>
+
+        <div className="px-6 py-4 border-t bg-muted/5 flex-shrink-0">
+          <MetaInformation item={item} />
+        </div>
+
+        {/* Comments & Key Points Section */}
+        {(item.ai_comment_thread?.length > 0 || item.ai_key_points?.length > 0) && (
+          <div className="border-t flex-shrink-0">
+            {!showComments ? (
+              <div className="px-6 py-3 flex items-center gap-4">
+                {/* Collapsed state buttons */}
+                <div className="flex gap-3">
+                  {item.ai_comment_thread?.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowComments(true);
+                        setShowKeyPoints(false);
+                      }}
+                      className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'comment' : 'comments'}
+                    </button>
+                  )}
+                  {item.ai_key_points?.length > 0 && (
+                    <button
+                      onClick={handleKeyPointsClick}
+                      className={cn(
+                        "text-sm flex items-center gap-1.5 transition-colors",
+                        (!user || !subscription)
+                          ? "text-muted-foreground/50 hover:text-muted-foreground cursor-pointer"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <LightbulbIcon className="h-4 w-4" />
+                      Key Points
+                    </button> 
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="px-6 py-3 flex items-center justify-between border-b">
+                {/* Expanded state buttons */}
+                <div className="flex items-center gap-4">
+                  {item.ai_comment_thread?.length > 0 && (
+                    <button
+                      onClick={() => setShowKeyPoints(false)}
+                      className={cn(
+                        "text-sm flex items-center gap-1.5 transition-colors",
+                        !showKeyPoints 
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Comments ({item.ai_comment_thread.length})
+                    </button>
+                  )}
+                  {item.ai_key_points?.length > 0 && (
+                    <button
+                      onClick={handleKeyPointsClick}
+                      className={cn(
+                        "text-sm flex items-center gap-1.5 transition-colors",
+                        (!user || !subscription)
+                          ? "text-muted-foreground/50 hover:text-muted-foreground cursor-pointer"
+                          : showKeyPoints 
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <LightbulbIcon className="h-4 w-4" />
+                      Key Points
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Hide
+                </button>
+              </div>
+            )}
+
+            {/* Content Section */}
+            {showComments && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {showKeyPoints ? (
+                  subscription && item.ai_key_points && (
+                    <KeyPointsContent 
+                      keyPoints={item.ai_key_points}
+                      isActive={true}
+                      userMp={userMp}
+                    />
+                  )
+                ) : (
+                  item.ai_comment_thread && (
+                    <CommentsContent 
+                      comments={item.ai_comment_thread}
+                      isActive={true}
+                    />
+                  )
+                )}
+              </motion.div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <UpgradeDialog 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog}
+        title="Unlock Key Points"
+        description="Get instant access to key points made by MPs with an Engaged Citizen subscription."
+      />
+    </>
   );
 }, (prev, next) => {
   // Custom comparison to determine if re-render is needed
