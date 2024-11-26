@@ -77,6 +77,11 @@ export default function IntroPage() {
           WhatGov uses official Parliamentary data from Hansard and AI technology to make 
           parliamentary proceedings accessible. We&apos;re independent and non-partisan, committed 
           to increasing democratic engagement through better understanding.
+          <span className="text-xs block mt-2">
+            While we use AI to help summarize content, all information is derived from 
+            official parliamentary records and should be cross-referenced with Hansard 
+            for verbatim quotes.
+          </span>
         </p>
       </motion.div>
     </div>
