@@ -9,7 +9,7 @@ import type { FeedFilters } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 export function DebateFeed() {
-  const { profile, user, loading } = useAuth();
+  const { profile, user, loading, isEngagedCitizen } = useAuth();
   const { toast } = useToast();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
@@ -146,6 +146,7 @@ export function DebateFeed() {
           isFetchingNextPage={isFetchingNextPage}
           hasMore={hasNextPage}
           userMp={profile?.mp}
+          isEngagedCitizen={isEngagedCitizen}
         />
       </div>
     </div>

@@ -12,9 +12,10 @@ interface DebateListProps {
   readOnly?: boolean;
   hasMore?: boolean;
   userMp?: string | null;
+  isEngagedCitizen?: boolean;
 }
 
-export function DebateList({ items, isLoading, loadMoreRef, userMp, ...props }: DebateListProps) {
+export function DebateList({ items, isLoading, loadMoreRef, userMp, isEngagedCitizen, ...props }: DebateListProps) {
   const { virtualizer, parentRef, updateItemState } = useVirtualizedFeed(items);
   
   if (isLoading) {
@@ -57,6 +58,7 @@ export function DebateList({ items, isLoading, loadMoreRef, userMp, ...props }: 
               <PostCard
                 item={item}
                 userMp={userMp}
+                isEngagedCitizen={isEngagedCitizen}
                 {...props}
                 onExpandChange={(isExpanded) => {
                   updateItemState(item.id, isExpanded);

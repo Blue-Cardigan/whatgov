@@ -1,7 +1,7 @@
 import { FeedItem, PartyCount, CommentThread } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, Building2, ExternalLink, User, UserIcon } from 'lucide-react';
+import { CalendarIcon, Users2, Building2, ExternalLink, User, UserIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -13,6 +13,8 @@ import { useSwipeable } from 'react-swipeable';
 import { locationColors, getDebateType, TOPICS } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
+import { Switch } from "@/components/ui/switch";
+import { KeyPointsContent } from './KeyPointsContent';
 
 interface PostCardProps {
   item: FeedItem;
@@ -22,6 +24,7 @@ interface PostCardProps {
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
   remainingVotes?: number;
+  isEngagedCitizen?: boolean;
 }
 
 // Helper function to format the URL
@@ -32,6 +35,13 @@ function constructDebateUrl(debateExtId: string, title: string, date: string) {
     .replace(/\s+/g, '');
 
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
+}
+
+interface KeyPoint {
+  point: string;
+  speaker: string;
+  support: string[];
+  opposition: string[];
 }
 
 export const PostCard = memo(function PostCard({ 
@@ -88,7 +98,7 @@ export const PostCard = memo(function PostCard({
     const heights = Object.values(contentHeights);
     return heights.length > 0 ? Math.max(...heights) : 0;
   }, [contentHeights]);
-
+  
   // Updated slide change handler
   const handleSlideChange = useCallback((type: string, index?: number) => {
     if (!scrollRef.current) return;
@@ -146,6 +156,7 @@ export const PostCard = memo(function PostCard({
   };
 
   const [showComments, setShowComments] = useState(false);
+  const [showKeyPoints, setShowKeyPoints] = useState(false);
 
   // Check if MP spoke in the debate
   const mpSpoke = useMemo(() => 
@@ -269,40 +280,91 @@ export const PostCard = memo(function PostCard({
         <div className="border-t flex-shrink-0">
           <div className="px-6 py-3">
             {!showComments ? (
-              <button
-                onClick={() => setShowComments(true)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                View all {item.ai_comment_thread.length} comments
-              </button>
+              <div className="flex items-center justify-between">
+                {props.isEngagedCitizen ? (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowComments(true)}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      View {showKeyPoints ? 'key points' : `${item.ai_comment_thread.length} comments`}
+                    </button>
+                    <div className="flex items-center gap-2 border-l pl-3">
+                      <Switch
+                        checked={showKeyPoints}
+                        onCheckedChange={setShowKeyPoints}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {showKeyPoints ? 'Key Points' : 'Comments'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowComments(true)}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    View all {item.ai_comment_thread.length} comments
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Comments</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-medium">
+                    {showKeyPoints ? 'Key Points' : 'Comments'}
+                  </h3>
+                  {props.isEngagedCitizen && (
+                    <div className="flex items-center gap-2 border-l pl-3">
+                      <Switch
+                        checked={showKeyPoints}
+                        onCheckedChange={setShowKeyPoints}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {showKeyPoints ? 'Key Points' : 'Comments'}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => setShowComments(false)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Hide comments
+                  Hide
                 </button>
               </div>
             )}
           </div>
 
-          {/* Preview two most relevant comments when collapsed */}
+          {/* Preview section when collapsed */}
           {!showComments && (
             <div className="px-6 pb-3">
-              {item.ai_comment_thread.slice(0, 2).map((comment) => (
-                <PreviewComment key={comment.id} comment={comment} />
-              ))}
+              {showKeyPoints ? (
+                <PreviewKeyPoints keyPoints={item.ai_key_points?.slice(0, 2)} userMp={userMp} />
+              ) : (
+                item.ai_comment_thread.slice(0, 2).map((comment) => (
+                  <PreviewComment key={comment.id} comment={comment} />
+                ))
+              )}
             </div>
           )}
 
-          {/* Full comments section when expanded */}
+          {/* Full content section when expanded */}
           {showComments && (
-            <CommentsContent 
-              comments={item.ai_comment_thread}
-              isActive={true}
-            />
+            showKeyPoints ? (
+              <KeyPointsContent 
+                keyPoints={item.ai_key_points}
+                isActive={true}
+                userMp={userMp}
+              />
+            ) : (
+              <CommentsContent 
+                comments={item.ai_comment_thread}
+                isActive={true}
+              />
+            )
           )}
         </div>
       )}
@@ -468,5 +530,81 @@ function PreviewComment({ comment }: { comment: CommentThread }) {
         </span>
       </div>
     </div>
+  );
+}
+
+// Add new PreviewKeyPoints component:
+function PreviewKeyPoints({ keyPoints, userMp }: { 
+  keyPoints?: KeyPoint[];
+  userMp?: string | null;
+}) {
+  if (!keyPoints?.length) return null;
+  
+  return (
+    <>
+      {keyPoints.map((point, index) => {
+        const isUserMp = userMp && point.speaker === userMp;
+        
+        return (
+          <div key={index} className="flex gap-2 py-1">
+            <User className={cn(
+              "h-6 w-6 p-1 rounded-full shrink-0",
+              isUserMp ? "bg-primary/10" : "bg-muted"
+            )} />
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className={cn(
+                  "text-sm font-semibold",
+                  isUserMp && "text-primary"
+                )}>
+                  {point.speaker}
+                </span>
+                {isUserMp && (
+                  <Badge 
+                    variant="secondary"
+                    className={cn(
+                      "flex items-center gap-1 h-4",
+                      "bg-primary text-primary-foreground hover:bg-primary/90"
+                    )}
+                  >
+                    <UserIcon className="h-2.5 w-2.5" />
+                    <span className="text-xs">MP</span>
+                  </Badge>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground line-clamp-1">
+                {point.point}
+              </span>
+              {(point.support.length > 0 || point.opposition.length > 0) && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {point.support.length > 0 && (
+                    <Badge 
+                      variant="outline" 
+                      className="flex items-center gap-1 bg-success/10 text-success hover:bg-success/20 border-success/20"
+                    >
+                      <ThumbsUp className="h-2.5 w-2.5" />
+                      <span className="text-xs">
+                        {point.support.length}
+                      </span>
+                    </Badge>
+                  )}
+                  {point.opposition.length > 0 && (
+                    <Badge 
+                      variant="outline"
+                      className="flex items-center gap-1 bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20"
+                    >
+                      <ThumbsDown className="h-2.5 w-2.5" />
+                      <span className="text-xs">
+                        {point.opposition.length}
+                      </span>
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </>
   );
 }
