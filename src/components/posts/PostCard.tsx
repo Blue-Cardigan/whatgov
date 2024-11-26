@@ -393,12 +393,18 @@ function MetaInformation({ item }: { item: FeedItem }) {
   const partyCount = item.party_count as PartyCount;
   const debateType = useMemo(() => getDebateType(item.type), [item.type]);
   
+  const formattedDate = useMemo(() => {
+    const date = new Date(item.date);
+    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
+    return format(date, isCurrentYear ? 'dd MMM' : 'dd MMM yyyy');
+  }, [item.date]);
+  
   return (
     <div className="flex items-center gap-4 text-sm text-muted-foreground">
       {/* Date */}
       <div className="flex items-center gap-1.5">
         <CalendarIcon className="h-4 w-4" />
-        {format(new Date(item.date), 'dd MMM yyyy')}
+        {formattedDate}
       </div>
 
       {/* Debate Type */}
