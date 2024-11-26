@@ -149,7 +149,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
   useEffect(() => {
     if (!loading) {
       // If user is not authenticated or doesn't have an MP, reset mpOnly filter
-      if (!user || !profile?.mp_id) {
+      if ((!user || !profile?.mp_id) && filters.mpOnly) {
         onChange({
           ...filters,
           mpOnly: false
@@ -157,8 +157,13 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         return;
       }
 
-      // If user is not subscribed, reset premium filters
-      if (isEngagedCitizen === false) {
+      // If user is not subscribed, reset premium filters only if they have values
+      if (isEngagedCitizen === false && (
+        filters.type.length > 0 ||
+        filters.location.length > 0 ||
+        filters.days.length > 0 ||
+        filters.topics.length > 0
+      )) {
         onChange({
           ...filters,
           type: [],
@@ -168,7 +173,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         });
       }
     }
-  }, [loading, user, profile?.mp_id, isEngagedCitizen]);
+  }, [loading, user, profile?.mp_id, isEngagedCitizen, filters, onChange]);
 
   // Don't render filters until auth state is determined
   if (loading) {
