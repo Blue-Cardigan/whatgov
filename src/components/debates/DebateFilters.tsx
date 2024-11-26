@@ -123,17 +123,6 @@ export interface BooleanFilterItem extends BaseFilterItem {
 // Union type for all filter items
 export type FilterItem = ArrayFilterItem | BooleanFilterItem;
 
-// Add helper function to get locations by house
-function getLocationsByHouse(locations: string[]): Record<string, string[]> {
-  return Object.entries(LOCATION_GROUPS).reduce((acc, [house, houseLocations]) => {
-    const matchingLocations = locations.filter(loc => houseLocations.includes(loc as never));
-    if (matchingLocations.length > 0) {
-      acc[house] = matchingLocations;
-    }
-    return acc;
-  }, {} as Record<string, string[]>);
-}
-
 export function DebateFilters({ 
   filters, 
   onChange, 
