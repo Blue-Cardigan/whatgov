@@ -1,6 +1,5 @@
 import { Division } from '@/types';
 import { CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';

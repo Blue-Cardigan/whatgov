@@ -51,7 +51,7 @@ export function DebateContent({
       : firstPoint;
 
     const formattedSummary = summaryPoints
-      .map((point, idx) => point + '\n\n')
+      .map((point) => point + '\n\n')
       .join('')
       .trim();
 

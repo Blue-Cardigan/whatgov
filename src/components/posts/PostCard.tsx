@@ -117,7 +117,7 @@ export const PostCard = memo(function PostCard({
 
   // Updated swipe handlers
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: (e) => {
+    onSwipedLeft: () => {
       const currentIndex = getSlideIndex(activeSlide);
       const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
       if (currentIndex < maxIndex) {
@@ -125,7 +125,7 @@ export const PostCard = memo(function PostCard({
         handleSlideChange(nextSlide);
       }
     },
-    onSwipedRight: (e) => {
+    onSwipedRight: () => {
       const currentIndex = getSlideIndex(activeSlide);
       if (currentIndex > 0) {
         const prevSlide = getSlideType(currentIndex - 1);
@@ -139,20 +139,20 @@ export const PostCard = memo(function PostCard({
     swipeDuration: 500,
   });
 
-  // Helper functions
-  const getSlideIndex = (slide: string): number => {
+  // Move these functions inside PostCard and wrap with useCallback
+  const getSlideIndex = useCallback((slide: string): number => {
     if (slide === 'division') return 0;
     if (slide === 'debate') return hasDivisions ? 1 : 0;
     const cardIndex = parseInt(slide.split('-')[1]);
     return (hasDivisions ? 2 : 1) + cardIndex;
-  };
+  }, [hasDivisions]);
 
-  const getSlideType = (index: number): string => {
+  const getSlideType = useCallback((index: number): string => {
     if (index === 0 && hasDivisions) return 'division';
     if (index === (hasDivisions ? 1 : 0)) return 'debate';
     const cardIndex = index - (hasDivisions ? 2 : 1);
     return `keyPoints-${cardIndex}`;
-  };
+  }, [hasDivisions]);
 
   const { user, subscription } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -219,13 +219,12 @@ export const PostCard = memo(function PostCard({
     };
   }, []);
 
-  // Update the wheel event handler
+  // The wheel event handler useEffect will now have stable dependencies
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Only prevent default for horizontal scrolling or when shift is pressed
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
         e.preventDefault();
         
@@ -247,11 +246,15 @@ export const PostCard = memo(function PostCard({
     };
 
     element.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      element.removeEventListener('wheel', handleWheel);
-    };
-  }, [activeSlide, hasDivisions, handleSlideChange]);
+    return () => element.removeEventListener('wheel', handleWheel);
+  }, [
+    activeSlide,
+    hasDivisions,
+    handleSlideChange,
+    getSlideIndex,
+    getSlideType,
+    item.ai_comment_thread?.length
+  ]);
 
   return (
     <>
