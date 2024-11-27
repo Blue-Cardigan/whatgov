@@ -106,15 +106,31 @@ We work with:
 
 ### Data Protection
 - ICO Registration: Pending
-- Data Protection Officer: hi@whatgov.co.uk
+- Data Protection Contact: support@whatgov.co.uk
 
 ## Support
 
 ### Contact Us
-- General: hi@whatgov.co.uk
-- Accounts: verify@whatgov.co.uk
-- Sales: enterprise@whatgov.co.uk
-- Legal: support@whatgov.co.uk
+support@whatgov.co.uk
+- Primary contact for all support issues
+- Data protection requests
+- Legal matters
+- Account issues
+
+hi@whatgov.co.uk
+- General inquiries
+- Media requests
+- Partnership opportunities
+
+verify@whatgov.co.uk
+- Account verification
+- Email confirmation
+- Password resets
+
+enterprise@whatgov.co.uk
+- Business/institutional subscriptions
+- API access requests
+- Bulk licensing
 
 ---
 

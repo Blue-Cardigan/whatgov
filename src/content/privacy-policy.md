@@ -9,8 +9,8 @@ WhatGov is committed to protecting your privacy and personal data. This policy e
 ## 1. Important Information
 
 ### 1.1 Who We Are
-- **Registration**: [Pending]
-- **Data Protection Officer**: support@whatgov.co.uk
+- **Registration**: Company Number 15864302 (England and Wales)
+- **Data Protection Contact**: support@whatgov.co.uk
 
 ### 1.2 Changes to This Policy
 We will notify you of any material changes to this policy through:
@@ -164,26 +164,18 @@ ID verification may be required
 ## 8. Cookies and Tracking
 
 ### 8.1 Essential Cookies
-- Authentication
-- Security
-- Basic functionality
+- Authentication (supabase-auth-token)
+- Security features
+- Basic site functionality
 
-### 8.2 Optional Cookies
-- Analytics
-- Personalisation
-- Performance monitoring
-
-### 8.3 Cookie Control
-- Cookie preferences can be managed in settings
-- Browser settings can block cookies
-- Some features may not work without cookies
+We do not use any non-essential or tracking cookies.
 
 ## 9. Children's Privacy
 
-- Minimum age: 13 years
-- Parental consent required under 13
-- We do not knowingly collect children's data
-- We will delete any identified children's data
+- Minimum age: 16 years
+- Educational institutions may facilitate access for students under 16 through institutional accounts
+- We do not knowingly collect data from users under 16 outside educational contexts
+- We will delete any identified underage user data
 
 ## 10. International Data Transfers
 
@@ -201,17 +193,17 @@ ID verification may be required
 ## 11. AI Processing
 
 ### 11.1 AI Usage
-We use AI for:
-- Summarising parliamentary content
-- Generating insights
-- Content recommendations
-- Search optimisation
+We use artificial intelligence to:
+- Transform complex parliamentary language into clear summaries
+- Identify key topics and trends
+- Generate contextual insights
+- Enhance search functionality
 
-### 11.2 AI Data Processing
-- No automated decision-making affecting legal rights
-- Human oversight of AI systems
-- Regular accuracy monitoring
-- Bias prevention measures
+### 11.2 AI Limitations
+- AI-generated content is for informational purposes only
+- Users should refer to official Hansard records for authoritative information
+- All AI processing includes human oversight
+- Regular accuracy audits are performed
 
 ## 12. Contact Us
 

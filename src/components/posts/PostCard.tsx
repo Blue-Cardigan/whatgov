@@ -117,7 +117,7 @@ export const PostCard = memo(function PostCard({
 
   // Updated swipe handlers
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
+    onSwipedLeft: (e) => {
       const currentIndex = getSlideIndex(activeSlide);
       const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
       if (currentIndex < maxIndex) {
@@ -125,7 +125,7 @@ export const PostCard = memo(function PostCard({
         handleSlideChange(nextSlide);
       }
     },
-    onSwipedRight: () => {
+    onSwipedRight: (e) => {
       const currentIndex = getSlideIndex(activeSlide);
       if (currentIndex > 0) {
         const prevSlide = getSlideType(currentIndex - 1);
@@ -134,7 +134,9 @@ export const PostCard = memo(function PostCard({
     },
     preventScrollOnSwipe: true,
     trackMouse: true,
-    trackTouch: true
+    trackTouch: true,
+    delta: 10,
+    swipeDuration: 500,
   });
 
   // Helper functions
@@ -189,6 +191,68 @@ export const PostCard = memo(function PostCard({
     }
   }, [submitVote, onVote]);
 
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [showScrollbar, setShowScrollbar] = useState(false);
+
+  // Add this inside PostCard component, after other useEffects
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (!scrollElement) return;
+
+    const handleScroll = () => {
+      const progress = scrollElement.scrollLeft / (scrollElement.scrollWidth - scrollElement.clientWidth);
+      setScrollProgress(progress);
+      
+      // Show scrollbar when content is scrollable
+      setShowScrollbar(scrollElement.scrollWidth > scrollElement.clientWidth);
+    };
+
+    // Initial check
+    handleScroll();
+
+    scrollElement.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      scrollElement.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
+
+  // Update the wheel event handler
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only prevent default for horizontal scrolling or when shift is pressed
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+        e.preventDefault();
+        
+        if (e.deltaX > 0) {
+          const currentIndex = getSlideIndex(activeSlide);
+          const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
+          if (currentIndex < maxIndex) {
+            const nextSlide = getSlideType(currentIndex + 1);
+            handleSlideChange(nextSlide);
+          }
+        } else if (e.deltaX < 0) {
+          const currentIndex = getSlideIndex(activeSlide);
+          if (currentIndex > 0) {
+            const prevSlide = getSlideType(currentIndex - 1);
+            handleSlideChange(prevSlide);
+          }
+        }
+      }
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      element.removeEventListener('wheel', handleWheel);
+    };
+  }, [activeSlide, hasDivisions, handleSlideChange]);
+
   return (
     <>
       <Card 
@@ -236,53 +300,74 @@ export const PostCard = memo(function PostCard({
           </div>
         </CardHeader>
 
-        <div 
-          {...swipeHandlers}
-          ref={scrollRef}
-          className={cn(
-            "flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none",
-            "scroll-smooth flex-grow"
-          )}
-          style={{ 
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            minHeight: maxContentHeight || 'auto',
-            transition: 'min-height 0.3s ease-in-out'
-          }}
-        >
-          {/* Division Content */}
-          {hasDivisions && (
+        <div className="relative">
+          <div 
+            {...swipeHandlers}
+            ref={scrollRef}
+            className={cn(
+              "flex w-full snap-x snap-mandatory overflow-x-auto scrollbar-none",
+              "scroll-smooth flex-grow"
+            )}
+            style={{ 
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              minHeight: maxContentHeight || 'auto',
+              transition: 'min-height 0.3s ease-in-out',
+              touchAction: 'none'
+            }}
+          >
+            {/* Division Content */}
+            {hasDivisions && (
+              <motion.div 
+                key="division" 
+                className="w-full flex-shrink-0 snap-center h-full"
+                ref={el => {
+                  contentRefs.current.division = el;
+                }}
+                layout
+              >
+                <DivisionContent 
+                  division={item.divisions![currentDivisionIndex]}
+                  isActive={activeSlide === 'division'}
+                />
+              </motion.div>
+            )}
+            
+            {/* Debate Content */}
             <motion.div 
-              key="division" 
+              key="debate" 
               className="w-full flex-shrink-0 snap-center h-full"
               ref={el => {
-                contentRefs.current.division = el;
+                contentRefs.current.debate = el;
               }}
               layout
             >
-              <DivisionContent 
-                division={item.divisions![currentDivisionIndex]}
-                isActive={activeSlide === 'division'}
+              <DebateContent 
+                debate={item}
+                readOnly={readOnly}
+                hasReachedLimit={hasReachedLimit}
+                onVote={handleVote}
               />
             </motion.div>
+          </div>
+
+          {/* Custom Scrollbar */}
+          {showScrollbar && (
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-muted/10 mx-6"
+              style={{ opacity: showScrollbar ? 1 : 0 }}
+            >
+              <motion.div 
+                className="h-full bg-primary/50 rounded-full"
+                style={{ 
+                  width: '50%',
+                  x: `${scrollProgress * 100}%`
+                }}
+                animate={{ opacity: showScrollbar ? 1 : 0 }}
+                transition={{ duration: 0.2 }}
+              />
+            </div>
           )}
-          
-          {/* Debate Content */}
-          <motion.div 
-            key="debate" 
-            className="w-full flex-shrink-0 snap-center h-full"
-            ref={el => {
-              contentRefs.current.debate = el;
-            }}
-            layout
-          >
-            <DebateContent 
-              debate={item}
-              readOnly={readOnly}
-              hasReachedLimit={hasReachedLimit}
-              onVote={handleVote}
-            />
-          </motion.div>
         </div>
 
         {/* Comments & Key Points Section */}

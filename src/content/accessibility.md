@@ -25,10 +25,10 @@ We are working to address:
 - Complex parliamentary data may require additional context
 
 ## Feedback and Support
-We welcome your feedback on our website's accessibility:
-- Email: hi@whatgov.co.uk
-- Phone: [Number]
-- Report an issue: [Form Link]
+We welcome your feedback on accessibility:
+- Email: support@whatgov.co.uk
+- Response time: Within 2 business days
+- Substantial issues addressed within 30 days where possible
 
 ## Assessment Methods
 Our accessibility assessment includes:
@@ -45,4 +45,4 @@ We are committed to responding to accessibility feedback within 2 business days 
 - [AbilityNet's My Computer My Way](https://mcmw.abilitynet.org.uk/)
 - [BBC's Accessibility Help](https://www.bbc.co.uk/accessibility/)
 
-Last updated: [Date] 
+Last updated: 27 Nov 2024

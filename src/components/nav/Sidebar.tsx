@@ -188,27 +188,27 @@ export function Sidebar({ className }: SidebarProps) {
             onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
           >
             <div className={cn(
-              "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground",
-              "h-12",
+              "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground",
+              "h-16 mt-6",
               "justify-center lg:justify-start",
               pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
               "lg:w-full",
               item.isPremium && !isPremium && "opacity-75"
             )}>
-              <item.icon className="h-6 w-6" />
-              <span className="hidden lg:block ml-4 font-semibold">
+              <item.icon className="h-8 w-8" />
+              <span className="hidden lg:block ml-4 font-semibold text-xl">
                 {item.title}
                 {item.isPremium && !isPremium && (
-                  <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
+                  <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
                 )}
               </span>
             </div>
           </Link>
         </TooltipTrigger>
-        <TooltipContent side="right" className="lg:hidden text-base">
+        <TooltipContent side="right" className="lg:hidden text-xl">
           <span>{item.title}</span>
           {item.isPremium && !isPremium && (
-            <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
+            <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
           )}
         </TooltipContent>
       </Tooltip>
@@ -226,11 +226,11 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Logo */}
           <Link 
             href="/" 
-            className="flex h-14 items-center justify-center lg:justify-start border-b px-6 mb-4"
+            className="flex h-16 items-center justify-center lg:justify-start border-b px-6 mb-4"
           >
-            <span className="font-bold text-xl">
-              <span className="lg:hidden">W</span>
-              <span className="hidden lg:inline">WhatGov</span>
+            <span className="font-bold text-3xl lg:text-4xl logo-font tracking-tight transition-all duration-300 ease-in-out">
+              <span className="lg:hidden transition-opacity duration-300 ease-in-out">W</span>
+              <span className="hidden lg:inline transition-opacity duration-300 ease-in-out">WhatGov</span>
             </span>
           </Link>
 
@@ -248,18 +248,18 @@ export function Sidebar({ className }: SidebarProps) {
                 <TooltipTrigger asChild>
                   <Link href="/settings" className="hidden md:block">
                     <div className={cn(
-                      "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground",
-                      "h-12",
+                      "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground",
+                      "h-14",
                       "justify-center lg:justify-start",
                       pathname === '/settings' ? "bg-accent text-accent-foreground" : "transparent",
                       "lg:w-full"
                     )}>
-                      <Settings className="h-6 w-6" />
-                      <span className="hidden lg:block ml-4 font-semibold">Settings</span>
+                      <Settings className="h-7 w-7" />
+                      <span className="hidden lg:block ml-4 font-semibold text-xl">Settings</span>
                     </div>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="lg:hidden text-base">
+                <TooltipContent side="right" className="lg:hidden text-xl">
                   Settings
                 </TooltipContent>
               </Tooltip>
@@ -271,7 +271,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className={cn(
-                        "flex items-center rounded-md px-4 text-base font-medium hover:bg-accent hover:text-accent-foreground w-full",
+                        "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground w-full",
                         "h-12",
                         "justify-center lg:justify-start",
                         "text-left"

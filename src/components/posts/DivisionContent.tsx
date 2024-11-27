@@ -70,9 +70,6 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
                 </span>
               )}
             </div>
-            <Badge variant="outline" className="text-xs">
-              {division.ai_topic}
-            </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {division.ai_question}

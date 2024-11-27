@@ -27,10 +27,10 @@ Summaries, analyses, and simplified versions of parliamentary proceedings are ge
 ## 4. User Accounts and Security
 
 ### 4.1 Account Creation
-- You must be at least 13 years old to create an account
+- You must be at least 16 years old to create an individual account
+- Educational institutions may provide supervised access to users under 16
 - You must provide accurate and complete information
-- You are responsible for maintaining the security of your account
-- You must notify us immediately of any unauthorised access
+- You are responsible for maintaining account security
 
 ### 4.2 Account Tiers
 - Free tier access is provided at no cost
@@ -103,6 +103,13 @@ Users have the right to:
   - Complete accuracy of AI-generated summaries
   - Real-time updates of parliamentary data
   - Absolute accuracy of voting records
+
+### 9.2 Response Times
+We aim to respond to:
+- General support queries within 2 business days
+- Data protection requests within one calendar month
+- Technical issues within 1 business day
+- Emergency security concerns within 24 hours
 
 ## 10. Changes to Terms
 
