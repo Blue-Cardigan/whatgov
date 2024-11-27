@@ -14,18 +14,10 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates(
 RETURNS TABLE (
   result_id UUID,
   ai_key_points JSONB,
-  ai_question_1 TEXT,
-  ai_question_1_ayes INTEGER,
-  ai_question_1_noes INTEGER,
-  ai_question_1_topic TEXT,
-  ai_question_2 TEXT,
-  ai_question_2_ayes INTEGER,
-  ai_question_2_noes INTEGER,
-  ai_question_2_topic TEXT,
-  ai_question_3 TEXT,
-  ai_question_3_ayes INTEGER,
-  ai_question_3_noes INTEGER,
-  ai_question_3_topic TEXT,
+  ai_question TEXT,
+  ai_question_topic TEXT,
+  ai_question_ayes INTEGER,
+  ai_question_noes INTEGER,
   ai_summary TEXT,
   ai_tags JSONB,
   ai_title TEXT,
@@ -153,12 +145,8 @@ BEGIN
     SELECT 
       fd.*,
       (
-        COALESCE(fd.ai_question_1_ayes, 0) + 
-        COALESCE(fd.ai_question_1_noes, 0) +
-        COALESCE(fd.ai_question_2_ayes, 0) + 
-        COALESCE(fd.ai_question_2_noes, 0) +
-        COALESCE(fd.ai_question_3_ayes, 0) + 
-        COALESCE(fd.ai_question_3_noes, 0)
+        COALESCE(fd.ai_question_ayes, 0) + 
+        COALESCE(fd.ai_question_noes, 0)
       )::float AS engagement_score
     FROM filtered_debates fd
     WHERE (
@@ -166,20 +154,12 @@ BEGIN
       OR (
         fd.date::date < p_cursor_date
         OR (fd.date::date = p_cursor_date AND (
-          COALESCE(fd.ai_question_1_ayes, 0) + 
-          COALESCE(fd.ai_question_1_noes, 0) +
-          COALESCE(fd.ai_question_2_ayes, 0) + 
-          COALESCE(fd.ai_question_2_noes, 0) +
-          COALESCE(fd.ai_question_3_ayes, 0) + 
-          COALESCE(fd.ai_question_3_noes, 0)
+          COALESCE(fd.ai_question_ayes, 0) + 
+          COALESCE(fd.ai_question_noes, 0)
         )::float < p_cursor_score)
         OR (fd.date::date = p_cursor_date AND (
-          COALESCE(fd.ai_question_1_ayes, 0) + 
-          COALESCE(fd.ai_question_1_noes, 0) +
-          COALESCE(fd.ai_question_2_ayes, 0) + 
-          COALESCE(fd.ai_question_2_noes, 0) +
-          COALESCE(fd.ai_question_3_ayes, 0) + 
-          COALESCE(fd.ai_question_3_noes, 0)
+          COALESCE(fd.ai_question_ayes, 0) + 
+          COALESCE(fd.ai_question_noes, 0)
         )::float = p_cursor_score AND fd.id > p_cursor)
       )
     )
@@ -187,18 +167,10 @@ BEGIN
   SELECT 
     d.id as result_id,
     COALESCE(d.ai_key_points, '{}'::jsonb) as ai_key_points,
-    d.ai_question_1,
-    d.ai_question_1_ayes,
-    d.ai_question_1_noes,
-    d.ai_question_1_topic,
-    d.ai_question_2,
-    d.ai_question_2_ayes,
-    d.ai_question_2_noes,
-    d.ai_question_2_topic,
-    d.ai_question_3,
-    d.ai_question_3_ayes,
-    d.ai_question_3_noes,
-    d.ai_question_3_topic,
+    d.ai_question,
+    d.ai_question_topic,
+    d.ai_question_ayes,
+    d.ai_question_noes,
     d.ai_summary,
     COALESCE(d.ai_tags, '[]'::jsonb) as ai_tags,
     d.ai_title,

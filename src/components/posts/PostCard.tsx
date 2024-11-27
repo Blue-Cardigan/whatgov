@@ -17,11 +17,12 @@ import { KeyPointsContent } from './KeyPointsContent';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { useAuth } from "@/hooks/useAuth";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
+import { useVotes } from '@/hooks/useVotes';
 
 interface PostCardProps {
   item: FeedItem;
   userMp?: string | null;
-  onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
+  onVote?: (debateId: string, vote: boolean) => void;
   readOnly?: boolean;
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
@@ -43,7 +44,8 @@ export const PostCard = memo(function PostCard({
   item, 
   hasReachedLimit,
   userMp,
-  ...props 
+  onVote,
+  readOnly
 }: PostCardProps) {
   const hasDivisions = useMemo(() => 
     item.divisions && item.divisions.length > 0
@@ -155,6 +157,9 @@ export const PostCard = memo(function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [showKeyPoints, setShowKeyPoints] = useState(false);
 
+  // Add useVotes hook
+  const { submitVote } = useVotes();
+
   // Unified handler for key points clicks
   const handleKeyPointsClick = () => {
     if (!user || !subscription) {
@@ -165,12 +170,31 @@ export const PostCard = memo(function PostCard({
     setShowKeyPoints(true);
   };
 
+  // Update handleVote to use submitVote mutation
+  const handleVote = useCallback(async (debateId: string, vote: boolean) => {
+    try {
+      // Submit vote using the mutation
+      await submitVote({ 
+        debate_id: debateId, 
+        vote 
+      });
+
+      // Call parent onVote callback if provided
+      if (onVote) {
+        onVote(debateId, vote);
+      }
+    } catch (error) {
+      console.error('Failed to submit vote:', error);
+      // Error handling is done within useVotes
+    }
+  }, [submitVote, onVote]);
+
   return (
     <>
       <Card 
         className={cn(
           "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
-          "flex flex-col",
+          "flex flex-col mt-8",
           userMp && userMp === item.speakers[0] ? "ring-1 ring-primary/20" : ""
         )}
         style={{ 
@@ -179,22 +203,9 @@ export const PostCard = memo(function PostCard({
           backgroundImage: `linear-gradient(to right, ${locationColors[item.location]}15, transparent 10%)`,
         }}
       >
-        {userMp && userMp === item.speakers[0] && (
-          <div className="absolute left-0 top-0 p-3 z-10">
-            <Badge 
-              variant="secondary"
-              className={cn(
-                "flex items-center gap-1.5",
-                "bg-primary text-primary-foreground hover:bg-primary/90",
-                "shadow-sm"
-              )}
-            >
-              <UserIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline text-xs font-medium">Your MP spoke</span>
-              <span className="sm:hidden text-xs font-medium">MP</span>
-            </Badge>
-          </div>
-        )}
+        <div className="px-6 py-4 border-b bg-muted/5 flex-shrink-0">
+          <MetaInformation item={item} />
+        </div>
 
         <CardHeader className={cn(
           "pb-2 flex-shrink-0",
@@ -267,15 +278,11 @@ export const PostCard = memo(function PostCard({
           >
             <DebateContent 
               debate={item}
-              onVote={props.onVote}
-              readOnly={props.readOnly}
+              readOnly={readOnly}
               hasReachedLimit={hasReachedLimit}
+              onVote={handleVote}
             />
           </motion.div>
-        </div>
-
-        <div className="px-6 py-4 border-t bg-muted/5 flex-shrink-0">
-          <MetaInformation item={item} />
         </div>
 
         {/* Comments & Key Points Section */}
@@ -283,7 +290,6 @@ export const PostCard = memo(function PostCard({
           <div className="border-t flex-shrink-0">
             {!showComments ? (
               <div className="px-6 py-3 flex items-center gap-4">
-                {/* Collapsed state buttons */}
                 <div className="flex gap-3">
                   {item.ai_comment_thread?.length > 0 && (
                     <button
@@ -294,35 +300,26 @@ export const PostCard = memo(function PostCard({
                       className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <MessageSquare className="h-4 w-4" />
-                      {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'comment' : 'comments'}
-                    </button>
-                  )}
-                  {item.ai_key_points?.length > 0 && (
-                    <button
-                      onClick={handleKeyPointsClick}
-                      className={cn(
-                        "text-sm flex items-center gap-1.5 transition-colors",
-                        (!user || !subscription)
-                          ? "text-muted-foreground/50 hover:text-muted-foreground cursor-pointer"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <LightbulbIcon className="h-4 w-4" />
-                      Key Points
+                      {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'Point' : 'Points'}
                     </button>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground/50 italic">
+                <span className="text-xs text-muted-foreground/50 italic ml-auto">
                   Generated by GPT-4o
                 </span>
               </div>
             ) : (
               <div className="px-6 py-3 flex items-center justify-between border-b">
-                {/* Expanded state buttons */}
                 <div className="flex items-center gap-4">
                   {item.ai_comment_thread?.length > 0 && (
                     <button
-                      onClick={() => setShowKeyPoints(false)}
+                      onClick={() => {
+                        if (!showKeyPoints) {
+                          setShowComments(false);
+                        } else {
+                          setShowKeyPoints(false);
+                        }
+                      }}
                       className={cn(
                         "text-sm flex items-center gap-1.5 transition-colors",
                         !showKeyPoints 
@@ -331,12 +328,19 @@ export const PostCard = memo(function PostCard({
                       )}
                     >
                       <MessageSquare className="h-4 w-4" />
-                      Comments ({item.ai_comment_thread.length})
+                      Hot Takes ({item.ai_comment_thread.length})
                     </button>
                   )}
                   {item.ai_key_points?.length > 0 && (
                     <button
-                      onClick={handleKeyPointsClick}
+                      onClick={() => {
+                        if (showKeyPoints) {
+                          setShowComments(false);
+                          setShowKeyPoints(false);
+                        } else {
+                          handleKeyPointsClick();
+                        }
+                      }}
                       className={cn(
                         "text-sm flex items-center gap-1.5 transition-colors",
                         (!user || !subscription)
@@ -351,17 +355,9 @@ export const PostCard = memo(function PostCard({
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground/50 italic">
-                    Generated by GPT-4o
-                  </span>
-                  <button
-                    onClick={() => setShowComments(false)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Hide
-                  </button>
-                </div>
+                <span className="text-xs text-muted-foreground/50 italic ml-auto">
+                  Generated by GPT-4o
+                </span>
               </div>
             )}
 

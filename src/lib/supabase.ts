@@ -7,6 +7,7 @@ import type { DemographicStats, RawTopicStats, RawUserVotingStats, VoteData } fr
 import type { AuthResponse, UserProfile } from '@/types/supabase';
 import { User } from '@supabase/supabase-js';
 import { MPData, MPKeyPoint } from '@/types';
+import { CACHE_KEYS } from './redis/config';
 
 const getSupabase = () => createClient()
 
@@ -401,18 +402,10 @@ function processDebates(
       interest_score: debate.interest_score || 0,
       interest_factors: parseInterestFactors(debate.interest_factors),
       engagement_count: debate.engagement_count || 0,
-      ai_question_1: debate.ai_question_1 || '',
-      ai_question_1_topic: debate.ai_question_1_topic || '',
-      ai_question_1_ayes: debate.ai_question_1_ayes || 0,
-      ai_question_1_noes: debate.ai_question_1_noes || 0,
-      ai_question_2: debate.ai_question_2 || '',
-      ai_question_2_topic: debate.ai_question_2_topic || '',
-      ai_question_2_ayes: debate.ai_question_2_ayes || 0,
-      ai_question_2_noes: debate.ai_question_2_noes || 0,
-      ai_question_3: debate.ai_question_3 || '',
-      ai_question_3_topic: debate.ai_question_3_topic || '',
-      ai_question_3_ayes: debate.ai_question_3_ayes || 0,
-      ai_question_3_noes: debate.ai_question_3_noes || 0,
+      ai_question: debate.ai_question || '',
+      ai_question_topic: debate.ai_question_topic || '',
+      ai_question_ayes: debate.ai_question_ayes || 0,
+      ai_question_noes: debate.ai_question_noes || 0,
       ai_comment_thread: parseCommentThread(debate.ai_comment_thread),
       divisions: Array.isArray(debate.divisions) 
         ? debate.divisions as Division[]
@@ -429,7 +422,7 @@ function processDebates(
   };
 }
 
-export async function submitVote({ debate_id, question_number, vote }: DebateVote) {
+export async function submitVote({ debate_id, vote }: DebateVote) {
   const supabase = getSupabase()
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -438,14 +431,34 @@ export async function submitVote({ debate_id, question_number, vote }: DebateVot
     throw new Error('Authentication required for voting');
   }
 
-  const { data, error } = await supabase.rpc('submit_debate_vote', {
-    p_debate_id: debate_id,
-    p_question_number: question_number,
-    p_vote: vote
-  });
+  try {
+    const { data, error } = await supabase.rpc('submit_debate_vote', {
+      p_debate_id: debate_id,
+      p_vote: vote
+    });
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+
+    // Invalidate relevant caches after successful vote
+    await Promise.all([
+      fetch('/api/cache/invalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keys: [
+            CACHE_KEYS.topicVoteStats.key(),
+            CACHE_KEYS.userTopicVotes.key(user.id),
+            CACHE_KEYS.demographicStats.key()
+          ]
+        })
+      })
+    ]);
+
+    return data;
+  } catch (error) {
+    console.error('Vote submission error:', error);
+    throw error;
+  }
 }
 
 // Add this new function
@@ -728,7 +741,6 @@ export const migrateAnonymousVotes = async (votes: VoteData[]): Promise<{ succes
       const { error } = await supabase.rpc('migrate_anonymous_votes', {
         p_votes: batch.map(vote => ({
           debate_id: vote.debate_id,
-          question_number: vote.question_number,
           vote: vote.vote,
           created_at: vote.timestamp
         }))

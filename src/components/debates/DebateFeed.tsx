@@ -7,6 +7,7 @@ import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
 import type { FeedFilters } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 export function DebateFeed() {
   const { profile, user, loading, isEngagedCitizen } = useAuth();
@@ -131,14 +132,12 @@ export function DebateFeed() {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return (
-    <div className="flex flex-col md:pr-20">
-      <div className="mb-4">
+    <div className="min-h-screen flex flex-col md:pr-20">
+      <div className="container max-w-xl mx-auto px-4 flex-1">
         <TopBar 
           filters={filters}
           onChange={setFilters}
         />
-      </div>
-      <div className="container max-w-xl mx-auto px-4">
         <DebateList
           items={allItems}
           isLoading={isLoading}
@@ -149,6 +148,7 @@ export function DebateFeed() {
           isEngagedCitizen={isEngagedCitizen}
         />
       </div>
+      <SimpleFooter />
     </div>
   );
 } 

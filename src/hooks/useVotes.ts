@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats } from '@/lib/supabase';
+import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats, migrateAnonymousVotes } from '@/lib/supabase';
 import { FeedItem } from '@/types';
 import { useAuth } from './useAuth';
 import type { 
@@ -16,6 +16,8 @@ import type {
 import { useCache } from '@/hooks/useCache';
 import { useEngagement } from './useEngagement';
 import { toast } from '@/hooks/use-toast';
+import { useCallback, useEffect } from 'react';
+import { ANON_LIMITS } from '@/lib/utils';
 
 const ANON_VOTES_KEY = 'whatgov_anon_votes';
 
@@ -94,11 +96,18 @@ type UserTopicVotesKey = readonly ['userTopicVotes', string | undefined];
 
 type TopicVoteStatsKey = readonly ['topicVoteStats'];
 
+// Add type for anonymous vote storage
+interface AnonVoteStorage {
+  votes: VoteData[];
+  lastResetDate: string;
+  dailyCount: number;
+}
+
 export function useVotes(): UseVotesReturn {
   const { user } = useAuth();
-  const { recordVote, hasReachedVoteLimit, getRemainingVotes } = useEngagement();
   const queryClient = useQueryClient();
   const { getCache, setCache, CACHE_KEYS } = useCache();
+  const { recordVote, hasReachedVoteLimit, getRemainingVotes } = useEngagement();
 
   // Topic Vote Stats with caching
   const topicVoteStats = useQuery<RawTopicStats, Error, TopicStats, TopicVoteStatsKey>({
@@ -221,90 +230,141 @@ export function useVotes(): UseVotesReturn {
   });
 
   // Helper functions for anonymous votes
-  const getAnonVotes = (): VoteData[] => {
-    if (typeof window === 'undefined') return [];
+  const getAnonVotes = useCallback((): AnonVoteStorage => {
+    const defaultStorage: AnonVoteStorage = {
+      votes: [],
+      lastResetDate: new Date().toISOString(),
+      dailyCount: 0
+    };
+
+    if (typeof window === 'undefined') return defaultStorage;
+
     try {
-      return JSON.parse(localStorage.getItem(ANON_VOTES_KEY) || '[]');
+      const stored = localStorage.getItem(ANON_VOTES_KEY);
+      if (!stored) return defaultStorage;
+      
+      const data = JSON.parse(stored);
+      
+      // Validate the structure and ensure votes array exists
+      if (!data || !Array.isArray(data.votes)) {
+        return defaultStorage;
+      }
+      
+      // Check if we need to reset daily count
+      const lastReset = new Date(data.lastResetDate);
+      const now = new Date();
+      if (lastReset.getUTCDate() !== now.getUTCDate()) {
+        return {
+          votes: data.votes || [],
+          lastResetDate: now.toISOString(),
+          dailyCount: 0
+        };
+      }
+      
+      return {
+        votes: data.votes || [],
+        lastResetDate: data.lastResetDate || new Date().toISOString(),
+        dailyCount: typeof data.dailyCount === 'number' ? data.dailyCount : 0
+      };
     } catch {
-      return [];
+      return defaultStorage;
     }
-  };
+  }, []);
 
-  const saveAnonVote = (voteData: VoteData) => {
+  const saveAnonVote = useCallback((voteData: VoteData) => {
     if (typeof window === 'undefined') return;
-    const votes = getAnonVotes();
-    const exists = votes.some(v => 
-      v.debate_id === voteData.debate_id && 
-      v.question_number === voteData.question_number
+    
+    const storage = getAnonVotes();
+    const exists = storage.votes.some(v => 
+      v.debate_id === voteData.debate_id
     );
+    
     if (!exists) {
-      votes.push(voteData);
-      localStorage.setItem(ANON_VOTES_KEY, JSON.stringify(votes));
+      const newStorage = {
+        votes: [...storage.votes, voteData],
+        lastResetDate: storage.lastResetDate,
+        dailyCount: storage.dailyCount + 1
+      };
+      localStorage.setItem(ANON_VOTES_KEY, JSON.stringify(newStorage));
     }
-  };
+  }, [getAnonVotes]);
 
-  const hasVoted = (debate_id: string, question_number: number): boolean => {
+  // Update hasVoted to use the new storage format
+  const hasVoted = useCallback((debate_id: string): boolean => {
     if (user) {
       const existingVotes = queryClient.getQueryData<Map<string, Map<number, boolean>>>(['votes']);
-      return !!existingVotes?.get(debate_id)?.has(question_number);
+      return !!existingVotes?.get(debate_id);
     } else {
-      const votes = getAnonVotes();
-      return votes.some(v => 
-        v.debate_id === debate_id && 
-        v.question_number === question_number
+      const storage = getAnonVotes();
+      return storage.votes.some(v => 
+        v.debate_id === debate_id
       );
     }
-  };
+  }, [user, queryClient, getAnonVotes]);
 
   const { mutate: submitVoteMutation } = useMutation({
     mutationFn: async (voteData: Parameters<typeof submitVote>[0]) => {
-      // Check vote limit for anonymous users
-      if (!user && hasReachedVoteLimit()) {
-        throw new Error('Daily vote limit reached');
-      }
-
-      if (user) {
-        await submitVote(voteData);
-        // Invalidate caches after successful vote
-        await Promise.all([
-          setCache(CACHE_KEYS.topicVoteStats.key(), null),
-          setCache(CACHE_KEYS.userTopicVotes.key(user.id), null),
-          setCache(CACHE_KEYS.demographicStats.key(), null)
-        ]);
-        // Invalidate React Query cache
-        queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] });
-        queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['demographicStats'] });
-        recordVote(); // Record the vote in engagement stats
-      } else {
+      if (!user) {
+        const storage = getAnonVotes();
+        
+        // Check daily limit
+        if (storage.dailyCount >= ANON_LIMITS.DAILY_VOTES) {
+          throw new Error('Daily vote limit reached');
+        }
+        
+        // Record anonymous vote
         const anonVoteData: VoteData = {
           ...voteData,
           timestamp: new Date().toISOString()
         };
         saveAnonVote(anonVoteData);
+        recordVote();
+        return;
+      }
+
+      // Handle authenticated user vote
+      try {
+        await submitVote(voteData);
+        
+        // Invalidate all relevant caches in parallel
+        await Promise.all([
+          setCache(CACHE_KEYS.topicVoteStats.key(), null),
+          setCache(CACHE_KEYS.userTopicVotes.key(user.id), null),
+          setCache(CACHE_KEYS.demographicStats.key(), null),
+          // Invalidate React Query cache
+          queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] }),
+          queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] }),
+          queryClient.invalidateQueries({ queryKey: ['demographicStats'] })
+        ]);
+
         recordVote(); // Record the vote in engagement stats
+      } catch (error) {
+        // Ensure error is properly propagated
+        console.error('Vote submission error:', error);
+        throw error;
       }
     },
-    onMutate: async ({ debate_id, question_number, vote }) => {
+    onMutate: async ({ debate_id, vote }) => {
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ 
         queryKey: ['feed', { votedOnly: false }] 
       });
 
       const previousFeed = queryClient.getQueryData(['feed', { votedOnly: false }]);
 
-      // Check if already voted
-      if (hasVoted(debate_id, question_number)) {
+      // Skip optimistic update if already voted
+      if (hasVoted(debate_id)) {
         return { previousFeed };
       }
 
-      // Store the vote in appropriate place
+      // Optimistically update UI
       if (user) {
         queryClient.setQueryData(['votes'], (old: Map<string, Map<number, boolean>> | undefined) => {
           const newVotes = new Map(old || new Map());
           if (!newVotes.has(debate_id)) {
             newVotes.set(debate_id, new Map());
           }
-          newVotes.get(debate_id)!.set(question_number, vote);
+          newVotes.get(debate_id)!.set(1, vote);
           return newVotes;
         });
       }
@@ -322,13 +382,10 @@ export function useVotes(): UseVotesReturn {
             items: page.items.map((item) => {
               if (item.id !== debate_id) return item;
               
-              const ayesKey = `ai_question_${question_number}_ayes` as keyof FeedItem;
-              const noesKey = `ai_question_${question_number}_noes` as keyof FeedItem;
-              
               return {
                 ...item,
-                [ayesKey]: (item[ayesKey] as number || 0) + (vote ? 1 : 0),
-                [noesKey]: (item[noesKey] as number || 0) + (!vote ? 1 : 0)
+                ai_question_ayes: item.ai_question_ayes + (vote ? 1 : 0),
+                ai_question_noes: item.ai_question_noes + (!vote ? 1 : 0)
               };
             })
           }))
@@ -349,35 +406,72 @@ export function useVotes(): UseVotesReturn {
           const newVotes = new Map(old || new Map());
           const debateVotes = newVotes.get(variables.debate_id);
           if (debateVotes) {
-            debateVotes.delete(variables.question_number);
+            debateVotes.delete(1);
           }
           return newVotes;
         });
       } else {
         // Remove from local storage for anonymous users
         const votes = getAnonVotes();
-        const filteredVotes = votes.filter(v => 
-          !(v.debate_id === variables.debate_id && 
-            v.question_number === variables.question_number)
+        const filteredVotes = votes.votes.filter(v => 
+          v.debate_id !== variables.debate_id
         );
-        localStorage.setItem(ANON_VOTES_KEY, JSON.stringify(filteredVotes));
+        localStorage.setItem(ANON_VOTES_KEY, JSON.stringify({
+          votes: filteredVotes,
+          lastResetDate: votes.lastResetDate,
+          dailyCount: votes.dailyCount
+        }));
       }
 
       // Show appropriate error message
-      if (err instanceof Error && err.message === 'Daily vote limit reached') {
-        toast({
-          title: "Vote Limit Reached",
-          description: "Create an account to vote on unlimited debates"
-        });
+      if (err instanceof Error) {
+        if (err.message === 'Daily vote limit reached') {
+          toast({
+            title: "Vote Limit Reached",
+            description: "Create an account to vote on unlimited debates"
+          });
+        } else {
+          toast({
+            title: "Vote Failed",
+            description: "Please try again later",
+            variant: "destructive"
+          });
+        }
       }
     }
   });
 
+  const migrateAnonVotesOnSignup = useCallback(async () => {
+    if (!user) return;
+    
+    const storage = getAnonVotes();
+    if (storage.votes.length === 0) return;
+    
+    try {
+      await migrateAnonymousVotes(storage.votes);
+      // Clear anonymous votes after successful migration
+      localStorage.setItem(ANON_VOTES_KEY, JSON.stringify({
+        votes: [],
+        lastResetDate: new Date().toISOString(),
+        dailyCount: 0
+      }));
+    } catch (error) {
+      console.error('Failed to migrate anonymous votes:', error);
+    }
+  }, [user, getAnonVotes]);
+
+  // Add effect to trigger migration when user signs in
+  useEffect(() => {
+    if (user) {
+      migrateAnonVotesOnSignup();
+    }
+  }, [user, migrateAnonVotesOnSignup]);
+
   return {
     submitVote: submitVoteMutation,
     hasVoted,
-    getRemainingVotes, // Expose this to components
-    hasReachedVoteLimit, // Expose this to components
+    getRemainingVotes,
+    hasReachedVoteLimit,
     topicVoteStats: topicVoteStats.data,
     userTopicVotes: userTopicVotes.data,
     demographicStats: demographicStats.data,

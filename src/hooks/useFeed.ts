@@ -154,9 +154,7 @@ export function useVirtualizedFeed(items: FeedItem[]) {
     // Base height calculation
     const baseHeight = 150;
     const questionsHeight = [
-      item.ai_question_1,
-      item.ai_question_2,
-      item.ai_question_3
+      item.ai_question,
     ].filter(Boolean).length * 100;
     
     const divisionsHeight = item.divisions?.length ? 200 : 0;

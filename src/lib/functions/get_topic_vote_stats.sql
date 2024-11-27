@@ -7,16 +7,8 @@ begin
         count(distinct dv.id) as user_votes,
         sum(case when dv.vote then 1 else 0 end) as user_ayes,
         sum(case when not dv.vote then 1 else 0 end) as user_noes,
-        sum(
-          coalesce(d.ai_question_1_ayes, 0) + 
-          coalesce(d.ai_question_2_ayes, 0) + 
-          coalesce(d.ai_question_3_ayes, 0)
-        ) as anon_ayes,
-        sum(
-          coalesce(d.ai_question_1_noes, 0) + 
-          coalesce(d.ai_question_2_noes, 0) + 
-          coalesce(d.ai_question_3_noes, 0)
-        ) as anon_noes,
+        sum(coalesce(d.ai_question_ayes, 0)) as anon_ayes,
+        sum(coalesce(d.ai_question_noes, 0)) as anon_noes,
         jsonb_agg(distinct t.value->'speakers') as speakers,
         jsonb_agg(distinct t.value->'subtopics') as subtopics,
         count(distinct dv.id)::float / 
@@ -28,9 +20,7 @@ begin
             'title', d.title,
             'topic', t.value->>'name',
             'question', coalesce(
-              nullif(d.ai_question_1, ''),
-              nullif(d.ai_question_2, ''),
-              nullif(d.ai_question_3, ''),
+              nullif(d.ai_question, ''),
               d.title
             ),
             'debate_id', d.id,
@@ -60,21 +50,15 @@ begin
           from (
             select json_build_object(
               'question', coalesce(
-                nullif(d2.ai_question_1, ''), 
-                nullif(d2.ai_question_2, ''), 
-                nullif(d2.ai_question_3, ''), 
+                nullif(d2.ai_question, ''),
                 d2.title
               ),
               'ayes', coalesce(
-                nullif(d2.ai_question_1_ayes, 0),
-                nullif(d2.ai_question_2_ayes, 0),
-                nullif(d2.ai_question_3_ayes, 0),
+                nullif(d2.ai_question_ayes, 0),
                 (select count(*) from debate_votes dv where dv.debate_id = d2.id and dv.vote = true)
               ),
               'noes', coalesce(
-                nullif(d2.ai_question_1_noes, 0),
-                nullif(d2.ai_question_2_noes, 0),
-                nullif(d2.ai_question_3_noes, 0),
+                nullif(d2.ai_question_noes, 0),
                 (select count(*) from debate_votes dv where dv.debate_id = d2.id and dv.vote = false)
               )
             ) as q
@@ -88,9 +72,7 @@ begin
             )
             order by (
               coalesce(
-                nullif(d2.ai_question_1_ayes, 0) + nullif(d2.ai_question_1_noes, 0),
-                nullif(d2.ai_question_2_ayes, 0) + nullif(d2.ai_question_2_noes, 0),
-                nullif(d2.ai_question_3_ayes, 0) + nullif(d2.ai_question_3_noes, 0),
+                nullif(d2.ai_question_ayes, 0) + nullif(d2.ai_question_noes, 0),
                 (select count(*) from debate_votes dv where dv.debate_id = d2.id)
               )
             ) desc

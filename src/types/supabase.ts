@@ -41,18 +41,10 @@ export type Database = {
       debates: {
         Row: {
           ai_key_points: Json
-          ai_question_1: string
-          ai_question_1_ayes: number
-          ai_question_1_noes: number
-          ai_question_1_topic: string
-          ai_question_2: string
-          ai_question_2_ayes: number
-          ai_question_2_noes: number
-          ai_question_2_topic: string
-          ai_question_3: string
-          ai_question_3_ayes: number
-          ai_question_3_noes: number
-          ai_question_3_topic: string
+          ai_question: string
+          ai_question_ayes: number
+          ai_question_noes: number
+          ai_question_topic: string
           ai_summary: string
           ai_tags: Json
           ai_title: string | null
@@ -85,18 +77,10 @@ export type Database = {
         }
         Insert: {
           ai_key_points?: Json
-          ai_question_1?: string
-          ai_question_1_ayes?: number
-          ai_question_1_noes?: number
-          ai_question_1_topic?: string
-          ai_question_2?: string
-          ai_question_2_ayes?: number
-          ai_question_2_noes?: number
-          ai_question_2_topic?: string
-          ai_question_3?: string
-          ai_question_3_ayes?: number
-          ai_question_3_noes?: number
-          ai_question_3_topic?: string
+          ai_question?: string
+          ai_question_ayes?: number
+          ai_question_noes?: number
+          ai_question_topic?: string
           ai_summary?: string
           ai_tags?: Json
           ai_title?: string | null
@@ -129,18 +113,10 @@ export type Database = {
         }
         Update: {
           ai_key_points?: Json
-          ai_question_1?: string
-          ai_question_1_ayes?: number
-          ai_question_1_noes?: number
-          ai_question_1_topic?: string
-          ai_question_2?: string
-          ai_question_2_ayes?: number
-          ai_question_2_noes?: number
-          ai_question_2_topic?: string
-          ai_question_3?: string
-          ai_question_3_ayes?: number
-          ai_question_3_noes?: number
-          ai_question_3_topic?: string
+          ai_question?: string
+          ai_question_ayes?: number
+          ai_question_noes?: number
+          ai_question_topic?: string
           ai_summary?: string
           ai_tags?: Json
           ai_title?: string | null
@@ -178,7 +154,6 @@ export type Database = {
           id: string
           user_id: string
           debate_id: string
-          question_number: number
           vote: boolean
           created_at: string | null
         }
@@ -186,7 +161,6 @@ export type Database = {
           id?: string
           user_id: string
           debate_id: string
-          question_number: number
           vote: boolean
           created_at?: string | null
         }
@@ -194,7 +168,6 @@ export type Database = {
           id?: string
           user_id?: string
           debate_id?: string
-          question_number?: number
           vote?: boolean
           created_at?: string | null
         }
@@ -419,18 +392,10 @@ export type Database = {
         Returns: {
           result_id: string
           ai_key_points: string
-          ai_question_1: string
-          ai_question_1_ayes: number
-          ai_question_1_noes: number
-          ai_question_1_topic: string
-          ai_question_2: string
-          ai_question_2_ayes: number
-          ai_question_2_noes: number
-          ai_question_2_topic: string
-          ai_question_3: string
-          ai_question_3_ayes: number
-          ai_question_3_noes: number
-          ai_question_3_topic: string
+          ai_question: string
+          ai_question_ayes: number
+          ai_question_noes: number
+          ai_question_topic: string
           ai_summary: string
           ai_tags: string
           ai_title: string | null
@@ -469,18 +434,10 @@ export type Database = {
         Returns: {
           id: string
           ai_key_points: string
-          ai_question_1: string
-          ai_question_1_ayes: number
-          ai_question_1_noes: number
-          ai_question_1_topic: string
-          ai_question_2: string
-          ai_question_2_ayes: number
-          ai_question_2_noes: number
-          ai_question_2_topic: string
-          ai_question_3: string
-          ai_question_3_ayes: number
-          ai_question_3_noes: number
-          ai_question_3_topic: string
+          ai_question: string
+          ai_question_ayes: number
+          ai_question_noes: number
+          ai_question_topic: string
           ai_summary: string
           ai_tags: string
           ai_title: string | null
@@ -519,7 +476,6 @@ export type Database = {
       submit_debate_vote: {
         Args: {
           p_debate_id: string
-          p_question_number: number
           p_vote: boolean
         }
         Returns: boolean

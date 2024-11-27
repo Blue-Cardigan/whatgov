@@ -24,21 +24,19 @@ BEGIN
     INSERT INTO debate_votes (
       user_id,
       debate_id,
-      question_number,
       vote,
       created_at
     )
     VALUES (
       v_user_id,
       (v_vote->>'debate_id')::text,
-      (v_vote->>'question_number')::int,
       (v_vote->>'vote')::boolean,
       COALESCE(
         (v_vote->>'created_at')::timestamp with time zone,
         NOW()
       )
     )
-    ON CONFLICT (user_id, debate_id, question_number) DO NOTHING;
+    ON CONFLICT (user_id, debate_id) DO NOTHING;
   END LOOP;
 END;
 $$;

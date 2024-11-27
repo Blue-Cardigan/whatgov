@@ -5,6 +5,7 @@ import { SearchResults } from "@/components/search/SearchResults";
 import { QueryBuilder } from '@/components/search/QueryBuilder';
 import { HansardAPI } from '@/lib/hansard-api';
 import type { SearchResponse, SearchParams } from '@/lib/hansard-api';
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 export default function Search() {
   const [results, setResults] = useState<SearchResponse | null>(null);
@@ -45,8 +46,8 @@ export default function Search() {
     performSearch(params), [performSearch]);
 
   return (
-    <div className="flex justify-center min-h-screen bg-background">
-      <div className="container max-w-2xl py-4 px-4 lg:py-8 lg:px-8">
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="container max-w-2xl py-4 px-4 lg:py-8 lg:px-8 flex-1 flex flex-col">
         <h1 className="text-2xl font-bold">Search Hansard</h1>
         <p className="text-muted-foreground mb-4">The Official Parliamentary Record</p>
         <div className="mb-8 lg:mb-12">
@@ -66,6 +67,7 @@ export default function Search() {
           hasMore={Boolean(results?.TotalContributions && results.Contributions.length < results.TotalContributions)}
         />
       </div>
+      <SimpleFooter />
     </div>
   );
 }

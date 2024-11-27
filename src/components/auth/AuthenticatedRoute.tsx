@@ -52,9 +52,9 @@ function DashboardLoadingSkeleton() {
 }
 
 export function AuthenticatedRoute({ children }: AuthenticatedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
 
-  if (loading) {
+  if (loading || (user && !profile)) {
     return <DashboardLoadingSkeleton />;
   }
 

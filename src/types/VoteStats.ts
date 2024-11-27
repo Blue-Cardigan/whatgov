@@ -43,7 +43,6 @@ export interface VoteHistoryEntry {
 
 export interface VoteData {
   debate_id: string;
-  question_number: number;
   vote: boolean;
   timestamp: string;
 }
@@ -198,10 +197,9 @@ export interface TopicWithName extends TopicStatsEntry {
 export interface UseVotesReturn {
   submitVote: (voteData: {
     debate_id: string;
-    question_number: number;
     vote: boolean;
   }) => void;
-  hasVoted: (debate_id: string, question_number: number) => boolean;
+  hasVoted: (debate_id: string) => boolean;
   topicVoteStats: TopicStats | undefined;
   userTopicVotes: UserTopicStats | undefined;
   demographicStats: DemographicStats | undefined;

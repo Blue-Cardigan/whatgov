@@ -23,18 +23,10 @@ export interface FeedItem {
     interest_factors: InterestFactors;
     engagement_count: number;
 
-    ai_question_1: string;
-    ai_question_1_topic: string;
-    ai_question_1_ayes: number;
-    ai_question_1_noes: number;
-    ai_question_2: string;
-    ai_question_2_topic: string;
-    ai_question_2_ayes: number;
-    ai_question_2_noes: number;
-    ai_question_3: string;
-    ai_question_3_topic: string;
-    ai_question_3_ayes: number;
-    ai_question_3_noes: number;
+    ai_question: string;
+    ai_question_topic: string;
+    ai_question_ayes: number;
+    ai_question_noes: number;
     divisions?: Division[];
   }
 
@@ -110,7 +102,6 @@ export type AiTopics = AiTopic[];
 
 export interface DebateVote {
   debate_id: string;
-  question_number: number;
   vote: boolean;
 }
 

@@ -26,18 +26,10 @@ begin
       dv.created_at,
       d.ai_tags,
       d.ai_topics,
-      d.ai_question_1,
-      d.ai_question_1_topic,
-      d.ai_question_1_ayes,
-      d.ai_question_1_noes,
-      d.ai_question_2,
-      d.ai_question_2_topic,
-      d.ai_question_2_ayes,
-      d.ai_question_2_noes,
-      d.ai_question_3,
-      d.ai_question_3_topic,
-      d.ai_question_3_ayes,
-      d.ai_question_3_noes,
+      d.ai_question,
+      d.ai_question_topic,
+      d.ai_question_ayes,
+      d.ai_question_noes,
       d.speakers
     from debate_votes dv
     join debates d on d.id = dv.debate_id
@@ -60,18 +52,10 @@ begin
       topic->'subtopics' as subtopics,
       topic->'frequency' as frequency,
       uv.ai_tags,
-      uv.ai_question_1,
-      uv.ai_question_1_topic,
-      uv.ai_question_1_ayes,
-      uv.ai_question_1_noes,
-      uv.ai_question_2,
-      uv.ai_question_2_topic,
-      uv.ai_question_2_ayes,
-      uv.ai_question_2_noes,
-      uv.ai_question_3,
-      uv.ai_question_3_topic,
-      uv.ai_question_3_ayes,
-      uv.ai_question_3_noes,
+      uv.ai_question,
+      uv.ai_question_topic,
+      uv.ai_question_ayes,
+      uv.ai_question_noes,
       uv.speakers
     from user_votes uv,
     jsonb_array_elements(uv.ai_topics) as topic
@@ -81,23 +65,11 @@ begin
       topic_name,
       jsonb_build_object(
         'tags', ai_tags,
-        'question_1', jsonb_build_object(
-          'text', ai_question_1,
-          'topic', ai_question_1_topic,
-          'ayes', ai_question_1_ayes,
-          'noes', ai_question_1_noes
-        ),
-        'question_2', jsonb_build_object(
-          'text', ai_question_2,
-          'topic', ai_question_2_topic,
-          'ayes', ai_question_2_ayes,
-          'noes', ai_question_2_noes
-        ),
-        'question_3', jsonb_build_object(
-          'text', ai_question_3,
-          'topic', ai_question_3_topic,
-          'ayes', ai_question_3_ayes,
-          'noes', ai_question_3_noes
+        'question', jsonb_build_object(
+          'text', ai_question,
+          'topic', ai_question_topic,
+          'ayes', ai_question_ayes,
+          'noes', ai_question_noes
         ),
         'speakers', speakers
       ) as detail

@@ -7,18 +7,10 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates_unauth(
 RETURNS TABLE (
   result_id UUID,
   ai_key_points TEXT,
-  ai_question_1 TEXT,
-  ai_question_1_ayes INTEGER,
-  ai_question_1_noes INTEGER,
-  ai_question_1_topic TEXT,
-  ai_question_2 TEXT,
-  ai_question_2_ayes INTEGER,
-  ai_question_2_noes INTEGER,
-  ai_question_2_topic TEXT,
-  ai_question_3 TEXT,
-  ai_question_3_ayes INTEGER,
-  ai_question_3_noes INTEGER,
-  ai_question_3_topic TEXT,
+  ai_question TEXT,
+  ai_question_topic TEXT,
+  ai_question_ayes INTEGER,
+  ai_question_noes INTEGER,
   ai_summary TEXT,
   ai_tags TEXT,
   ai_title TEXT,
@@ -44,18 +36,10 @@ BEGIN
     SELECT 
       d.id,
       d.ai_key_points::text,
-      d.ai_question_1,
-      d.ai_question_1_ayes,
-      d.ai_question_1_noes,
-      d.ai_question_1_topic,
-      d.ai_question_2,
-      d.ai_question_2_ayes,
-      d.ai_question_2_noes,
-      d.ai_question_2_topic,
-      d.ai_question_3,
-      d.ai_question_3_ayes,
-      d.ai_question_3_noes,
-      d.ai_question_3_topic,
+      d.ai_question,
+      d.ai_question_topic,
+      d.ai_question_ayes,
+      d.ai_question_noes,
       d.ai_summary,
       d.ai_tags::text,
       d.ai_title,
@@ -74,12 +58,8 @@ BEGIN
       d.ai_comment_thread,
       d.speakers,
       (
-        COALESCE(d.ai_question_1_ayes, 0) + 
-        COALESCE(d.ai_question_1_noes, 0) +
-        COALESCE(d.ai_question_2_ayes, 0) + 
-        COALESCE(d.ai_question_2_noes, 0) +
-        COALESCE(d.ai_question_3_ayes, 0) + 
-        COALESCE(d.ai_question_3_noes, 0)
+        COALESCE(d.ai_question_ayes, 0) + 
+        COALESCE(d.ai_question_noes, 0)
       )::float AS total_votes
     FROM debates d
   ),
@@ -98,18 +78,10 @@ BEGIN
   SELECT 
     scored_debates.id as result_id,
     scored_debates.ai_key_points,
-    scored_debates.ai_question_1,
-    scored_debates.ai_question_1_ayes,
-    scored_debates.ai_question_1_noes,
-    scored_debates.ai_question_1_topic,
-    scored_debates.ai_question_2,
-    scored_debates.ai_question_2_ayes,
-    scored_debates.ai_question_2_noes,
-    scored_debates.ai_question_2_topic,
-    scored_debates.ai_question_3,
-    scored_debates.ai_question_3_ayes,
-    scored_debates.ai_question_3_noes,
-    scored_debates.ai_question_3_topic,
+    scored_debates.ai_question,
+    scored_debates.ai_question_topic,
+    scored_debates.ai_question_ayes,
+    scored_debates.ai_question_noes,
     scored_debates.ai_summary,
     scored_debates.ai_tags,
     scored_debates.ai_title,

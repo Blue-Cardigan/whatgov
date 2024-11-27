@@ -16,9 +16,7 @@ begin
       d.id as debate_id,
       d.title,
       coalesce(
-        nullif(d.ai_question_1, ''),
-        nullif(d.ai_question_2, ''),
-        nullif(d.ai_question_3, ''),
+        nullif(d.ai_question, ''),
         d.title
       ) as question,
       dv.created_at

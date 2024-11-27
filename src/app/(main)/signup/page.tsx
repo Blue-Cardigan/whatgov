@@ -11,6 +11,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import Steps from "./steps";
 import { migrateAnonymousVotes } from "@/lib/supabase";
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 export default function SignUp() {
   const [error, setError] = useState("");
@@ -238,8 +239,8 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30">
-      <div className="container max-w-2xl mx-auto p-8">
+    <div className="min-h-screen flex flex-col bg-muted/30">
+      <div className="container max-w-2xl mx-auto p-8 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           <motion.div 
             className="bg-background rounded-xl shadow-lg p-8 relative overflow-hidden"
@@ -346,6 +347,7 @@ export default function SignUp() {
           </Link>
         </p>
       </div>
+      <SimpleFooter />
       {migrationStatus && (
         <motion.div
           initial={{ opacity: 0 }}

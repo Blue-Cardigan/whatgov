@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 function VerifiedMessage() {
   const searchParams = useSearchParams();
@@ -130,11 +131,19 @@ function LoginForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor="password" className="block text-sm font-medium">
-              Password
-            </label>
+          <label htmlFor="password" className="block text-sm font-medium mb-1">
+            Password
+          </label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <div className="flex justify-end mt-1">
             <button
+              type="button"
               onClick={handleResetPassword}
               className="text-sm text-primary hover:underline disabled:opacity-50"
               disabled={isResetting || !email}
@@ -149,13 +158,6 @@ function LoginForm() {
               )}
             </button>
           </div>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
         </div>
 
         <Button
@@ -172,27 +174,31 @@ function LoginForm() {
 
 export default function SignIn() {
   return (
-    <div className="container max-w-md mx-auto mt-16 px-4">
-      <h1 className="text-2xl font-bold mb-8">Sign In</h1>
-      
-      <Suspense fallback={null}>
-        <VerifiedMessage />
-      </Suspense>
+    <div className="min-h-screen flex flex-col">
+      <div className="container max-w-md mx-auto mt-16 px-4 flex-1 flex flex-col">
+        <h1 className="text-2xl font-bold mb-8">Sign In</h1>
+        
+        <Suspense fallback={null}>
+          <VerifiedMessage />
+        </Suspense>
 
-      <Suspense fallback={
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      }>
-        <LoginForm />
-      </Suspense>
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        }>
+          <LoginForm />
+        </Suspense>
 
-      <p className="mt-4 text-center text-sm">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-primary hover:underline">
-          Sign up
-        </Link>
-      </p>
+        <p className="mt-4 text-center text-sm">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-primary hover:underline">
+            Sign up
+          </Link>
+        </p>
+
+        <SimpleFooter />
+      </div>
     </div>
   );
 } 
