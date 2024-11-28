@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { Lock } from 'lucide-react';
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
+import { LightbulbIcon } from 'lucide-react';
 
 export function QueryBuilder({ 
   searchParams,
@@ -356,6 +357,16 @@ export function QueryBuilder({
         title="Upgrade to Engaged Citizen"
         description="Access advanced search capabilities with an Engaged Citizen subscription."
       />
+
+      <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+        <h3 className="font-medium flex items-center gap-2">
+          <LightbulbIcon className="h-4 w-4 text-primary" />
+          AI-Enhanced Search Results
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Get clear summaries and key points from parliamentary debates, making Hansard more accessible than ever.
+        </p>
+      </div>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
 
   return (
     <div className={cn(
-      "space-y-4 px-6 pb-4",
+      "space-y-4 px-6 pb-4 pt-4",
       !isActive && "hidden"
     )}>
       {keyPoints.map((point, index) => {

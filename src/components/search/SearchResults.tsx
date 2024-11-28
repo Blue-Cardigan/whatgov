@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, FileText, AlertCircle } from "lucide-react";
+import { ArrowRight, FileText, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Contribution } from "@/lib/hansard-api";
 import * as React from 'react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -11,13 +11,14 @@ import type { SearchParams } from '@/lib/hansard-api';
 import type { SearchResultAIContent } from '@/types';
 import { getSearchResultAIContent } from '@/lib/supabase';
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, ExternalLink, UserIcon, MessageSquare, LightbulbIcon } from 'lucide-react';
+import { CalendarIcon, ExternalLink, UserIcon, MessageSquare, LightbulbIcon, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { locationColors, getDebateType } from '@/lib/utils';
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { KeyPointsContent } from '../posts/KeyPointsContent';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 function constructHansardUrl(result: Contribution, searchTerm?: string) {
   // Format the date (yyyy-mm-dd)
@@ -237,6 +238,7 @@ function EmptyState({ searchTerm }: { searchTerm?: string }) {
 function ResultCard({ 
   result, 
   searchTerm,
+  getResultTypeIcon,
   aiContent 
 }: { 
   result: Contribution;
@@ -247,6 +249,7 @@ function ResultCard({
   const { user, subscription } = useAuth();
   const [isExpanded, setIsExpanded] = React.useState(false);
   const debateType = React.useMemo(() => getDebateType(result.Section), [result.Section]);
+  const [activeSection, setActiveSection] = React.useState<'summary' | 'keyPoints'>('summary');
 
   const formattedDate = React.useMemo(() => {
     const date = new Date(result.SittingDate);
@@ -276,9 +279,12 @@ function ResultCard({
             <CalendarIcon className="h-4 w-4" />
             {formattedDate}
             {debateType && (
-              <Badge variant="secondary" className="text-xs font-normal">
-                {debateType.label}
-              </Badge>
+              <>
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {debateType.label}
+                </Badge>
+                {getResultTypeIcon(result.Section)}
+              </>
             )}
           </div>
           
@@ -309,45 +315,119 @@ function ResultCard({
           transition={{ duration: 0.2 }}
           className="border-t"
         >
-          <div className="p-4 space-y-4">
-            {/* Original Title (if AI title exists) */}
-            {aiContent?.ai_title && (
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium">Original Title:</span> {result.DebateSection}
-              </div>
-            )}
-
-            {/* AI Summary */}
-            {aiContent?.ai_summary && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Summary
-                </h4>
-                <p className="text-sm text-muted-foreground">
-                  {aiContent.ai_summary}
-                </p>
-              </div>
-            )}
-
-            {/* Key Points (Pro users only) */}
-            {aiContent?.ai_key_points && (user && subscription) && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium flex items-center gap-2">
+          <div className="p-4">
+            {/* Section Tabs - Only show if content exists */}
+            {(aiContent?.ai_summary || (aiContent?.ai_key_points && aiContent.ai_key_points.length > 0)) && (
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant={activeSection === 'summary' ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveSection('summary')}
+                  className="gap-2"
+                >
                   <LightbulbIcon className="h-4 w-4" />
-                  Key Points
-                </h4>
-                <KeyPointsContent 
-                  keyPoints={aiContent.ai_key_points}
-                  isActive={true}
-                  speakers={[]}
-                />
+                  Summary
+                </Button>
+                {aiContent?.ai_key_points && aiContent.ai_key_points.length > 0 && (
+                  <Button
+                    variant={activeSection === 'keyPoints' ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveSection('keyPoints')}
+                    className="gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    Key Points
+                    <Badge variant="secondary" className="ml-1">
+                      {aiContent.ai_key_points.length}
+                    </Badge>
+                  </Button>
+                )}
               </div>
             )}
+
+            {/* Content Sections */}
+            <div className="space-y-4">
+              {/* Summary Section */}
+              {activeSection === 'summary' && aiContent?.ai_summary && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-2"
+                >
+                  <div className="relative">
+                    <div className="absolute -left-3 top-0 bottom-0 w-1 bg-primary/20 rounded" />
+                    <p className="text-sm text-muted-foreground pl-2">
+                      {aiContent.ai_summary}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Key Points Section */}
+              {activeSection === 'keyPoints' && aiContent?.ai_key_points && aiContent.ai_key_points.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-4"
+                >
+                  <div className="grid gap-3">
+                    {aiContent.ai_key_points.map((point, index) => (
+                      <Collapsible key={index}>
+                        <div className="flex gap-2">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary">
+                              {index + 1}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">
+                                  {point.speaker}
+                                </span>
+                                {point.support.length > 0 && (
+                                  <Badge variant="secondary" className="gap-1">
+                                    <ThumbsUp className="h-3 w-3" />
+                                    {point.support.length}
+                                  </Badge>
+                                )}
+                              </div>
+                              <CollapsibleTrigger className="hover:bg-muted/50 p-1 rounded">
+                                <ChevronDown className="h-4 w-4" />
+                              </CollapsibleTrigger>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {point.point}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <CollapsibleContent className="pl-8 pt-2">
+                          <div className="space-y-2">
+                            {point.support.length > 0 && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ThumbsUp className="h-3 w-3 text-success" />
+                                <span>Supported by {point.support.join(', ')}</span>
+                              </div>
+                            )}
+                            {point.opposition.length > 0 && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <ThumbsDown className="h-3 w-3 text-destructive" />
+                                <span>Opposed by {point.opposition.join(', ')}</span>
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
 
             {/* Speakers */}
             {result.AttributedTo && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-4 pt-4 border-t">
                 <UserIcon className="h-4 w-4" />
                 <span>{result.AttributedTo}</span>
               </div>

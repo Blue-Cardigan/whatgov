@@ -242,28 +242,57 @@ export async function getFeedItems(
 
 // Helper function to safely parse JSON fields
 function parseKeyPoints(json: Json): KeyPoint[] {
-  if (!Array.isArray(json)) return [];
+  // If json is null or undefined, return empty array
+  if (!json) return [];
   
-  return json.map(item => {
-    if (typeof item !== 'object' || !item) return null;
-    
-    const keyPoint = item as Record<string, unknown>;
-    if (
-      typeof keyPoint.point !== 'string' ||
-      typeof keyPoint.speaker !== 'string' ||
-      !Array.isArray(keyPoint.support) ||
-      !Array.isArray(keyPoint.opposition)
-    ) {
-      return null;
+  // If json is a string, try to parse it
+  let parsedJson = json;
+  if (typeof json === 'string') {
+    try {
+      parsedJson = JSON.parse(json);
+    } catch (e) {
+      console.error('Error parsing key points JSON string:', e);
+      return [];
     }
+  }
+  
+  // Ensure we have an array to work with
+  if (!Array.isArray(parsedJson)) {
+    console.error('Key points data is not an array:', parsedJson);
+    return [];
+  }
+  
+  return parsedJson
+    .map(item => {
+      // Basic type check for item
+      if (!item || typeof item !== 'object') {
+        console.error('Invalid key point item:', item);
+        return null;
+      }
 
-    return {
-      point: keyPoint.point,
-      speaker: keyPoint.speaker,
-      support: keyPoint.support.filter((s): s is string => typeof s === 'string'),
-      opposition: keyPoint.opposition.filter((o): o is string => typeof o === 'string')
-    };
-  }).filter((item): item is KeyPoint => item !== null);
+      // Type assertion after basic check
+      const keyPoint = item as Record<string, unknown>;
+      
+      // Validate required fields
+      if (
+        typeof keyPoint.point !== 'string' ||
+        typeof keyPoint.speaker !== 'string' ||
+        !Array.isArray(keyPoint.support) ||
+        !Array.isArray(keyPoint.opposition)
+      ) {
+        console.error('Invalid key point structure:', keyPoint);
+        return null;
+      }
+
+      // Return properly typed key point
+      return {
+        point: keyPoint.point,
+        speaker: keyPoint.speaker,
+        support: keyPoint.support.filter((s): s is string => typeof s === 'string'),
+        opposition: keyPoint.opposition.filter((o): o is string => typeof o === 'string')
+      };
+    })
+    .filter((item): item is KeyPoint => item !== null);
 }
 
 // Add this helper function to safely parse InterestFactors
@@ -770,7 +799,6 @@ export async function getSearchResultAIContent(externalId: string): Promise<Sear
   const supabase = getSupabase();
   
   try {
-    // Format the external ID to match the database format
     const formattedExtId = externalId.toUpperCase();
     
     const { data, error } = await supabase
@@ -794,12 +822,11 @@ export async function getSearchResultAIContent(externalId: string): Promise<Sear
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
-      }
+      if (error.code === 'PGRST116') return null;
       console.error('Error fetching debate content:', error);
       return null;
     }
+    const keyPoints = data.ai_key_points ? parseKeyPoints(data.ai_key_points) : undefined;
 
     return {
       id: data.id,
@@ -810,7 +837,7 @@ export async function getSearchResultAIContent(externalId: string): Promise<Sear
       house: data.house,
       location: data.location,
       ai_summary: data.ai_summary || undefined,
-      ai_key_points: data.ai_key_points ? parseKeyPoints(data.ai_key_points) : undefined,
+      ai_key_points: keyPoints,
       speaker_count: data.speaker_count || undefined,
       party_count: data.party_count || undefined,
       speakers: data.speakers || undefined
