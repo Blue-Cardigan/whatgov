@@ -297,7 +297,7 @@ export class HansardAPI {
   private static calculateWeekDates(baseDate: Date, forNextWeek: boolean) {
     // Create new date objects to avoid mutating the input
     const today = new Date(baseDate);
-    let weekStart = new Date(today);
+    const weekStart = new Date(today);
     let weekEnd = new Date(today);
 
     // Reset time to start of day to avoid timezone issues

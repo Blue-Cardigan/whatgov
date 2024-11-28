@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import Image from "next/image";
-import { HansardAPI, OralQuestion } from "@/lib/hansard-api";
+import { OralQuestion } from "@/lib/hansard-api";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, User2, ChevronDown, AlertCircle, Clock } from "lucide-react";
 import {

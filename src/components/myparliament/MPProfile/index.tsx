@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card";
 import { getMPData, getMPKeyPoints } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthenticatedRoute } from "@/components/auth/AuthenticatedRoute";
-import { Button } from "@/components/ui/button";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
@@ -19,7 +18,6 @@ export function MPProfile() {
   const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
   const [topics, setTopics] = useState<AiTopic[]>([]);
   const [totalMentions, setTotalMentions] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { profile, isEngagedCitizen } = useAuth();
 
@@ -107,41 +105,49 @@ export function MPProfile() {
     <AuthenticatedRoute>
       <Card className="p-3 sm:p-4">
         <div className="space-y-5 sm:space-y-6">
-          <MPProfileCard mpData={mpData} loading={profileLoading} />
-          {!profileLoading && mpData && (
+          {error ? (
+            <div className="text-red-500 text-center py-4">
+              {error}
+            </div>
+          ) : (
             <>
-              <MPLinks mpData={mpData} />
-              {isEngagedCitizen ? (
+              <MPProfileCard mpData={mpData} loading={profileLoading} />
+              {!profileLoading && mpData && (
                 <>
-                  {!topicsLoading && topics.length > 0 && (
+                  <MPLinks mpData={mpData} />
+                  {isEngagedCitizen ? (
+                    <>
+                      {!topicsLoading && topics.length > 0 && (
+                        <div className="pt-2">
+                          <MPTopics topics={topics} totalMentions={totalMentions} />
+                        </div>
+                      )}
+                      {!keyPointsLoading && keyPoints.length > 0 && (
+                        <div className="pt-2">
+                          <MPKeyPoints keyPoints={keyPoints} />
+                        </div>
+                      )}
+                      {(topicsLoading || keyPointsLoading) && (
+                        <div className="space-y-4">
+                          <Skeleton className="h-[200px] w-full" />
+                          <Skeleton className="h-[150px] w-full" />
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <div className="pt-2">
-                      <MPTopics topics={topics} totalMentions={totalMentions} />
-                    </div>
-                  )}
-                  {!keyPointsLoading && keyPoints.length > 0 && (
-                    <div className="pt-2">
-                      <MPKeyPoints keyPoints={keyPoints} />
-                    </div>
-                  )}
-                  {(topicsLoading || keyPointsLoading) && (
-                    <div className="space-y-4">
-                      <Skeleton className="h-[200px] w-full" />
-                      <Skeleton className="h-[150px] w-full" />
+                      <SubscriptionCTA
+                        title="Upgrade to track your MP's activity"
+                        description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
+                        features={[
+                          "See which topics your MP speaks on",
+                          "Track your MP's votes in Parliamentary Divisions",
+                          "Read your MP's key points and speeches"
+                        ]}
+                      />
                     </div>
                   )}
                 </>
-              ) : (
-                <div className="pt-2">
-                  <SubscriptionCTA
-                    title="Upgrade to track your MP's activity"
-                    description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
-                    features={[
-                      "See which topics your MP speaks on",
-                      "Track your MP's votes in Parliamentary Divisions",
-                      "Read your MP's key points and speeches"
-                    ]}
-                  />
-                </div>
               )}
             </>
           )}
