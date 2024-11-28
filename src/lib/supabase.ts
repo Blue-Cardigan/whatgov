@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from './supabase-client'
-import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters, Speaker } from '@/types'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters, Speaker, SearchResultAIContent } from '@/types'
 import type { Database, Json } from '@/types/supabase';
 import type { DemographicStats, RawTopicStats, RawUserVotingStats, VoteData } from '@/types/VoteStats';
 import type { AuthResponse, UserProfile } from '@/types/supabase';
@@ -764,3 +764,59 @@ export const migrateAnonymousVotes = async (
     };
   }
 };
+
+
+export async function getSearchResultAIContent(externalId: string): Promise<SearchResultAIContent | null> {
+  const supabase = getSupabase();
+  
+  try {
+    // Format the external ID to match the database format
+    const formattedExtId = externalId.toUpperCase();
+    
+    const { data, error } = await supabase
+      .from('debates')
+      .select(`
+        id,
+        ext_id,
+        title,
+        date,
+        type,
+        house,
+        location,
+        ai_title,
+        ai_summary,
+        ai_key_points,
+        speaker_count,
+        party_count,
+        speakers
+      `)
+      .eq('ext_id', formattedExtId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error('Error fetching debate content:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      ai_title: data.ai_title || undefined,
+      date: data.date,
+      type: data.type,
+      house: data.house,
+      location: data.location,
+      ai_summary: data.ai_summary || undefined,
+      ai_key_points: data.ai_key_points ? parseKeyPoints(data.ai_key_points) : undefined,
+      speaker_count: data.speaker_count || undefined,
+      party_count: data.party_count || undefined,
+      speakers: data.speakers || undefined
+    };
+  } catch (error) {
+    console.error('Failed to fetch debate content:', error);
+    return null;
+  }
+}

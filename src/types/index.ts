@@ -44,6 +44,20 @@ export interface PartyCount {
   [key: string]: number | undefined;
 }
 
+export interface SearchResultAIContent {
+  id: string;
+  title: string;
+  ai_title?: string;
+  date: string;
+  type: string;
+  house: string;
+  location: string;
+  ai_summary?: string;
+  ai_key_points?: KeyPoint[];
+  speaker_count?: number;
+  party_count?: Record<string, number>;
+  speakers?: Speaker[];
+}
 
 export type MPData = {
   member_id: number;

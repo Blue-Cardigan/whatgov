@@ -22,7 +22,9 @@ export function DebateList({ items, isLoading, loadMoreRef, userMp, isEngagedCit
     return <DebateSkeleton />;
   }
 
-  if (items.length === 0) {
+  const filteredItems = items.filter(item => item.ai_summary);
+
+  if (filteredItems.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         No debates found
@@ -40,7 +42,7 @@ export function DebateList({ items, isLoading, loadMoreRef, userMp, isEngagedCit
         }}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
-          const item = items[virtualRow.index];
+          const item = filteredItems[virtualRow.index];
           return (
             <div
               key={virtualRow.key}

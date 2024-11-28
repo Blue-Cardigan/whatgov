@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ResetPasswordVerify() {
+function ResetPasswordVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -20,9 +20,17 @@ export default function ResetPasswordVerify() {
   }, [searchParams, router]);
 
   return (
+    <div className="animate-pulse">Verifying...</div>
+  );
+}
+
+export default function ResetPasswordVerify() {
+  return (
     <div className="container max-w-md mx-auto mt-16 px-4">
       <div className="flex items-center justify-center py-8">
-        <div className="animate-pulse">Verifying...</div>
+        <Suspense fallback={<div className="animate-pulse">Loading...</div>}>
+          <ResetPasswordVerifyContent />
+        </Suspense>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { getRedisValue, setRedisValue } from '@/app/actions/redis';
+import { KeyPoint } from '@/types';
 
 export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
 
@@ -145,6 +146,11 @@ interface FetchOptions {
   retries?: number;
   cacheTTL?: number;
   forceRefresh?: boolean;
+}
+
+interface AiContent {
+  ai_summary?: string;
+  ai_key_points?: KeyPoint[];
 }
 
 export class HansardAPI {
@@ -355,5 +361,25 @@ export class HansardAPI {
     }
 
     return response.Response || [];
+  }
+
+  static async getAiContent(externalId: string): Promise<AiContent | null> {
+    try {
+      const cacheKey = `hansard:ai:${externalId}`;
+      
+      return this.fetchWithCache(
+        cacheKey,
+        async () => {
+          const response = await this.fetchWithErrorHandling<AiContent>(
+            `/api/hansard/ai-content?externalId=${encodeURIComponent(externalId)}`
+          );
+          return response;
+        },
+        { cacheTTL: 86400 } // Cache for 24 hours
+      );
+    } catch (error) {
+      console.error('Failed to fetch AI content:', error);
+      return null;
+    }
   }
 }

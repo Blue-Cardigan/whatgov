@@ -40,12 +40,20 @@ export function DebateContent({
   }, [debate.id, onVote]);
 
   const content = useMemo(() => {
+    if (!debate.ai_summary) {
+      return {
+        fullText: '',
+        truncatedText: '',
+        hasMore: false,
+      };
+    }
+
     const summaryPoints = debate.ai_summary
       .split('\n')
       .map(s => s.trim())
       .filter(s => s.length > 0);
       
-    const firstPoint = summaryPoints[0];
+    const firstPoint = summaryPoints[0] || '';
     const truncatedFirst = firstPoint.length > 140 
       ? firstPoint.slice(0, 140).trim() + '...'
       : firstPoint;
