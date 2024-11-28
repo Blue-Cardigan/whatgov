@@ -8,7 +8,6 @@ export const metadata = {
 export default function DebatesPage() {
   return (
     <>
-      <h1 className="sr-only">Latest Debates and Discussions</h1>
       <DebateFeed />
     </>
   );

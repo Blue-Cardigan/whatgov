@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata = {
   title: 'WhatGov | Parliament in Your Feed',
@@ -60,6 +61,7 @@ export default function RootLayout({
           </SupabaseProvider>
         </ThemeProvider>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );

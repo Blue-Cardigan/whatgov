@@ -170,8 +170,7 @@ export class HansardAPI {
         
         const data = await response.json();
         
-        // Validate response structure
-        if (!data || (data.Response === undefined && !Array.isArray(data))) {
+        if (!data) {
           throw new Error('Invalid API response structure');
         }
         
@@ -179,7 +178,6 @@ export class HansardAPI {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt === retries) break;
-        // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
     }

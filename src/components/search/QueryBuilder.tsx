@@ -114,12 +114,47 @@ export function QueryBuilder({
     handleLocalOptionsChange({ [type === 'start' ? 'startDate' : 'endDate']: date ? date.toISOString().split('T')[0] : undefined });
   }, [handleLocalOptionsChange]);
 
-  const handleHouseChange = useCallback((house: 'Commons' | 'Lords' | undefined) => {
-    handleLocalOptionsChange({ house });
-  }, [handleLocalOptionsChange]);
+  const handleHouseChange = useCallback((house: 'Commons' | 'Lords') => {
+    const currentHouses = localParams.house?.split(',').filter(Boolean) || [];
+    let newHouses: string[];
+    
+    if (currentHouses.includes(house)) {
+      // Remove the house if it's already selected
+      newHouses = currentHouses.filter(h => h !== house);
+    } else {
+      // Add the house if it's not selected
+      newHouses = [...currentHouses, house];
+    }
+    
+    // Send the new houses array, even if empty
+    handleLocalOptionsChange({ 
+      house: newHouses.length > 0 ? newHouses.join(',') as 'Commons' | 'Lords' : undefined 
+    });
+  }, [localParams.house, handleLocalOptionsChange]);
+
+  // Helper function to check if a house is selected
+  const isHouseSelected = (house: string) => {
+    if (!localParams.house) {
+      // If no house is specified, neither is selected
+      return false;
+    }
+    return localParams.house.includes(house);
+  };
+
+  // Add new useEffect for keyboard listener
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, [handleSubmit]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       <div className="space-y-2">
         {state.parts.map((part, index) => (
           <QueryPartInput
@@ -138,8 +173,8 @@ export function QueryBuilder({
         ))}
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -219,52 +254,38 @@ export function QueryBuilder({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex border rounded-md overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex gap-2">
             <Button
-              variant={localParams.house === 'Commons' ? "default" : "outline"}
+              variant={isHouseSelected('Commons') ? "default" : "outline"}
               size="sm"
               onClick={() => handleHouseChange('Commons')}
               className={cn(
-                "flex-1 py-2 px-4 transition-colors",
-                localParams.house === 'Commons' ? "bg-[#006E46] text-white" : "bg-white text-black",
+                "transition-colors",
+                isHouseSelected('Commons') ? "bg-[#006E46] text-white" : "bg-white text-black",
                 "hover:bg-[#005a3a] hover:text-white"
               )}
             >
               Commons
             </Button>
             <Button
-              variant={localParams.house === 'Lords' ? "default" : "outline"}
+              variant={isHouseSelected('Lords') ? "default" : "outline"}
               size="sm"
               onClick={() => handleHouseChange('Lords')}
               className={cn(
-                "flex-1 py-2 px-4 transition-colors",
-                localParams.house === 'Lords' ? "bg-[#9C1A39] text-white" : "bg-white text-black",
+                "transition-colors",
+                isHouseSelected('Lords') ? "bg-[#9C1A39] text-white" : "bg-white text-black",
                 "hover:bg-[#7a142d] hover:text-white"
               )}
             >
               Lords
             </Button>
-            <Button
-              variant={!localParams.house ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleHouseChange(undefined)}
-              className={cn(
-                "flex-1 py-2 px-4 transition-colors",
-                !localParams.house ? "bg-primary text-white" : "bg-white text-black",
-                "hover:bg-primary-dark hover:text-white"
-              )}
-            >
-              Both
-            </Button>
           </div>
         </div>
 
-        <div className="flex-1" />
-
         <Button
           size="sm"
-          className="h-8 px-4 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md"
+          className="h-8 px-4 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md w-full sm:w-auto sm:ml-auto"
           onClick={handleSubmit}
         >
           <SearchIcon className="h-4 w-4" />
