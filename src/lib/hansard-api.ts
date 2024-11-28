@@ -247,14 +247,11 @@ export class HansardAPI {
   ): Promise<OralQuestion[]> {
     const today = new Date();
     const cacheKey = `hansard:oral-questions:${forNextWeek ? 'next' : 'current'}:${format(today, 'yyyy-MM-dd')}`;
-    
-    console.log(`Fetching oral questions for ${forNextWeek ? 'next' : 'current'} week`);
-    
+        
     return this.fetchWithCache(
       cacheKey,
       async () => {
         const questions = await this.fetchQuestionsForWeek(today, forNextWeek);
-        console.log(`Received ${questions.length} questions for ${forNextWeek ? 'next' : 'current'} week`);
         return this.validateAndProcessQuestions(questions);
       },
       {
@@ -331,13 +328,6 @@ export class HansardAPI {
     // Set end date to Friday of the week
     weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 4);
-
-    console.log(`Calculated dates for ${forNextWeek ? 'next' : 'current'} week:`, {
-      weekStart: format(weekStart, 'yyyy-MM-dd'),
-      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
-      today: format(today, 'yyyy-MM-dd'),
-      isWeekend: this.isWeekend(today)
-    });
 
     return { weekStart, weekEnd };
   }

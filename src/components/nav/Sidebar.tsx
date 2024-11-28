@@ -104,53 +104,109 @@ export function Sidebar({ className }: SidebarProps) {
   const renderAuthMenuItems = () => {
     return (
       <>
-        {user && (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href="/profile" className="flex w-full items-center">
-                <User className="h-4 w-4 mr-2.5" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className="md:hidden">
-              <Link href="/settings" className="flex w-full items-center">
-                <Settings className="h-4 w-4 mr-2.5" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuItem asChild>
-          <Link href="/about" className="flex w-full items-center">
-            <Info className="h-4 w-4 mr-2.5" />
-            <span>About</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {user ? (
-          <DropdownMenuItem 
-            onClick={handleSignOut}
-            className="flex w-full items-center text-destructive focus:text-destructive cursor-pointer"
-          >
-            <LogOut className="h-4 w-4 mr-2.5" />
-            <span>Sign out</span>
+        <div className="px-4 py-3 border-b">
+          {user ? (
+            <div className="flex items-center space-x-3">
+              <div className="bg-primary/10 rounded-full p-2">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{user.email}</p>
+                <p className="text-sm text-muted-foreground">
+                  {isPremium ? 'Premium Member' : 'Free Account'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="font-medium text-lg">Welcome to WhatGov</p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-2">
+          {user && (
+            <>
+              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+                <Link href="/profile" className="flex items-center space-x-3">
+                  <div className="bg-secondary rounded-lg p-2">
+                    <User className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Profile</p>
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer md:hidden">
+                <Link href="/settings" className="flex items-center space-x-3">
+                  <div className="bg-secondary rounded-lg p-2">
+                    <Settings className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Settings</p>
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
+
+          <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+            <Link href="/about" className="flex items-center space-x-3">
+              <div className="bg-secondary rounded-lg p-2">
+                <Info className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">About</p>
+              </div>
+            </Link>
           </DropdownMenuItem>
-        ) : (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href='/login' className="flex w-full items-center">
-                <LogIn className="h-4 w-4 mr-2.5" />
-                <span>Sign in</span>
-              </Link>
+        </div>
+
+        <DropdownMenuSeparator className="my-2" />
+
+        <div className="p-2">
+          {user ? (
+            <DropdownMenuItem 
+              onClick={handleSignOut}
+              className="p-3 focus:bg-destructive/10 rounded-lg cursor-pointer"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="bg-destructive/10 rounded-lg p-2">
+                  <LogOut className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-medium text-destructive">Sign out</p>
+                </div>
+              </div>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/signup" className="flex w-full items-center">
-                <UserPlus className="h-4 w-4 mr-2.5" />
-                <span>Sign up</span>
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
+          ) : (
+            <>
+              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+                <Link href="/login" className="flex items-center space-x-3">
+                  <div className="bg-secondary rounded-lg p-2">
+                    <LogIn className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Sign in</p>
+                    <p className="text-sm text-muted-foreground">Access your account</p>
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+                <Link href="/signup" className="flex items-center space-x-3">
+                  <div className="bg-secondary rounded-lg p-2">
+                    <UserPlus className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Sign up</p>
+                    <p className="text-sm text-muted-foreground">Create a new account</p>
+                  </div>
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
+        </div>
       </>
     );
   };
@@ -280,7 +336,11 @@ export function Sidebar({ className }: SidebarProps) {
                         <span className="hidden lg:block ml-4 font-semibold">More</span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuContent 
+                      align="start" 
+                      className="w-80 p-2"
+                      sideOffset={8}
+                    >
                       {renderAuthMenuItems()}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -325,7 +385,11 @@ export function Sidebar({ className }: SidebarProps) {
                 <span className="text-sm mt-1.5">More</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent 
+              align="end" 
+              className="w-80 p-2"
+              sideOffset={8}
+            >
               {renderAuthMenuItems()}
             </DropdownMenuContent>
           </DropdownMenu>

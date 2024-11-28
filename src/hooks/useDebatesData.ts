@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { UseQueryResult } from '@tanstack/react-query';
 import { OralQuestion } from '@/lib/hansard-api';
 import { CACHE_KEYS } from '@/lib/redis/config';
+import { useCache } from './useCache';
 
 // Helper function to check if data is empty or invalid
 function isDataEmpty(data: OralQuestion[] | undefined): boolean {
@@ -38,28 +39,71 @@ export function useDebatesData() {
   const [requestedWeek, setRequestedWeek] = useState<'current' | 'next'>('current');
   const [autoSwitchedToNext, setAutoSwitchedToNext] = useState(false);
   const queryClient = useQueryClient();
+  const { getCache, setCache } = useCache();
 
-  // Always fetch both weeks in parallel
+  // Helper function to create cache key
+  const getCacheKey = useCallback((week: 'current' | 'next') => 
+    CACHE_KEYS.upcomingDebates.key(week), []);
+
   const currentWeekQuery = useQuery({
     queryKey: ['upcomingDebates', 'current'],
-    queryFn: () => HansardAPI.getUpcomingOralQuestions(false),
-    staleTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
-    cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000 * 2,
+    queryFn: async () => {
+      // Try to get from cache first
+      const cacheKey = getCacheKey('current');
+      const cached = await getCache<OralQuestion[]>(cacheKey);
+      
+      if (cached) {
+        // Refresh cache in background
+        HansardAPI.getUpcomingOralQuestions(false)
+          .then(fresh => {
+            if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
+              setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
+              queryClient.setQueryData(['upcomingDebates', 'current'], fresh);
+            }
+          })
+          .catch(console.error);
+        return cached;
+      }
+
+      // If not in cache, fetch fresh data
+      const data = await HansardAPI.getUpcomingOralQuestions(false);
+      await setCache(cacheKey, data, CACHE_KEYS.upcomingDebates.ttl);
+      return data;
+    },
+    staleTime: CACHE_KEYS.upcomingDebates.ttl * 500, // Half the Redis TTL
+    cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
     refetchOnWindowFocus: false,
   });
 
   const nextWeekQuery = useQuery({
     queryKey: ['upcomingDebates', 'next'],
-    queryFn: () => HansardAPI.getUpcomingOralQuestions(true),
-    staleTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
-    cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000 * 2,
+    queryFn: async () => {
+      const cacheKey = getCacheKey('next');
+      const cached = await getCache<OralQuestion[]>(cacheKey);
+      
+      if (cached) {
+        HansardAPI.getUpcomingOralQuestions(true)
+          .then(fresh => {
+            if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
+              setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
+              queryClient.setQueryData(['upcomingDebates', 'next'], fresh);
+            }
+          })
+          .catch(console.error);
+        return cached;
+      }
+
+      const data = await HansardAPI.getUpcomingOralQuestions(true);
+      await setCache(cacheKey, data, CACHE_KEYS.upcomingDebates.ttl);
+      return data;
+    },
+    staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
+    cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
     refetchOnWindowFocus: false,
-    // Enable next week query only when needed
-    enabled: requestedWeek === 'next' || isDataEmpty(currentWeekQuery.data),
+    enabled: requestedWeek === 'next' || currentWeekQuery.isSuccess,
   });
 
   const { data, isLoading, error, actualWeek } = useMemo(() => {
-    // Check if we should auto-switch to next week
     if (shouldAutoSwitchToNext(requestedWeek, currentWeekQuery, nextWeekQuery, autoSwitchedToNext)) {
       setAutoSwitchedToNext(true);
       return {
@@ -70,31 +114,24 @@ export function useDebatesData() {
       };
     }
 
-    // Use the requested week's data
     const query = requestedWeek === 'current' ? currentWeekQuery : nextWeekQuery;
-    
-    // Show loading state only when the requested data is loading
-    const isQueryLoading = query.isLoading || 
-      (requestedWeek === 'next' && nextWeekQuery.isInitialLoading);
-
     return {
       data: query.data,
-      isLoading: isQueryLoading,
+      isLoading: query.isLoading,
       error: query.error,
       actualWeek: requestedWeek
     };
   }, [requestedWeek, currentWeekQuery, nextWeekQuery, autoSwitchedToNext]);
 
-  // Prefetch next week's data when hovering over the toggle button
   const prefetchNextWeek = useCallback(() => {
-    if (requestedWeek === 'current' && !nextWeekQuery.data) {
+    if (requestedWeek === 'current') {
       queryClient.prefetchQuery({
         queryKey: ['upcomingDebates', 'next'],
         queryFn: () => HansardAPI.getUpcomingOralQuestions(true),
-        staleTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
+        staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
       });
     }
-  }, [queryClient, requestedWeek, nextWeekQuery.data]);
+  }, [queryClient, requestedWeek]);
 
   const toggleWeek = useCallback(() => {
     setAutoSwitchedToNext(false);
