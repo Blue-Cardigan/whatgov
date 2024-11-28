@@ -10,9 +10,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface MPProfileCardProps {
-  mpData: MPData;
+  mpData: MPData | null;
+  loading?: boolean;
 }
 
 interface ProfileDetailProps {
@@ -84,7 +86,55 @@ function MinisterialBadge({ rank }: { rank: string }) {
   );
 }
 
-export function MPProfileCard({ mpData }: MPProfileCardProps) {
+const getPortraitUrl = (memberId: number) => 
+  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=threefour&webversion=true`;
+
+function MPProfileSkeleton() {
+  return (
+    <div className="flex flex-col sm:flex-row gap-5 sm:gap-6">
+      <div className="relative mx-auto sm:mx-0 w-40 sm:w-36 h-52 sm:h-48 shrink-0">
+        <Skeleton className="w-full h-full rounded-xl" />
+      </div>
+      <div className="flex-1 space-y-4">
+        <div className="space-y-2.5">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-5 w-72" />
+          </div>
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <div className="space-y-3 pt-3 border-t">
+          <Skeleton className="h-5 w-full max-w-[250px]" />
+          <Skeleton className="h-5 w-full max-w-[200px]" />
+          <Skeleton className="h-5 w-full max-w-[150px]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MPProfileCard({ mpData, loading }: MPProfileCardProps) {
+  if (loading) {
+    return <MPProfileSkeleton />;
+  }
+
+  if (!mpData) {
+    return (
+      <div className="flex flex-col sm:flex-row gap-5 sm:gap-6">
+        <div className="relative mx-auto sm:mx-0 w-40 sm:w-36 h-52 sm:h-48 shrink-0">
+          <div className="w-full h-full bg-muted rounded-xl flex items-center justify-center border">
+            <User className="h-8 w-8 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="flex-1 space-y-4">
+          <div className="text-center sm:text-left">
+            <p className="text-muted-foreground">MP data not available</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const getPartyBadgeStyle = (party: string) => {
     const partyColor = partyColours[party]?.color || '#808080';
     return {
@@ -98,16 +148,28 @@ export function MPProfileCard({ mpData }: MPProfileCardProps) {
     <div className="flex flex-col sm:flex-row gap-5 sm:gap-6">
       {/* Image Section - improved mobile sizing */}
       <div className="relative mx-auto sm:mx-0 w-40 sm:w-36 h-52 sm:h-48 shrink-0">
-        {mpData.twfy_image_url ? (
+        {mpData.member_id ? (
           <div className="relative w-full h-full">
             <Image
-              src={mpData.twfy_image_url}
+              src={getPortraitUrl(mpData.member_id)}
               alt={mpData.display_as}
               fill
               className="object-cover rounded-xl shadow-md"
               priority
-              sizes="144px"
+              sizes="(max-width: 768px) 160px, 144px"
               quality={100}
+              onError={(e) => {
+                // Fallback to UserIcon if image fails to load
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.innerHTML = `
+                  <div class="w-full h-full bg-muted rounded-xl flex items-center justify-center border">
+                    <svg class="h-8 w-8 text-muted-foreground" viewBox="0 0 24 24">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                  </div>
+                `;
+              }}
             />
             <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-black/10" />
           </div>

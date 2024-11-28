@@ -7,7 +7,6 @@
 - Reduce middleware build size for edge runtime
 - Split Auth hook into more focused hooks
 - Shared auth layout
-Replace twfy image urls with hansard: https://members-api.parliament.uk/api/Members/5071/Portrait
 
 ## Feature tiers
 Free Features for Signed in Users

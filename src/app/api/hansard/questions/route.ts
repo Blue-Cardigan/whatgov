@@ -63,6 +63,7 @@ async function fetchQuestionsPage(baseParams: URLSearchParams, skip: number): Pr
   queryParams.set('parameters.take', PAGE_SIZE.toString());
 
   const url = `${ORAL_QUESTIONS_API}?${queryParams.toString()}`;
+  console.log(url);
   
   const response = await fetch(url);
   if (!response.ok) {

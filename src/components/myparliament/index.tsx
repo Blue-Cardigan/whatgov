@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
 import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
@@ -11,11 +11,16 @@ import { toast } from '@/hooks/use-toast';
 import { PLANS } from '@/lib/stripe-client';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
-  loading: () => <div className="animate-pulse h-[200px] bg-muted rounded-lg" />
+  loading: () => <div className="animate-pulse h-[600px] bg-muted rounded-lg" />
 });
 
-const MPProfile = dynamic(() => import("./MPProfile").then(mod => mod.MPProfile));
-const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mod.UpcomingDebates));
+const MPProfile = dynamic(() => import("./MPProfile").then(mod => mod.MPProfile), {
+  loading: () => <div className="animate-pulse h-[400px] bg-muted rounded-lg" />
+});
+
+const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mod.UpcomingDebates), {
+  loading: () => <div className="animate-pulse h-[500px] bg-muted rounded-lg" />
+});
 
 export function MyParliament() {
   const [activeTab, setActiveTab] = useState("mp");
@@ -131,22 +136,14 @@ export function MyParliament() {
           ))}
         </div>
 
-        {/* Content Area */}
-        <div className="bg-card rounded-lg p-0 mt-6">
-          {activeTab === "activity" && <VoteStats />}
-          {activeTab === "mp" && <MPProfile />}
-          {activeTab === "upcoming" && <UpcomingDebates />}
-          {activeTab === "stats" && <VoteStats />}
-          {activeTab === "agreement" && (
-            <div className="text-muted-foreground text-center py-6">
-              MP Agreement analysis coming soon
-            </div>
-          )}
-          {activeTab === "constituency" && (
-            <div className="text-muted-foreground text-center py-6">
-              Constituency insights coming soon
-            </div>
-          )}
+        {/* Content Area with loading state */}
+        <div className="mt-6">
+          <Suspense fallback={<div className="animate-pulse h-[500px] bg-muted rounded-lg" />}>
+            {activeTab === "activity" && <VoteStats />}
+            {activeTab === "mp" && <MPProfile />}
+            {activeTab === "upcoming" && <UpcomingDebates />}
+            {activeTab === "stats" && <VoteStats />}
+          </Suspense>
         </div>
       </div>
     </AuthenticatedRoute>

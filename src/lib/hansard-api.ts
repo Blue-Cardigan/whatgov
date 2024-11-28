@@ -140,42 +140,76 @@ export function constructSearchUrl(params: SearchParams): string {
   return `/api/hansard/search?${searchParams.toString()}`;
 }
 
+// Add new types for better type safety
+interface FetchOptions {
+  retries?: number;
+  cacheTTL?: number;
+  forceRefresh?: boolean;
+}
+
 export class HansardAPI {
-  private static async fetchWithErrorHandling<T>(url: string): Promise<T> {
-    try {
-      const fullUrl = url.startsWith('http') ? url : url;
-      const response = await fetch(fullUrl);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  // Add constants for better maintainability
+  private static readonly DEFAULT_CACHE_TTL = 300; // 5 minutes
+  private static readonly NEXT_WEEK_CACHE_TTL = 1800; // 30 minutes
+  private static readonly MAX_RETRIES = 2;
+
+  private static async fetchWithErrorHandling<T>(
+    url: string,
+    options: FetchOptions = {}
+  ): Promise<T> {
+    const { retries = this.MAX_RETRIES } = options;
+    let lastError: Error = new Error('Unknown error occurred');
+    
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Validate response structure
+        if (!data || (data.Response === undefined && !Array.isArray(data))) {
+          throw new Error('Invalid API response structure');
+        }
+        
+        return data;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt === retries) break;
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
-      
-      return response.json();
-    } catch (error) {
-      console.error('API fetch error:', error);
-      throw error;
     }
+    
+    console.error('API fetch error after retries:', lastError);
+    throw lastError;
   }
 
   private static async fetchWithCache<T>(
     cacheKey: string,
     fetcher: () => Promise<T>,
-    ttl: number = 300 // 5 minutes default
+    options: FetchOptions = {}
   ): Promise<T> {
+    const { 
+      cacheTTL = this.DEFAULT_CACHE_TTL,
+      forceRefresh = false 
+    } = options;
+
     try {
-      // Try to get from cache first
-      const cached = await getRedisValue<T>(cacheKey);
-      if (cached) {
-        return cached; // Already deserialized thanks to automaticDeserialization
+      // Skip cache if forceRefresh is true
+      if (!forceRefresh) {
+        const cached = await getRedisValue<T>(cacheKey);
+        if (cached) return cached;
       }
 
-      // If not in cache, fetch fresh data
       const data = await fetcher();
 
-      // Store in cache (only if we got valid data)
-      if (data) {
-        // Use server action to set cache
-        await setRedisValue(cacheKey, data, ttl);
+      // Only cache valid data
+      if (data && Object.keys(data).length > 0) {
+        await setRedisValue(cacheKey, data, cacheTTL);
       }
 
       return data;
@@ -207,44 +241,110 @@ export class HansardAPI {
     }
   }
 
-  static async getUpcomingOralQuestions(forNextWeek: boolean = false): Promise<OralQuestion[]> {
+  static async getUpcomingOralQuestions(
+    forNextWeek: boolean = false,
+    options: FetchOptions = {}
+  ): Promise<OralQuestion[]> {
     const today = new Date();
     const cacheKey = `hansard:oral-questions:${forNextWeek ? 'next' : 'current'}:${format(today, 'yyyy-MM-dd')}`;
+    
+    console.log(`Fetching oral questions for ${forNextWeek ? 'next' : 'current'} week`);
     
     return this.fetchWithCache(
       cacheKey,
       async () => {
         const questions = await this.fetchQuestionsForWeek(today, forNextWeek);
-        return questions;
+        console.log(`Received ${questions.length} questions for ${forNextWeek ? 'next' : 'current'} week`);
+        return this.validateAndProcessQuestions(questions);
       },
-      // Cache for 5 minutes normally, but longer (30 mins) for next week's data
-      forNextWeek ? 1800 : 300
+      {
+        ...options,
+        cacheTTL: forNextWeek ? this.NEXT_WEEK_CACHE_TTL : this.DEFAULT_CACHE_TTL
+      }
     );
+  }
+
+  private static validateAndProcessQuestions(
+    questions: OralQuestion[]
+  ): OralQuestion[] {
+    if (!Array.isArray(questions)) {
+      console.error('Invalid questions data received:', questions);
+      return [];
+    }
+
+    // Filter out invalid questions and sort by date
+    return questions
+      .filter(q => 
+        q.QuestionText && 
+        q.AnsweringWhen && 
+        q.AnsweringBody && 
+        q.AskingMember
+      )
+      .sort((a, b) => 
+        new Date(a.AnsweringWhen).getTime() - new Date(b.AnsweringWhen).getTime()
+      );
   }
 
   private static async fetchQuestionsForWeek(
     baseDate: Date,
     forNextWeek: boolean
   ): Promise<OralQuestion[]> {
-    const weekStart = new Date(baseDate);
-    const weekEnd = new Date(baseDate);
+    const { weekStart, weekEnd } = this.calculateWeekDates(baseDate, forNextWeek);
     
-    if (forNextWeek) {
-      // For next week, get next Monday through Friday
-      const daysUntilNextMonday = (8 - baseDate.getDay()) % 7;
-      weekStart.setDate(baseDate.getDate() + daysUntilNextMonday);
-      weekEnd.setDate(weekStart.getDate() + 4); // Monday + 4 = Friday
-    } else {
-      // For current week, start from today and go until Friday
-      weekEnd.setDate(weekStart.getDate() + (5 - weekStart.getDay())); // Set to this Friday
-    }
-    
-    // If it's weekend, return empty array for current week
-    if (!forNextWeek && (baseDate.getDay() === 0 || baseDate.getDay() === 6)) {
+    // If it's weekend and current week is requested, return empty array
+    if (!forNextWeek && this.isWeekend(baseDate)) {
       return [];
     }
     
     return await this.fetchOralQuestions(weekStart, weekEnd);
+  }
+
+  private static calculateWeekDates(baseDate: Date, forNextWeek: boolean) {
+    // Create new date objects to avoid mutating the input
+    const today = new Date(baseDate);
+    let weekStart = new Date(today);
+    let weekEnd = new Date(today);
+
+    // Reset time to start of day to avoid timezone issues
+    weekStart.setHours(0, 0, 0, 0);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    if (forNextWeek) {
+      // Always get next week's Monday-Friday
+      const daysUntilNextMonday = (8 - currentDay) % 7 || 7;
+      weekStart.setDate(today.getDate() + daysUntilNextMonday);
+    } else {
+      // For current week
+      if (currentDay === 0 || currentDay === 6) {
+        // If weekend, get next week
+        const daysUntilNextMonday = currentDay === 0 ? 1 : 2;
+        weekStart.setDate(today.getDate() + daysUntilNextMonday);
+      } else {
+        // Get this week's Monday
+        const daysToMonday = currentDay - 1;
+        weekStart.setDate(today.getDate() - daysToMonday);
+      }
+    }
+
+    // Set end date to Friday of the week
+    weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 4);
+
+    console.log(`Calculated dates for ${forNextWeek ? 'next' : 'current'} week:`, {
+      weekStart: format(weekStart, 'yyyy-MM-dd'),
+      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
+      today: format(today, 'yyyy-MM-dd'),
+      isWeekend: this.isWeekend(today)
+    });
+
+    return { weekStart, weekEnd };
+  }
+
+  private static isWeekend(date: Date): boolean {
+    const day = date.getDay();
+    return day === 0 || day === 6;
   }
 
   private static async fetchOralQuestions(
@@ -252,10 +352,11 @@ export class HansardAPI {
     endDate: Date
   ): Promise<OralQuestion[]> {
     const params = new URLSearchParams({
-      answeringDateStart: format(startDate, 'yyyy-MM-dd'),
-      answeringDateEnd: format(endDate, 'yyyy-MM-dd')
+      'answeringDateStart': format(startDate, 'yyyy-MM-dd'),
+      'answeringDateEnd': format(endDate, 'yyyy-MM-dd')
     });
 
+    // Use our backend API route instead of direct API access
     const response = await this.fetchWithErrorHandling<OralQuestionsResponse>(
       `/api/hansard/questions?${params.toString()}`
     );
@@ -266,10 +367,5 @@ export class HansardAPI {
     }
 
     return response.Response || [];
-  }
-
-  // Helper method to generate consistent cache keys
-  private static getCacheKey(prefix: string, ...parts: (string | number)[]): string {
-    return ['hansard', prefix, ...parts].filter(Boolean).join(':');
   }
 }

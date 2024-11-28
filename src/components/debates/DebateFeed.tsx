@@ -27,26 +27,34 @@ export function DebateFeed() {
   // Show welcome toast for unauthenticated users
   useEffect(() => {
     if (!loading && !user && !hasShownWelcome) {
-      setHasShownWelcome(true);
-      toast({
-        description: (
-          <div className="flex flex-col gap-2">
-            <h1 className="text-lg font-bold">Parliament, in everyday language.</h1>
-            <p className="text-muted-foreground">
-              We summarise and paraphrase what MPs say using AI, so you can vote on what they say.
-            </p>
-            <p>
-              Create a free account to:
-            </p>
-            <ul className="list-disc list-inside space-y-1 ml-1">
-              <li>Vote on unlimited debates</li>
-              <li>See how MPs voted in divisions</li>
-              <li>Track your MP&apos;s activity</li>
-            </ul>
-          </div>
-        ),
-        duration: 8000,
-      });
+      // Check if we've shown the toast today
+      const lastShown = localStorage.getItem('welcomeToastLastShown');
+      const today = new Date().toDateString();
+      
+      if (lastShown !== today) {
+        setHasShownWelcome(true);
+        localStorage.setItem('welcomeToastLastShown', today);
+        
+        toast({
+          description: (
+            <div className="flex flex-col gap-2">
+              <h1 className="text-lg font-bold">Parliament, in everyday language.</h1>
+              <p className="text-muted-foreground">
+                We paraphrase what MPs say using AI, so you can vote on what they say.
+              </p>
+              <p>
+                Create a free account to:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-1">
+                <li>Vote on unlimited debates</li>
+                <li>See how MPs voted in divisions</li>
+                <li>Track your MP&apos;s activity</li>
+              </ul>
+            </div>
+          ),
+          duration: 8000,
+        });
+      }
     }
   }, [loading, user, hasShownWelcome, toast]);
 

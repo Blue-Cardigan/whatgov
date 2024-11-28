@@ -13,8 +13,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
+import { useDebatesData } from '@/hooks/useDebatesData';
 
 function ProfileImage({ 
   src, 
@@ -52,17 +52,22 @@ function ProfileImage({
 
   const partyColor = party ? (partyColors[party] || partyColors.default) : partyColors.default;
 
+  // Only attempt to render image if src is a valid URL
+  const shouldTryImage = src && 
+    typeof src === 'string' && 
+    (src.startsWith('http://') || src.startsWith('https://')) &&
+    !imageError;
+
   return (
     <div 
       className={cn(
         "relative overflow-hidden rounded-full flex items-center justify-center",
-        !imageError && "bg-muted",
-        imageError && partyColor,
+        !shouldTryImage && partyColor,
         fallbackClassName
       )}
       style={{ width: size, height: size }}
     >
-      {src && !imageError ? (
+      {shouldTryImage ? (
         <Image
           src={src}
           alt={alt}
@@ -70,14 +75,16 @@ function ProfileImage({
           height={size}
           className="rounded-full"
           onError={() => setImageError(true)}
+          // Add loading priority for visible images
+          priority={size > 30}
+          // Add better loading behavior
+          loading={size > 30 ? 'eager' : 'lazy'}
         />
       ) : (
         <div className="flex items-center justify-center w-full h-full">
           {size > 30 ? (
-            // Show initials for larger avatars
             <span className="text-xs font-medium">{initials}</span>
           ) : (
-            // Show icon for smaller avatars
             <User2 className="h-[60%] w-[60%]" />
           )}
         </div>
@@ -291,88 +298,23 @@ function DayHeader({
 }
 
 export function UpcomingDebates() {
-  const [requestedWeek, setRequestedWeek] = useState<'current' | 'next'>('current');
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-  const [autoSwitchedToNext, setAutoSwitchedToNext] = useState(false);
-  
-  const queryClient = useQueryClient();
-
-  // Use React Query's built-in caching
-  const currentWeekQuery = useQuery({
-    queryKey: ['upcomingDebates', 'current'],
-    queryFn: () => HansardAPI.getUpcomingOralQuestions(false),
-    staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
-    cacheTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    retry: 2, // Retry failed requests twice
-  });
-
-  const nextWeekQuery = useQuery({
-    queryKey: ['upcomingDebates', 'next'],
-    queryFn: () => HansardAPI.getUpcomingOralQuestions(true),
-    staleTime: 1000 * 60 * 5,
-    cacheTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-    retry: 2,
-  });
-
-  // Prefetch optimization
-  const prefetchNextWeek = useCallback(() => {
-    if (requestedWeek === 'current') {
-      queryClient.prefetchQuery({
-        queryKey: ['upcomingDebates', 'next'],
-        queryFn: () => HansardAPI.getUpcomingOralQuestions(true),
-        staleTime: 1000 * 60 * 5,
-      });
-    }
-  }, [queryClient, requestedWeek]);
-
-  // 4. Determine which data to show
-  const { data, isLoading, error, actualWeek } = useMemo(() => {
-    // If current week is requested but empty and next week has data, auto-switch
-    if (requestedWeek === 'current' && 
-        !currentWeekQuery.isLoading && 
-        currentWeekQuery.data?.length === 0 && 
-        nextWeekQuery.data?.length !== undefined && 
-        nextWeekQuery.data?.length > 0 && 
-        !autoSwitchedToNext) {
-      setAutoSwitchedToNext(true);
-      return {
-        data: nextWeekQuery.data,
-        isLoading: false,
-        error: null,
-        actualWeek: 'next'
-      };
-    }
-
-    const query = requestedWeek === 'current' ? currentWeekQuery : nextWeekQuery;
-    return {
-      data: query.data,
-      isLoading: query.isLoading,
-      error: query.error,
-      actualWeek: requestedWeek
-    };
-  }, [
-    requestedWeek,
-    currentWeekQuery,
-    nextWeekQuery,
+  const { 
+    data,
+    isLoading,
+    error,
+    actualWeek,
+    prefetchNextWeek,
+    toggleWeek,
+    queryClient,
     autoSwitchedToNext
-  ]);
+  } = useDebatesData();
 
-  // 6. Event handlers
-  const toggleWeek = () => {
-    setAutoSwitchedToNext(false);
-    setRequestedWeek(prev => prev === 'current' ? 'next' : 'current');
-    setExpandedDays(new Set());
-  };
-
-  // Auto-expand first day if it's the only one
+  // Process schedule data with auto-expand logic
   const schedule = useMemo(() => {
     if (!data) return [];
-
-    const processed = processScheduleData(data); // Move data processing to separate function
+    const processed = processScheduleData(data);
     
-    // If there's only one day, auto-expand it
     if (processed.length === 1) {
       const dateKey = format(processed[0].date, 'yyyy-MM-dd');
       if (!expandedDays.has(dateKey)) {
@@ -392,7 +334,7 @@ export function UpcomingDebates() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Scheduled oral questions in the House of Commons
-          {autoSwitchedToNext && requestedWeek === 'current' && (
+          {autoSwitchedToNext && actualWeek === 'current' && (
             <span className="ml-2 inline-flex items-center gap-1.5 text-amber-500 font-medium">
               <AlertCircle className="h-4 w-4" />
               No more questions this week - showing next week&apos;s schedule
@@ -485,7 +427,7 @@ export function UpcomingDebates() {
   if (!data?.length) {
     return (
       <EmptyState 
-        showNextWeek={requestedWeek === 'next'} 
+        showNextWeek={actualWeek === 'next'} 
         onToggleWeek={toggleWeek} 
       />
     );
@@ -559,7 +501,7 @@ export function UpcomingDebates() {
         </div>
       ) : (
         <EmptyState 
-          showNextWeek={requestedWeek === 'next'} 
+          showNextWeek={actualWeek === 'next'} 
           onToggleWeek={toggleWeek} 
         />
       )}

@@ -12,7 +12,7 @@ import { MPLinks } from "./MPLinks";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { MPTopics } from "./MPTopics";
 import { AiTopic, MPData, MPKeyPoint } from "@/types";
-import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function MPProfile() {
   const [mpData, setMPData] = useState<MPData | null>(null);
@@ -23,21 +23,34 @@ export function MPProfile() {
   const [error, setError] = useState<string | null>(null);
   const { profile, isEngagedCitizen } = useAuth();
 
+  // Add loading states for each section
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [keyPointsLoading, setKeyPointsLoading] = useState(true);
+
   useEffect(() => {
     async function fetchData() {
       if (!profile?.mp_id) {
-        setLoading(false);
+        setProfileLoading(false);
+        setTopicsLoading(false);
+        setKeyPointsLoading(false);
         return;
       }
       
       try {
-        const [mpData, points] = await Promise.all([
-          getMPData(profile.mp_id),
-          getMPKeyPoints(profile.mp.toString())
-        ]);
+        // Load MP profile data
+        setProfileLoading(true);
+        const mpData = await getMPData(profile.mp_id);
+        setMPData(mpData);
+        setProfileLoading(false);
+
+        // Load key points and topics
+        setKeyPointsLoading(true);
+        setTopicsLoading(true);
+        const points = await getMPKeyPoints(profile.mp.toString());
         
-        if (mpData) {
-          setMPData(mpData);
+        if (mpData && points) {
+          // Process topics
           const topicsMap = new Map<string, AiTopic>();
           points.forEach(point => {
             if (Array.isArray(point.ai_topics)) {
@@ -73,72 +86,64 @@ export function MPProfile() {
           
           setTopics(sortedTopics);
           setTotalMentions(total);
+          setKeyPoints(points);
         }
-        setKeyPoints(points);
+        
+        setError(null);
       } catch (e) {
         setError('Error loading MP data');
         console.error(e);
       } finally {
-        setLoading(false);
+        setProfileLoading(false);
+        setTopicsLoading(false);
+        setKeyPointsLoading(false);
       }
     }
 
     fetchData();
   }, [profile?.mp_id, profile?.mp]);
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
-  if (error || !mpData) {
-    return (
-      <Card className="p-4">
-        <div className="space-y-3">
-          <p className="text-muted-foreground">{error || 'Unable to load MP data'}</p>
-          {(!profile?.mp_id) && (
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = '/settings'}
-            >
-              Update Profile
-            </Button>
-          )}
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <AuthenticatedRoute>
       <Card className="p-3 sm:p-4">
         <div className="space-y-5 sm:space-y-6">
-          <MPProfileCard mpData={mpData} />
-          <MPLinks mpData={mpData} />
-          {isEngagedCitizen ? (
+          <MPProfileCard mpData={mpData} loading={profileLoading} />
+          {!profileLoading && mpData && (
             <>
-              {topics.length > 0 && (
+              <MPLinks mpData={mpData} />
+              {isEngagedCitizen ? (
+                <>
+                  {!topicsLoading && topics.length > 0 && (
+                    <div className="pt-2">
+                      <MPTopics topics={topics} totalMentions={totalMentions} />
+                    </div>
+                  )}
+                  {!keyPointsLoading && keyPoints.length > 0 && (
+                    <div className="pt-2">
+                      <MPKeyPoints keyPoints={keyPoints} />
+                    </div>
+                  )}
+                  {(topicsLoading || keyPointsLoading) && (
+                    <div className="space-y-4">
+                      <Skeleton className="h-[200px] w-full" />
+                      <Skeleton className="h-[150px] w-full" />
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="pt-2">
-                  <MPTopics topics={topics} totalMentions={totalMentions} />
-                </div>
-              )}
-              {keyPoints.length > 0 && (
-                <div className="pt-2">
-                  <MPKeyPoints keyPoints={keyPoints} />
+                  <SubscriptionCTA
+                    title="Upgrade to track your MP's activity"
+                    description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
+                    features={[
+                      "See which topics your MP speaks on",
+                      "Track your MP's votes in Parliamentary Divisions",
+                      "Read your MP's key points and speeches"
+                    ]}
+                  />
                 </div>
               )}
             </>
-          ) : (
-            <div className="pt-2">
-              <SubscriptionCTA
-                title="Upgrade to track your MP's activity"
-                description="Get detailed insights into your MP's parliamentary contributions, voting record, and key positions on important issues."
-                features={[
-                  "See which topics your MP speaks on",
-                  "Track your MP's votes in Parliamentary Divisions",
-                  "Read your MP's key points and speeches"
-                ]}
-              />
-            </div>
           )}
         </div>
       </Card>

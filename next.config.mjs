@@ -15,6 +15,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'members-api.parliament.uk',
       },
+      {
+        protocol: 'https',
+        hostname: 'members-api.parliament.uk',
+        pathname: '/api/Members/**',
+      },
     ],
   },
   webpack: (config, { dev, isServer }) => {
