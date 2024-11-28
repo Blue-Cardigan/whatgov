@@ -78,7 +78,7 @@ export default function SignUp() {
     }
   }, [step, formData]);
 
-  const migrateVotes = async () => {
+  const migrateVotes = async (userId: string) => {
     const ANON_VOTES_KEY = 'whatgov_anon_votes';
     try {
       // Get anonymous votes from localStorage
@@ -87,7 +87,7 @@ export default function SignUp() {
 
       setMigrationStatus({ total: votes.length, migrated: 0 });
       
-      const { success, error } = await migrateAnonymousVotes(votes);
+      const { success, error } = await migrateAnonymousVotes(votes, userId);
       
       if (success) {
         // Clear anonymous votes after successful migration
@@ -144,9 +144,9 @@ export default function SignUp() {
         throw new Error(response.error);
       }
 
-      if (response.status === 'verify_email') {
-        // Attempt to migrate votes before redirecting
-        const migrationSuccess = await migrateVotes();
+      if (response.status === 'verify_email' && response.user?.id) {
+        // Attempt to migrate votes with the new user ID
+        const migrationSuccess = await migrateVotes(response.user.id);
         if (!migrationSuccess) {
           console.warn('Vote migration failed - votes will remain in localStorage');
         }

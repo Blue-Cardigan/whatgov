@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from './supabase-client'
-import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters } from '@/types'
+import type { FeedItem, DebateVote, InterestFactors, KeyPoint, AiTopics, PartyCount, Division, CommentThread, FeedFilters, Speaker } from '@/types'
 import type { Database, Json } from '@/types/supabase';
 import type { DemographicStats, RawTopicStats, RawUserVotingStats, VoteData } from '@/types/VoteStats';
 import type { AuthResponse, UserProfile } from '@/types/supabase';
@@ -24,14 +24,14 @@ export const signUpWithEmail = async (
       .from('user_profiles')
       .select('email_verified')
       .eq('email', email)
-      .single();
+      .select();
 
-    if (checkError && checkError.code !== 'PGRST116') {
+    if (checkError) {
       throw checkError;
     }
 
     // If user exists and is verified, return special status
-    if (existingUser?.email_verified) {
+    if (existingUser?.[0]?.email_verified) {
       return {
         user: null,
         session: null,
@@ -389,9 +389,6 @@ function processDebates(
       ai_title: debate.ai_title || '',
       ai_summary: debate.ai_summary || '',
       ai_tone: validateAiTone(debate.ai_tone),
-      ai_tags: Array.isArray(debate.ai_tags) 
-        ? debate.ai_tags.filter((tag): tag is string => typeof tag === 'string')
-        : [],
       ai_key_points: parseKeyPoints(debate.ai_key_points),
       ai_topics: aiTopics,
       speaker_count: debate.speaker_count || 0,
@@ -411,7 +408,7 @@ function processDebates(
         ? debate.divisions as Division[]
         : [],
       speakers: Array.isArray(debate.speakers) 
-        ? debate.speakers.filter((speaker): speaker is string => typeof speaker === 'string')
+        ? debate.speakers.filter((speaker): speaker is Speaker => typeof speaker === 'object')
         : [],
     };
   });
@@ -722,23 +719,32 @@ export const verifyEmail = async (token: string): Promise<{ success: boolean; er
   }
 };
 
-export const migrateAnonymousVotes = async (votes: VoteData[]): Promise<{ success: boolean; error?: string }> => {
+export const migrateAnonymousVotes = async (
+  votes: VoteData[],
+  userId?: string
+): Promise<{ success: boolean; error?: string }> => {
   const supabase = getSupabase();
   
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw new Error('Authentication required');
+    // Use provided userId or get from current session
+    let authenticatedUserId = userId;
+    if (!authenticatedUserId) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Authentication required');
+      authenticatedUserId = user.id;
+    }
 
-    // Batch votes into groups of 10 to avoid overwhelming the server
+    // Batch votes into groups of 10
     const batchSize = 10;
     const batches = [];
     for (let i = 0; i < votes.length; i += batchSize) {
       batches.push(votes.slice(i, i + batchSize));
     }
 
-    // Process each batch sequentially
+    // Process each batch
     for (const batch of batches) {
       const { error } = await supabase.rpc('migrate_anonymous_votes', {
+        p_user_id: authenticatedUserId,
         p_votes: batch.map(vote => ({
           debate_id: vote.debate_id,
           vote: vote.vote,

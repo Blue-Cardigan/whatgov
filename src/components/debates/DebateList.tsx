@@ -8,7 +8,7 @@ interface DebateListProps {
   isLoading: boolean;
   loadMoreRef: React.RefObject<HTMLDivElement>;
   isFetchingNextPage: boolean;
-  onVote?: (debateId: string, questionNumber: number, vote: boolean) => void;
+  onVote?: (debateId: string, vote: boolean) => void;
   readOnly?: boolean;
   hasMore?: boolean;
   userMp?: string | null;
@@ -60,6 +60,7 @@ export function DebateList({ items, isLoading, loadMoreRef, userMp, isEngagedCit
                 userMp={userMp}
                 isEngagedCitizen={isEngagedCitizen}
                 {...props}
+                onVote={props.onVote}
                 onExpandChange={(isExpanded) => {
                   updateItemState(item.id, isExpanded);
                 }}

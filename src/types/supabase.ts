@@ -46,7 +46,6 @@ export type Database = {
           ai_question_noes: number
           ai_question_topic: string
           ai_summary: string
-          ai_tags: Json
           ai_title: string | null
           ai_tone: string | null
           ai_topics: Json
@@ -82,7 +81,6 @@ export type Database = {
           ai_question_noes?: number
           ai_question_topic?: string
           ai_summary?: string
-          ai_tags?: Json
           ai_title?: string | null
           ai_tone?: string | null
           ai_topics?: Json
@@ -118,7 +116,6 @@ export type Database = {
           ai_question_noes?: number
           ai_question_topic?: string
           ai_summary?: string
-          ai_tags?: Json
           ai_title?: string | null
           ai_tone?: string | null
           ai_topics?: Json
@@ -397,7 +394,6 @@ export type Database = {
           ai_question_noes: number
           ai_question_topic: string
           ai_summary: string
-          ai_tags: string
           ai_title: string | null
           ai_tone: string | null
           ai_topics: string
@@ -423,7 +419,7 @@ export type Database = {
           ai_comment_thread: string
           divisions: string
           engagement_count: number | null
-          speakers: string[]
+          speakers: Speaker[]
         }[]
       }
       get_voted_debates: {
@@ -439,7 +435,6 @@ export type Database = {
           ai_question_noes: number
           ai_question_topic: string
           ai_summary: string
-          ai_tags: string
           ai_title: string | null
           ai_tone: string | null
           ai_topics: string
@@ -592,3 +587,9 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+type Speaker = {
+  party: string;
+  member_id: number;
+  display_as: string;
+};

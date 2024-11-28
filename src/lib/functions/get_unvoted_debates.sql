@@ -19,7 +19,6 @@ RETURNS TABLE (
   ai_question_ayes INTEGER,
   ai_question_noes INTEGER,
   ai_summary TEXT,
-  ai_tags JSONB,
   ai_title TEXT,
   ai_tone TEXT,
   ai_topics JSONB,
@@ -45,7 +44,7 @@ RETURNS TABLE (
   divisions JSONB,
   engagement_score FLOAT,
   ai_comment_thread JSONB,
-  speakers TEXT[]
+  speakers JSONB
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -138,7 +137,11 @@ BEGIN
     AND (p_days IS NULL OR d.day_of_week = ANY(p_days))
     AND (
       NOT p_mp_only
-      OR ut.user_mp = ANY(d.speakers)
+      OR EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(d.speakers) AS speaker
+        WHERE (speaker->>'display_as')::text = ut.user_mp
+      )
     )
   ),
   scored_debates AS (
@@ -172,7 +175,6 @@ BEGIN
     d.ai_question_ayes,
     d.ai_question_noes,
     d.ai_summary,
-    COALESCE(d.ai_tags, '[]'::jsonb) as ai_tags,
     d.ai_title,
     d.ai_tone,
     COALESCE(d.ai_topics, '{}'::jsonb) as ai_topics,
@@ -198,8 +200,57 @@ BEGIN
     d.divisions,
     d.engagement_score,
     COALESCE(d.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
-    d.speakers
+    CASE 
+      WHEN d.speakers IS NULL THEN '[]'::jsonb
+      ELSE jsonb_agg(
+        jsonb_build_object(
+          'party', speaker->>'party',
+          'member_id', (speaker->>'member_id')::integer,
+          'display_as', speaker->>'display_as'
+        )
+      )
+    END as speakers
   FROM scored_debates d
+  LEFT JOIN LATERAL jsonb_array_elements(
+    CASE 
+      WHEN d.speakers IS NULL THEN '[]'::jsonb
+      ELSE d.speakers
+    END
+  ) as speaker ON true
+  GROUP BY 
+    d.id,
+    d.ai_key_points,
+    d.ai_question,
+    d.ai_question_topic,
+    d.ai_question_ayes,
+    d.ai_question_noes,
+    d.ai_summary,
+    d.ai_title,
+    d.ai_tone,
+    d.ai_topics,
+    d.contribution_count,
+    d.created_at,
+    d.date,
+    d.ext_id,
+    d.house,
+    d.interest_factors,
+    d.interest_score,
+    d.last_updated,
+    d.location,
+    d.next_ext_id,
+    d.parent_ext_id,
+    d.parent_title,
+    d.party_count,
+    d.prev_ext_id,
+    d.search_text,
+    d.search_vector,
+    d.speaker_count,
+    d.title,
+    d.type,
+    d.divisions,
+    d.engagement_score,
+    d.ai_comment_thread,
+    d.speakers
   ORDER BY 
     d.date::date DESC,
     d.engagement_score DESC,

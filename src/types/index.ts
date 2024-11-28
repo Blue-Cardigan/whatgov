@@ -10,12 +10,11 @@ export interface FeedItem {
     ai_title: string;
     ai_summary: string;
     ai_tone: 'neutral' | 'contentious' | 'collaborative';
-    ai_tags: string[];
     ai_key_points: KeyPoint[];
     ai_topics: AiTopics;
     ai_comment_thread: CommentThread[]; 
     speaker_count: number;
-    speakers: string[];
+    speakers: Speaker[];
     contribution_count: number;
     party_count: PartyCount;
 
@@ -29,6 +28,12 @@ export interface FeedItem {
     ai_question_noes: number;
     divisions?: Division[];
   }
+
+export type Speaker = {
+  party: string;
+  member_id: number;
+  display_as: string;
+};
 
 export interface PartyCount {
   Conservative?: number;

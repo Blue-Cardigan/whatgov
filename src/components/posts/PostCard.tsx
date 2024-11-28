@@ -262,7 +262,7 @@ export const PostCard = memo(function PostCard({
         className={cn(
           "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
           "flex flex-col mt-8",
-          userMp && userMp === item.speakers[0] ? "ring-1 ring-primary/20" : ""
+          userMp && item.speakers?.[0]?.display_as === userMp ? "ring-1 ring-primary/20" : ""
         )}
         style={{ 
           borderLeftColor: locationColors[item.location] || '#2b2b2b',
@@ -276,14 +276,14 @@ export const PostCard = memo(function PostCard({
 
         <CardHeader className={cn(
           "pb-2 flex-shrink-0",
-          userMp && userMp === item.speakers[0] ? "pt-8 sm:pt-10" : "pt-4"
+          userMp && item.speakers?.[0]?.display_as === userMp ? "pt-8 sm:pt-10" : "pt-4"
         )}>
           <div className="flex justify-between items-start gap-4">
             <div className="flex flex-col">
               <CardTitle className="text-xl font-bold">
                 {item.ai_title}
               </CardTitle>
-              {userMp && userMp === item.speakers[0] && (
+              {userMp && item.speakers?.[0]?.display_as === userMp && (
                 <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
                   <UserIcon className="h-3.5 w-3.5" />
                   Your MP spoke
@@ -463,6 +463,7 @@ export const PostCard = memo(function PostCard({
                       keyPoints={item.ai_key_points}
                       isActive={true}
                       userMp={userMp}
+                      speakers={item.speakers}
                     />
                   )
                 ) : (
@@ -470,6 +471,7 @@ export const PostCard = memo(function PostCard({
                     <CommentsContent 
                       comments={item.ai_comment_thread}
                       isActive={true}
+                      speakers={item.speakers}
                     />
                   )
                 )}
