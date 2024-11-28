@@ -42,7 +42,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut, isPremium, getAuthHeader } = useAuth();
+  const { user, signOut, isEngagedCitizen, getAuthHeader } = useAuth();
 
   const handlePremiumNavigation = async (e: React.MouseEvent, href: string) => {
     e.preventDefault();
@@ -57,7 +57,7 @@ export function Sidebar({ className }: SidebarProps) {
       return;
     }
 
-    if (!isPremium) {
+    if (!isEngagedCitizen) {
       try {
         const token = await getAuthHeader();
         
@@ -113,7 +113,7 @@ export function Sidebar({ className }: SidebarProps) {
               <div>
                 <p className="font-medium">{user.email}</p>
                 <p className="text-sm text-muted-foreground">
-                  {isPremium ? 'Premium Member' : 'Free Account'}
+                  {isEngagedCitizen ? 'Engaged Citizen' : 'Free Account'}
                 </p>
               </div>
             </div>
@@ -227,12 +227,6 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/myparliament",
       icon: BookOpen
     },
-    ...(isPremium ? [{
-      title: "Research",
-      href: "/research",
-      icon: BookMarked,
-      isPremium: true,
-    }] : [])
   ];
 
   const renderNavItem = (item: typeof navItems[0]) => (
@@ -241,7 +235,7 @@ export function Sidebar({ className }: SidebarProps) {
         <TooltipTrigger asChild>
           <Link 
             href={item.href}
-            onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
+            onClick={(e) => handlePremiumNavigation(e, item.href)}
           >
             <div className={cn(
               "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground",
@@ -249,12 +243,12 @@ export function Sidebar({ className }: SidebarProps) {
               "justify-center lg:justify-start",
               pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
               "lg:w-full",
-              item.isPremium && !isPremium && "opacity-75"
+              !isEngagedCitizen && "opacity-75"
             )}>
               <item.icon className="h-8 w-8" />
               <span className="hidden lg:block ml-4 font-semibold text-xl">
                 {item.title}
-                {item.isPremium && !isPremium && (
+                {isEngagedCitizen && (
                   <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
                 )}
               </span>
@@ -263,7 +257,7 @@ export function Sidebar({ className }: SidebarProps) {
         </TooltipTrigger>
         <TooltipContent side="right" className="lg:hidden text-xl">
           <span>{item.title}</span>
-          {item.isPremium && !isPremium && (
+          {isEngagedCitizen && (
             <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
           )}
         </TooltipContent>
@@ -361,17 +355,17 @@ export function Sidebar({ className }: SidebarProps) {
             <Link 
               key={item.href} 
               href={item.href}
-              onClick={item.isPremium ? (e) => handlePremiumNavigation(e, item.href) : undefined}
+              onClick={(e) => handlePremiumNavigation(e, item.href)}
             >
               <div className={cn(
                 "flex flex-col items-center p-2",
                 pathname === item.href ? "text-primary" : "text-muted-foreground",
-                item.isPremium && !isPremium && "opacity-75"
+                !isEngagedCitizen && "opacity-75"
               )}>
                 <item.icon className="h-6 w-6" />
                 <span className="text-sm mt-1.5 font-medium">
                   {item.title}
-                  {item.isPremium && !isPremium && (
+                  {isEngagedCitizen && (
                     <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
                   )}
                 </span>
