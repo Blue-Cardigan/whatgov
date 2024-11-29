@@ -55,14 +55,14 @@ export default async function DebatePage({ params }: DebatePageProps) {
 
   return (
     <AuthProvider>
-      <main className="container mx-auto py-8 px-4">
+      <div className="container max-w-4xl mx-auto py-8 px-4">
         <Suspense fallback={<div>Loading...</div>}>
           <ProcessDebateClient 
             rawDebate={rawDebate} 
             hansardData={hansardData}
           />
         </Suspense>
-      </main>
+      </div>
     </AuthProvider>
   );
 }
