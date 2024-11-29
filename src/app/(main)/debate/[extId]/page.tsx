@@ -30,12 +30,9 @@ async function getDebateFromServer(extId: string) {
 }
 
 async function getHansardData(extId: string) {
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const host = process.env.VERCEL_URL || 'localhost:3000';
-  
   try {
     const response = await fetch(
-      `${protocol}://${host}/api/hansard/${extId}`,
+      `/api/hansard/${extId}`,
       { next: { revalidate: 3600 } }
     );
     

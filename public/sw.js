@@ -28,17 +28,28 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
+        // Add logging to track successful caches
+        console.log('Started precaching assets');
         return Promise.all(
           PRECACHE_ASSETS.map(url => {
-            return cache.add(url).catch(error => {
-              console.error('Failed to cache:', url, error);
-              // Continue with installation even if individual assets fail
-              return Promise.resolve();
-            });
+            return fetch(url)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return cache.put(url, response);
+              })
+              .catch(error => {
+                console.error(`Failed to cache ${url}:`, error.message);
+                return Promise.resolve(); // Continue installation
+              });
           })
         );
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('Precaching complete');
+        return self.skipWaiting();
+      })
   );
 });
 
