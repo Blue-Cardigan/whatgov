@@ -228,9 +228,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePassword: async () => ({ success: false }),
       getAuthHeader: async () => '',
       isPremium: isSubscriptionActive(state.subscription) && 
-        state.subscription?.plan_type === 'PROFESSIONAL',
+        state.subscription?.plan === 'PROFESSIONAL',
       isEngagedCitizen: isSubscriptionActive(state.subscription) && 
-        ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan_type || ''),
+        ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan || ''),
       refreshSubscription: async () => {
         if (state.user?.id) {
           await fetchSubscription(state.user.id);

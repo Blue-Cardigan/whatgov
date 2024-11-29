@@ -209,7 +209,7 @@ export async function POST(req: Request) {
           stripe_subscription_id: session.subscription as string,
           stripe_price_id: subscription.items.data[0].price.id,
           status: normalizeStatus(subscription.status),
-          plan: session.metadata?.plan || null, // Using plan instead of plan_type
+          plan: session.metadata?.plan || null, // Using plan instead of plan
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           cancel_at_period_end: subscription.cancel_at_period_end,

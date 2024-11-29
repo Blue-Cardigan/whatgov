@@ -106,7 +106,7 @@ export default function BillingPage({ className }: BillingPageProps) {
     return null;
   }
 
-  const currentPlan = subscription?.plan_type ? PLANS[subscription.plan_type as PlanType] : null;
+  const currentPlan = subscription?.plan ? PLANS[subscription.plan as PlanType] : null;
 
   const renderPlanFeatures = (planType: PlanType) => {
     const features = {
@@ -237,10 +237,10 @@ export default function BillingPage({ className }: BillingPageProps) {
               <Card 
                 key={key} 
                 className={`relative ${
-                  subscription?.plan_type === key ? 'border-2 border-primary' : ''
+                  subscription?.plan === key ? 'border-2 border-primary' : ''
                 }`}
               >
-                {subscription?.plan_type === key && (
+                {subscription?.plan === key && (
                   <div className="absolute -top-3 -right-3">
                     <div className="bg-primary text-primary-foreground p-1 rounded-full">
                       <Check className="h-4 w-4" />

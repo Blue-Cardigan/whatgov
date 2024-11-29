@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PLANS } from '@/lib/stripe-client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Suspense } from 'react';
 import createClient from '@/lib/supabase/client';
 
@@ -80,20 +80,44 @@ const tiers = [
 
 // Create a separate component for the search params logic
 function PricingContent() {
-  const { user } = useAuth();
+  const { user, refreshSubscription, isEngagedCitizen } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const hasHandledSuccess = useRef(false);
+  console.log(isEngagedCitizen);
   
   useEffect(() => {
-    // Show success/error messages based on URL params
-    if (searchParams?.get('success')) {
-      toast({
-        title: "Subscription activated!",
-        description: "Welcome to your enhanced parliamentary experience",
-        variant: "default",
-      });
-    }
-    if (searchParams?.get('canceled')) {
+    const handleSubscriptionSuccess = async () => {
+      if (searchParams?.get('success') && user && !hasHandledSuccess.current) {
+        hasHandledSuccess.current = true;
+        
+        // Clean up URL parameters
+        const url = new URL(window.location.href);
+        url.searchParams.delete('success');
+        window.history.replaceState({}, '', url.toString());
+        
+        // Then refresh subscription and show toast
+        await refreshSubscription();
+        toast({
+          title: "Subscription activated!",
+          description: "Welcome to your enhanced parliamentary experience",
+          variant: "default",
+        });
+      }
+    };
+
+    handleSubscriptionSuccess();
+  }, [searchParams, user, refreshSubscription]);
+
+  useEffect(() => {
+    if (searchParams?.get('canceled') && !hasHandledSuccess.current) {
+      hasHandledSuccess.current = true;
+      
+      // Clean up URL parameters
+      const url = new URL(window.location.href);
+      url.searchParams.delete('canceled');
+      window.history.replaceState({}, '', url.toString());
+      
       toast({
         description: "Subscription canceled. Let us know if you have any questions.",
         variant: "default",
@@ -153,94 +177,124 @@ function PricingContent() {
     }
   };
 
+  const getButtonConfig = (tierName: string) => {
+    if (tierName === "Citizen") {
+      return {
+        variant: "outline" as const,
+        onClick: () => {
+          if (user) {
+            router.push('/myparliament');
+          } else {
+            router.push('/signup');
+          }
+        },
+        text: user ? "Get Started" : "Sign Up Free"
+      };
+    }
+
+    if (tierName === "Professional") {
+      return {
+        variant: "outline" as const,
+        disabled: true,
+        text: "Coming Soon"
+      };
+    }
+
+    // Engaged Citizen tier
+    if (isEngagedCitizen) {
+      return {
+        variant: "outline" as const,
+        onClick: () => router.push('/settings'),
+        text: "Manage Subscription"
+      };
+    }
+
+    return {
+      variant: "default" as const,
+      onClick: () => handleSubscribe(PLANS["ENGAGED_CITIZEN"].id),
+      text: "Subscribe"
+    };
+  };
+
   return (
     <div className="space-y-8">
       {/* Pricing Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {tiers.map((tier) => (
-          <Card 
-            key={tier.name}
-            className={cn(
-              "relative flex flex-col",
-              tier.popular && "border-primary shadow-lg scale-105"
-            )}
-          >
-            {tier.popular && (
-              <Badge 
-                className="absolute -top-2 right-4"
-                variant="default"
-              >
-                Most Popular
-              </Badge>
-            )}
-            
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-4">
-                <div className={cn(
-                  "p-2 rounded-lg",
-                  tier.bgColor,
-                  tier.color
-                )}>
-                  <tier.icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <CardTitle>{tier.name}</CardTitle>
-                  <CardDescription>{tier.description}</CardDescription>
-                </div>
-              </div>
-              <div className="flex items-baseline">
-                <span className="text-3xl font-bold">{tier.price}</span>
-                {tier.price !== "Free" && (
-                  <span className="text-muted-foreground ml-2">/month</span>
-                )}
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-grow">
-              <ul className="space-y-3">
-                {tier.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-
-            <CardFooter className="pt-4">
-              {tier.name === "Citizen" ? (
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => {
-                    if (user) {
-                      router.push('/myparliament');
-                    } else {
-                      router.push('/signup');
-                    }
-                  }}
-                >
-                  {user ? "Get Started" : "Sign Up Free"}
-                </Button>
-              ) : tier.name === "Professional" ? (
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  disabled
-                >
-                  Coming Soon
-                </Button>
-              ) : (
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleSubscribe(PLANS["ENGAGED_CITIZEN"].id)}
-                >
-                  Subscribe
-                </Button>
+        {tiers.map((tier) => {
+          const buttonConfig = getButtonConfig(tier.name);
+          
+          return (
+            <Card 
+              key={tier.name}
+              className={cn(
+                "relative flex flex-col",
+                tier.popular && "border-primary shadow-lg scale-105",
+                isEngagedCitizen && tier.name === "Engaged Citizen" && "border-green-500"
               )}
-            </CardFooter>
-          </Card>
-        ))}
+            >
+              {tier.popular && (
+                <Badge 
+                  className="absolute -top-2 right-4"
+                  variant="default"
+                >
+                  Most Popular
+                </Badge>
+              )}
+              {isEngagedCitizen && tier.name === "Engaged Citizen" && (
+                <Badge 
+                  className="absolute -top-2 right-4"
+                  variant="success"
+                >
+                  Current Plan
+                </Badge>
+              )}
+              
+              <CardHeader>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={cn(
+                    "p-2 rounded-lg",
+                    tier.bgColor,
+                    tier.color
+                  )}>
+                    <tier.icon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle>{tier.name}</CardTitle>
+                    <CardDescription>{tier.description}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-baseline">
+                  <span className="text-3xl font-bold">{tier.price}</span>
+                  {tier.price !== "Free" && (
+                    <span className="text-muted-foreground ml-2">/month</span>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-grow">
+                <ul className="space-y-3">
+                  {tier.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="pt-4">
+                <Button 
+                  className="w-full" 
+                  variant={buttonConfig.variant}
+                  onClick={buttonConfig.onClick}
+                  disabled={buttonConfig.disabled}
+                >
+                  {buttonConfig.text}
+                </Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
 
         {/* Enterprise Tier */}
         <Card className="lg:col-span-3">

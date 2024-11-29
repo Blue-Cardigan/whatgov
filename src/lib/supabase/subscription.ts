@@ -1,5 +1,5 @@
 export type Subscription = {
-  plan_type: string;
+  plan: string;
   status: string;
   stripe_customer_id: string | null;
   current_period_end?: string | null;
