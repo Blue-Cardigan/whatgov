@@ -402,7 +402,7 @@ export function QueryBuilder({
                     )}
                   >
                     <LightbulbIcon className="h-4 w-4" />
-                    {enableAI ? "AI Enabled" : "Enable AI"}
+                    {enableAI ? "AI Enhanced" : "Enable AI"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto" align="start">

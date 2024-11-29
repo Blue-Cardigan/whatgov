@@ -14,7 +14,6 @@ export async function GET(
   
   try {
     const hansardUrl = `${HANSARD_API_BASE}/debates/debate/${extId}.json`;
-    console.log('Fetching Hansard data from:', hansardUrl);
     
     const response = await fetch(hansardUrl, {
       headers: {

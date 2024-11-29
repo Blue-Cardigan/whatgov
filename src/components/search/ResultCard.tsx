@@ -2,7 +2,7 @@ import type { KeyPoint } from "@/types";
 import type { Contribution, SearchResultAIContent } from "@/types/search";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -12,6 +12,8 @@ import { motion } from "framer-motion";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ReactNode, useState, useMemo } from "react";
 import { constructHansardUrl } from "@/lib/utils";
+import { ArrowUpRight } from "lucide-react";
+import Link from 'next/link';
 
 // Update ResultCard props to include all contributions
 export function ResultCard({ 
@@ -406,6 +408,26 @@ export function ResultCard({
     );
   };
 
+  // Update the PostActions component
+  function DebateActions({ 
+    debate
+  }: { 
+    debate: Contribution;
+    onShare: () => void;
+  }) {
+    return (
+      <Link 
+        href={`/debate/${debate.DebateSectionExtId.toUpperCase()}`}
+        className="group"
+      >
+        <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors flex items-center gap-1">
+          {debate.DebateSection}
+          <ArrowUpRight className="h-4 w-4 opacity-50 -translate-y-1 translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0" />
+        </CardTitle>
+      </Link>
+    );
+  }
+
   return (
     <Card 
       className={cn(
@@ -468,10 +490,11 @@ export function ResultCard({
           )}
         </div>
         
-        {/* Title - More Prominent */}
-        <h3 className="text-lg font-semibold mb-3 truncate">
-          {aiContent?.ai_title || result.DebateSection}
-        </h3>
+        {/* Title - Updated with link */}
+        <DebateActions 
+          debate={result} 
+          onShare={() => {}} // Add proper share handler if needed
+        />
 
         {/* Summary with Better Typography */}
         {processedSummary && (

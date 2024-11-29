@@ -84,7 +84,6 @@ function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasHandledSuccess = useRef(false);
-  console.log(isEngagedCitizen);
   
   useEffect(() => {
     const handleSubscriptionSuccess = async () => {

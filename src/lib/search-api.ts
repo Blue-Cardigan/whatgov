@@ -153,8 +153,6 @@ export class HansardAPI {
         };
       });
 
-      console.log('AI content fetched:', results);
-
       return results;
     } catch (error) {
       console.error('Failed to fetch AI content:', error);
@@ -189,8 +187,6 @@ export class HansardAPI {
           cacheTTL: this.DEFAULT_CACHE_TTL
         }
       );
-
-      console.log('Cached result:', cachedResult);
 
       return cachedResult;
     } catch (error) {
