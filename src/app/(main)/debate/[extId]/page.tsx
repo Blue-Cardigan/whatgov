@@ -37,6 +37,7 @@ async function getHansardData(extId: string) {
     `${protocol}://${host}/api/hansard/${extId}`,
     { next: { revalidate: 3600 } }
   );
+  console.log(`Hansard API response for ${extId}:`, response);
   
   if (!response.ok) return null;
   return response.json();
