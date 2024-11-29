@@ -1,4 +1,4 @@
-import { OralQuestion } from "@/lib/search-api";
+import type { OralQuestion } from "@/types/questions";
 import { ProfileImage } from "./ProfileImage";
 
 interface QuestionCardProps {

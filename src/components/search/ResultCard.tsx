@@ -1,5 +1,5 @@
-import { Contribution } from "@/types/search";
-import { KeyPoint, SearchResultAIContent } from "@/types";
+import type { KeyPoint } from "@/types";
+import type { Contribution, SearchResultAIContent } from "@/types/search";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -8,12 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CalendarIcon, ExternalLink, Settings2, UserIcon, Users, MessageSquare, LightbulbIcon, ThumbsDown, ThumbsUp, ChevronDown } from "lucide-react";
 import { locationColors, getDebateType } from '@/lib/utils';
-import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ReactNode, useState, useMemo } from "react";
 import { constructHansardUrl } from "@/lib/utils";
-import { useEngagement } from '@/hooks/useEngagement';
 
 // Update ResultCard props to include all contributions
 export function ResultCard({ 
@@ -105,45 +103,44 @@ export function ResultCard({
     };
   }, [aiContent?.ai_summary]);
 
-  // Helper function to normalize names for comparison
-  const normalizeName = (name: string): string => {
-    return name
-      .toLowerCase()
-      .replace(/[^\w\s]/g, '') // Remove special characters
-      .replace(/\s+/g, ' ')    // Normalize whitespace
-      .trim();
-  };
-
-  // Helper function to check if names match
-  const namesMatch = (name1: string, name2: string): boolean => {
-    const n1 = normalizeName(name1);
-    const n2 = normalizeName(name2);
-
-    // Direct match
-    if (n1 === n2) return true;
-
-    // Check if one name contains the other
-    if (n1.includes(n2) || n2.includes(n1)) return true;
-
-    // Split names into parts and check for partial matches
-    const parts1 = n1.split(' ');
-    const parts2 = n2.split(' ');
-
-    // Check if last names match
-    if (parts1[parts1.length - 1] === parts2[parts2.length - 1]) return true;
-
-    // Check if first names match and are not common titles
-    const commonTitles = ['mr', 'mrs', 'ms', 'dr', 'sir', 'lord', 'lady', 'hon'];
-    const firstName1 = parts1[0];
-    const firstName2 = parts2[0];
-    if (firstName1 === firstName2 && !commonTitles.includes(firstName1)) return true;
-
-    return false;
-  };
-
-  // Create a map of key points by speaker with fuzzy matching
+  // Update the keyPointsBySpeaker useMemo
   const keyPointsBySpeaker = useMemo(() => {
     if (!aiContent?.ai_key_points) return new Map();
+    
+    // Move namesMatch function inside useMemo
+    const namesMatch = (name1: string, name2: string): boolean => {
+      const normalizeName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/[^\w\s]/g, '') // Remove special characters
+          .replace(/\s+/g, ' ')    // Normalize whitespace
+          .trim();
+      };
+
+      const n1 = normalizeName(name1);
+      const n2 = normalizeName(name2);
+
+      // Direct match
+      if (n1 === n2) return true;
+
+      // Check if one name contains the other
+      if (n1.includes(n2) || n2.includes(n1)) return true;
+
+      // Split names into parts and check for partial matches
+      const parts1 = n1.split(' ');
+      const parts2 = n2.split(' ');
+
+      // Check if last names match
+      if (parts1[parts1.length - 1] === parts2[parts2.length - 1]) return true;
+
+      // Check if first names match and are not common titles
+      const commonTitles = ['mr', 'mrs', 'ms', 'dr', 'sir', 'lord', 'lady', 'hon'];
+      const firstName1 = parts1[0];
+      const firstName2 = parts2[0];
+      if (firstName1 === firstName2 && !commonTitles.includes(firstName1)) return true;
+
+      return false;
+    };
     
     const map = new Map<string, typeof aiContent.ai_key_points>();
     
@@ -162,7 +159,7 @@ export function ResultCard({
     });
     
     return map;
-  }, [aiContent?.ai_key_points, contributions]);
+  }, [aiContent, contributions]); // Simplified dependencies
 
   // Get remaining key points (those without matching speakers)
   const remainingKeyPoints = useMemo(() => {

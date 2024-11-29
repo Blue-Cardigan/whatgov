@@ -22,9 +22,6 @@ import { Lock } from 'lucide-react';
 import { LightbulbIcon } from 'lucide-react';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useRouter } from 'next/navigation';
-import { Switch } from "@/components/ui/switch";
-import { AlertCircle } from "lucide-react";
-import { ArrowRight } from "lucide-react";
 
 export function QueryBuilder({ 
   searchParams,

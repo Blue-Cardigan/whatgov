@@ -11,12 +11,19 @@ export function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Wait until mounted to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (!theme) {
+      setTheme('system');
+    }
+  }, [theme, setTheme]);
 
   const themes = [
+    {
+      value: 'system',
+      label: 'System',
+      icon: Monitor
+    },
     {
       value: 'light',
       label: 'Light',
@@ -26,11 +33,6 @@ export function AppearanceSettings() {
       value: 'dark',
       label: 'Dark',
       icon: Moon
-    },
-    {
-      value: 'system',
-      label: 'System',
-      icon: Monitor
     }
   ];
 

@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getFeedItems, type FeedCursor } from '@/lib/supabase/feed';
 import { FeedFilters, FeedItem } from '@/types';
@@ -5,7 +6,7 @@ import { useCache } from './useCache';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 
 interface UseFeedOptions {
   votedOnly?: boolean;
@@ -29,54 +30,68 @@ export function useFeed({
   userTopics = [],
   filters = {} as FeedFilters
 }: UseFeedOptions = {}) {
-  const { getCache, setCache, CACHE_KEYS } = useCache();
+  const { getCache, setCache, warmCache, CACHE_KEYS } = useCache();
   const { user, isEngagedCitizen } = useAuth();
 
-  // Create sanitized filters - ignore all filters for unauthenticated users
-  const sanitizedFilters: FeedFilters = user ? {
-    ...filters,
-    // Ensure filters are off for non-subscribers
-    location: isEngagedCitizen ? filters.location : [],
-    type: isEngagedCitizen ? filters.type : [],
-    days: isEngagedCitizen ? filters.days : [],
-    topics: isEngagedCitizen ? filters.topics : [],
-  } : {
-    house: [],
-    location: [],
-    type: [],
-    days: [],
-    topics: [],
-    mpOnly: false,
-    divisionsOnly: false
-  };
+  // Memoize sanitizedFilters
+  const sanitizedFilters = useMemo(() => {
+    if (!user) {
+      return {
+        house: [],
+        location: [],
+        type: [],
+        days: [],
+        topics: [],
+        mpOnly: false,
+        divisionsOnly: false
+      };
+    }
+
+    return {
+      ...filters,
+      // Ensure filters are off for non-subscribers
+      location: isEngagedCitizen ? filters.location : [],
+      type: isEngagedCitizen ? filters.type : [],
+      days: isEngagedCitizen ? filters.days : [],
+      topics: isEngagedCitizen ? filters.topics : [],
+    };
+  }, [user, isEngagedCitizen, filters]);
+
+  const getCacheKey = useCallback((pageParam: FeedCursor | null) => {
+    const VERSION = "v2";
+    return `${VERSION}:${CACHE_KEYS.debates.key(
+      `${votedOnly}:${pageSize}:${
+        pageParam ? `${pageParam.id}:${pageParam.date}:${pageParam.score}` : 'initial'
+      }:${!!user}:${userTopics.join(',')}:${JSON.stringify(sanitizedFilters)}`
+    )}`;
+  }, [
+    votedOnly, 
+    pageSize, 
+    user, 
+    userTopics, 
+    sanitizedFilters, 
+    CACHE_KEYS.debates
+  ]);
 
   return useInfiniteQuery({
     queryKey: ['feed', { votedOnly, pageSize, userTopics, filters: sanitizedFilters, isAuthenticated: !!user }],
     queryFn: async ({ pageParam = null as FeedCursor | null }) => {
-      const cacheKey = CACHE_KEYS.debates.key(
-        `${votedOnly}:${pageSize}:${
-          pageParam ? `${pageParam.id}:${pageParam.date}:${pageParam.score}` : 'initial'
-        }:${!!user}:${userTopics.join(',')}:${JSON.stringify(sanitizedFilters)}`
-      );
-      
-      const VERSION = "v2";
-      const versionedKey = `${VERSION}:${cacheKey}`;
+      const cacheKey = getCacheKey(pageParam);
       
       try {
-        const cached = await getCache<ReturnType<typeof getFeedItems>>(versionedKey);
+        const cached = await getCache<ReturnType<typeof getFeedItems>>(cacheKey);
         if (cached) {
-          getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters)
-            .then(fresh => {
-              if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
-                setCache(versionedKey, fresh, CACHE_KEYS.debates.ttl);
-              }
-            })
-            .catch(console.error);
+          // Warm cache in background without blocking
+          warmCache(
+            cacheKey,
+            () => getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters),
+            CACHE_KEYS.debates.ttl
+          ).catch(console.error);
           return cached;
         }
 
         const data = await getFeedItems(pageSize, pageParam, votedOnly, sanitizedFilters as FeedFilters);
-        await setCache(versionedKey, data, CACHE_KEYS.debates.ttl);
+        await setCache(cacheKey, data, CACHE_KEYS.debates.ttl);
         return data;
       } catch (error) {
         console.error('Cache error:', error);

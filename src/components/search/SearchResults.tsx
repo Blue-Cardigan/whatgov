@@ -3,12 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, FileText, AlertCircle, ChevronDown, Settings2, ExternalLink, Users, MessageSquare, LightbulbIcon, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowRight, FileText, AlertCircle, MessageSquare } from "lucide-react";
 import { Contribution } from "@/types/search";
 import * as React from 'react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { SearchParams } from '@/types/search';
-import { SearchResultAIContent } from "@/types";
+import type { SearchResultAIContent } from "@/types/search";
 import { ResultCard } from './ResultCard';
 
 // Add new interface for grouped results

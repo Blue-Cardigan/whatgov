@@ -152,8 +152,8 @@ export function useVotes(): UseVotesReturn {
         }), {})
       };
     },
-    staleTime: 1000 * 60 * 5, // Consider data stale after 5 minutes
-    cacheTime: 1000 * 60 * 30, // Keep in React Query cache for 30 minutes
+    staleTime: 1000 * 60 * 15, // Consider data stale after 15 minutes
+    cacheTime: 1000 * 60 * 60, // Keep in React Query cache for 1 hour
   });
 
   // User Topic Votes with caching

@@ -25,10 +25,11 @@ import { TopicGroupedQuestions } from './TopicGroupedQuestions';
 import { FlatQuestionList } from './FlatQuestionList';
 import { UserTopicVotes } from "./UserTopicVotes";
 import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
-import { AuthenticatedRoute } from "@/components/auth/AuthenticatedRoute";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { QuestionStats } from "@/types/VoteStats";
 import { Badge } from "@/components/ui/badge";
+import { SignInPrompt } from "@/components/ui/sign-in-prompt";
+import { useRouter } from "next/navigation";
 
 const VotingTrendsChart = dynamic(() => import('./VotingTrendsChart').then(mod => mod.VotingTrendsChart), {
   loading: () => <DashboardSkeleton />
@@ -89,11 +90,51 @@ interface RawQuestionData {
 }
 
 export function VoteStats() {
-  return (
-    <AuthenticatedRoute requireProfile={true}>
-      <VoteStatsContent />
-    </AuthenticatedRoute>
-  );
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+  
+  // Show loading state while auth is being determined
+  if (loading) {
+    return <Card className="p-0">
+      <CardContent className="pt-4">
+        <DashboardSkeleton />
+      </CardContent>
+    </Card>;
+  }
+
+  // Show sign in dialog if not authenticated
+  if (!user) {
+    return (
+      <SignInPrompt
+        title="Sign in to view voting statistics"
+        description="Track your voting patterns and compare them with others."
+      />
+    );
+  }
+
+  // Show profile completion prompt if no profile
+  if (!profile) {
+    return (
+      <Card className="p-0">
+        <CardContent className="pt-4">
+          <div className="text-center py-8">
+            <h2 className="text-lg font-semibold mb-2">Complete Your Profile</h2>
+            <p className="text-muted-foreground mb-4">
+              Please complete your profile to view voting statistics
+            </p>
+            <button
+              onClick={() => router.push('/accounts/profile')}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Complete Profile
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <VoteStatsContent />;
 }
 
 function VoteStatsContent() {

@@ -4,11 +4,11 @@ import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
 import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
-import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 import { PLANS } from '@/lib/stripe-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { SignInPrompt } from '@/components/ui/sign-in-prompt';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
   loading: () => <div className="animate-pulse h-[600px] bg-muted rounded-lg" />
@@ -23,20 +23,46 @@ const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mo
 });
 
 export function MyParliament() {
-  return (
-    <AuthenticatedRoute
-      requireProfile={true}
-      signInPrompt={{
-        title: "Sign in to access your dashboard",
-        description: "Track your MP's activity, and voting patterns of the UK and your constituency"
-      }}
-    >
-      <MyParliamentContent />
-    </AuthenticatedRoute>
-  );
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+  
+  // Show loading state while auth is being determined
+  if (loading) {
+    return <div className="animate-pulse h-[500px] bg-muted rounded-lg" />;
+  }
+
+  // Show sign in dialog if not authenticated
+  if (!user) {
+    return (
+      <SignInPrompt
+        title="Sign in to access your dashboard"
+        description="Track your MP's activity, as well as your demographic's voting patterns"
+      />
+    );
+  }
+
+  // Show profile completion prompt if no profile
+  if (!profile) {
+    return (
+      <div className="text-center py-8">
+        <h2 className="text-lg font-semibold mb-2">Complete Your Profile</h2>
+        <p className="text-muted-foreground mb-4">
+          Please complete your profile to access your parliament dashboard
+        </p>
+        <button
+          onClick={() => router.push('/accounts/profile')}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+        >
+          Complete Profile
+        </button>
+      </div>
+    );
+  }
+
+  return <MyParliamentContent />;
 }
 
-// Separate the content to avoid unnecessary re-renders
+// Separate the content component (remains mostly unchanged)
 function MyParliamentContent() {
   const [activeTab, setActiveTab] = useState("mp");
   const { user, getAuthHeader } = useAuth();

@@ -98,7 +98,6 @@ export const signInWithEmail = async (
   const supabase = createClient();
   
   try {
-    // First attempt to sign in
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -123,17 +122,28 @@ export const signInWithEmail = async (
       };
     }
 
-    // Only check profile after successful authentication
+    // Fetch profile data after successful authentication
     if (data.user?.id) {
-      const { error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('email_verified')
+        .select('*')
         .eq('id', data.user.id)
         .single();
 
       if (profileError) {
-        console.error('Profile check error:', profileError);
+        console.error('Profile fetch error:', profileError);
+        return {
+          user: null,
+          session: null,
+          error: 'Failed to load user profile'
+        };
       }
+
+      return {
+        user: data.user,
+        session: data.session,
+        profile
+      };
     }
 
     return {

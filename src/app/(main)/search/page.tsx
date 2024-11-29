@@ -5,11 +5,10 @@ import { SearchResults } from "@/components/search/SearchResults";
 import { QueryBuilder } from '@/components/search/QueryBuilder';
 import { HansardAPI } from '@/lib/search-api';
 import type { SearchResponse, SearchParams } from '@/types/search';
-import type { SearchResultAIContent } from '@/types';
+import type { SearchResultAIContent } from '@/types/search';
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
-import { MONTHLY_AI_SEARCH_LIMIT } from '@/hooks/useEngagement';
 import { useAuth } from '@/contexts/AuthContext';
 
 type SearchResultsState = SearchResponse & { 

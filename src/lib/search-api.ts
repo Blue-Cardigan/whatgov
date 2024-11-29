@@ -3,7 +3,7 @@ import type { Member, MemberSearchResponse, SearchResponse } from '@/types/searc
 import getSupabase from '@/lib/supabase/client';
 import { parseKeyPoints } from '@/lib/utils';
 import type { FetchOptions } from '@/types';
-import type { SearchResultAIContent } from '@/types';
+import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
 
 export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
@@ -133,11 +133,12 @@ export class HansardAPI {
 
       if (error) throw error;
 
-      data?.forEach((item: any) => {
+      data?.forEach((item: SearchResultAIContent) => {
         const keyPoints = item.ai_key_points ? parseKeyPoints(item.ai_key_points) : undefined;
         
         results[item.ext_id] = {
           id: item.id,
+          ext_id: item.ext_id,
           title: item.title,
           ai_title: item.ai_title || undefined,
           date: item.date,
@@ -249,6 +250,7 @@ export class HansardAPI {
 
     return {
       id: data.id,
+      ext_id: data.ext_id,
       title: data.title,
       ai_title: data.ai_title || undefined,
       date: data.date,

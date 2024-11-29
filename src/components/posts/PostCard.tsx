@@ -154,7 +154,7 @@ export const PostCard = memo(function PostCard({
     return `keyPoints-${cardIndex}`;
   }, [hasDivisions]);
 
-  const { user, subscription, isEngagedCitizen } = useAuth();
+  const { user, isEngagedCitizen } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showKeyPoints, setShowKeyPoints] = useState(false);

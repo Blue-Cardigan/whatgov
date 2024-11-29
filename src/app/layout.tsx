@@ -5,6 +5,22 @@ import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from "@/contexts/AuthContext";
+import { Playfair_Display } from 'next/font/google'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['700'],
+  display: 'swap',
+})
+
+// Add this near the top of RootLayout
+const criticalStyles = `
+  body { 
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+`;
 
 export const metadata = {
   title: 'WhatGov | Parliament in Your Feed',
@@ -42,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={playfair.className}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="index, follow" />
@@ -52,6 +68,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="manifest" href="/site.webmanifest" type="application/manifest+json" />
         <script dangerouslySetInnerHTML={{ __html: swRegistration }} />
+        <style dangerouslySetInnerHTML={{ __html: criticalStyles }} />
       </head> 
       <body>
         <ThemeProvider>

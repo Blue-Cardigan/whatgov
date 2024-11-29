@@ -9,6 +9,7 @@ export type AuthError = {
 export type AuthResponse = {
   user: User | null;
   session: Session | null;
+  profile?: UserProfile | null;
   error?: string;
   status?: 'verify_email' | 'error' | 'success' | 'redirect_to_login';
 };

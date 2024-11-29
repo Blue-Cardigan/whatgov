@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { ProfileImage } from "./ProfileImage";
-import { OralQuestion } from "@/lib/search-api";
+import type { OralQuestion } from "@/types/questions";
 
 interface SessionHeaderProps {
   slot: {

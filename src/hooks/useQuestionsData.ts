@@ -38,38 +38,45 @@ export function useQuestionsData() {
   const [requestedWeek, setRequestedWeek] = useState<'current' | 'next'>('current');
   const [autoSwitchedToNext, setAutoSwitchedToNext] = useState(false);
   const queryClient = useQueryClient();
-  const { getCache, setCache } = useCache();
+  const { getCache, setCache, warmCache, batchWarmCache } = useCache();
 
   // Helper function to create cache key
   const getCacheKey = useCallback((week: 'current' | 'next') => 
     CACHE_KEYS.upcomingDebates.key(week), []);
 
+  // Function to warm both weeks' caches
+  const warmBothWeeks = useCallback(async () => {
+    await batchWarmCache([
+      {
+        key: getCacheKey('current'),
+        fetcher: () => QuestionsApi.getUpcomingOralQuestions(false),
+        ttl: CACHE_KEYS.upcomingDebates.ttl
+      },
+      {
+        key: getCacheKey('next'),
+        fetcher: () => QuestionsApi.getUpcomingOralQuestions(true),
+        ttl: CACHE_KEYS.upcomingDebates.ttl
+      }
+    ]);
+  }, [batchWarmCache, getCacheKey]);
+
   const currentWeekQuery = useQuery({
     queryKey: ['upcomingDebates', 'current'],
     queryFn: async () => {
-      // Try to get from cache first
       const cacheKey = getCacheKey('current');
       const cached = await getCache<OralQuestion[]>(cacheKey);
       
       if (cached) {
-        // Refresh cache in background
-        QuestionsApi.getUpcomingOralQuestions(false)
-          .then(fresh => {
-            if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
-              setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
-              queryClient.setQueryData(['upcomingDebates', 'current'], fresh);
-            }
-          })
-          .catch(console.error);
+        // Warm both weeks' caches in background
+        warmBothWeeks().catch(console.error);
         return cached;
       }
 
-      // If not in cache, fetch fresh data
       const data = await QuestionsApi.getUpcomingOralQuestions(false);
       await setCache(cacheKey, data, CACHE_KEYS.upcomingDebates.ttl);
       return data;
     },
-    staleTime: CACHE_KEYS.upcomingDebates.ttl * 500, // Half the Redis TTL
+    staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
     cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
     refetchOnWindowFocus: false,
   });
@@ -81,14 +88,8 @@ export function useQuestionsData() {
       const cached = await getCache<OralQuestion[]>(cacheKey);
       
       if (cached) {
-        QuestionsApi.getUpcomingOralQuestions(true)
-          .then(fresh => {
-            if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
-              setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
-              queryClient.setQueryData(['upcomingDebates', 'next'], fresh);
-            }
-          })
-          .catch(console.error);
+        // Warm both weeks' caches in background
+        warmBothWeeks().catch(console.error);
         return cached;
       }
 
@@ -124,13 +125,14 @@ export function useQuestionsData() {
 
   const prefetchNextWeek = useCallback(() => {
     if (requestedWeek === 'current') {
-      queryClient.prefetchQuery({
-        queryKey: ['upcomingDebates', 'next'],
-        queryFn: () => QuestionsApi.getUpcomingOralQuestions(true),
-        staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
-      });
+      // Use warmCache instead of direct prefetch
+      warmCache(
+        getCacheKey('next'),
+        () => QuestionsApi.getUpcomingOralQuestions(true),
+        CACHE_KEYS.upcomingDebates.ttl
+      ).catch(console.error);
     }
-  }, [queryClient, requestedWeek]);
+  }, [requestedWeek, warmCache, getCacheKey]);
 
   const toggleWeek = useCallback(() => {
     setAutoSwitchedToNext(false);

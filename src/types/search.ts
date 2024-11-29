@@ -1,4 +1,6 @@
-  export interface SearchState {
+import type { KeyPoint, Speaker } from "@/types";
+
+export interface SearchState {
     searchTerm: string;
     selectedDate?: Date;
     house: 'Commons' | 'Lords';
@@ -65,6 +67,23 @@
     Debates: SearchDebateItem[];
     Divisions: DivisionOverview[];
     Committees: SearchCommitteeItem[];
+  }
+
+
+  export interface SearchResultAIContent {
+    id: string;
+    ext_id: string;
+    title: string;
+    ai_title?: string;
+    date: string;
+    type: string;
+    house: string;
+    location: string;
+    ai_summary?: string;
+    ai_key_points?: KeyPoint[];
+    speaker_count?: number;
+    party_count?: Record<string, number>;
+    speakers?: Speaker[];
   }
   
   export interface Member {

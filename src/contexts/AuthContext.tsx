@@ -1,13 +1,17 @@
 'use client';
 
-import { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useSupabase } from '@/components/providers/SupabaseProvider';
-import { useCache } from '@/hooks/useCache';
 import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types/supabase';
 import type { Subscription } from '@/lib/supabase/subscription';
 import { isSubscriptionActive } from '@/lib/supabase/subscription';
+import { signInWithEmail } from '@/lib/supabase/auth';
+import { 
+  getSubscriptionFromCache, 
+  setSubscriptionCache 
+} from '@/lib/supabase/subscription';
 
 interface AuthState {
   user: User | null;
@@ -17,9 +21,20 @@ interface AuthState {
   error: string | null;
 }
 
+interface UserSignUpData {
+  name?: string;
+  postcode?: string;
+  constituency?: string;
+  mp?: string;
+  gender?: string;
+  age?: string;
+  selected_topics?: string[];
+  newsletter?: boolean;
+}
+
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, userData: any) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, userData: UserSignUpData) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (userData: Partial<UserProfile>) => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -27,13 +42,13 @@ interface AuthContextValue extends AuthState {
   getAuthHeader: () => Promise<string>;
   isPremium: boolean;
   isEngagedCitizen: boolean;
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
-  const { getCache, setCache } = useCache();
   const router = useRouter();
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -43,20 +58,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error: null,
   });
 
-  const updateState = (updates: Partial<AuthState>) => {
+  // Wrap updateState in useCallback
+  const updateState = useCallback((updates: Partial<AuthState>) => {
     setState(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  // Fetch profile with Redis caching
-  const fetchProfile = async (userId: string) => {
-    const cacheKey = `profile:${userId}`;
-    const cached = await getCache<UserProfile>(cacheKey);
-    
-    if (cached) {
-      updateState({ profile: cached });
-      return;
+  // Wrap fetchSubscription in useCallback
+  const fetchSubscription = useCallback(async (userId: string) => {
+    try {
+      const cachedSubscription = await getSubscriptionFromCache(userId);
+      if (cachedSubscription) {
+        updateState({ subscription: cachedSubscription });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) throw error;
+
+      setSubscriptionCache(userId, data);
+      updateState({ subscription: data });
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+      updateState({ subscription: null });
     }
+  }, [supabase, updateState]);
 
+  // Wrap fetchProfile in useCallback
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -66,56 +99,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      const profile = {
-        name: data.name || '',
-        email: state.user?.email || '',
-        postcode: data.postcode || '',
-        constituency: data.constituency || '',
-        mp: data.mp || '',
-        mp_id: data.mp_id || null,
-        gender: data.gender || '',
-        age: data.age || '',
-        selected_topics: data.selected_topics || [],
-      };
-
-      await setCache(cacheKey, profile, 5 * 60);
-      updateState({ profile });
+      updateState({ profile: data });
     } catch (error) {
-      console.error('Profile fetch error:', error);
+      console.error('Error fetching profile:', error);
+      updateState({ profile: null });
     }
-  };
+  }, [supabase, updateState]);
 
-  // Add subscription fetching
-  const fetchSubscription = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+  // Update useMemo dependencies to include updateState
+  const value = useMemo(() => {
+    const signIn = async (email: string, password: string) => {
+      try {
+        const { error, status, user } = await signInWithEmail(email, password);
+        
+        if (status === 'verify_email') {
+          return { error: 'Please verify your email before signing in' };
+        }
+        
+        if (error) throw error;
 
-      updateState({ subscription: data || null });
-    } catch (error) {
-      console.error('Subscription fetch error:', error);
-      updateState({ subscription: null });
-    }
-  };
+        if (user) {
+          // Update user state immediately
+          updateState({ 
+            user,
+            error: null,
+            loading: true // Keep loading while fetching additional data
+          });
 
-  // Auth methods
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      return {};
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Sign in failed' };
-    }
-  };
+          // Fetch both profile and subscription data
+          await Promise.all([
+            fetchProfile(user.id),
+            fetchSubscription(user.id)
+          ]);
 
-  const signOut = async () => {
-    try {
-      // First clear any user-specific cache
-      if (state.user?.id) {
+          updateState({ loading: false });
+        }
+
+        return {};
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Sign in failed' };
+      }
+    };
+
+    const signOut = async () => {
+      try {
+        if (state.user?.id) {
+          await fetch('/api/cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              key: `profile:${state.user.id}`,
+              action: 'delete'
+            }),
+          });
+        }
+
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+
+        updateState({ 
+          user: null, 
+          profile: null, 
+          subscription: null,
+          error: null 
+        });
+
+        router.push('/');
+        router.refresh();
+      } catch (error) {
+        console.error('Sign out error:', error);
+        updateState({ 
+          error: error instanceof Error ? error.message : 'Failed to sign out' 
+        });
+      }
+    };
+
+    const updateProfile = async (userData: Partial<UserProfile>) => {
+      if (!state.user?.id) throw new Error('No authenticated user');
+
+      try {
+        // Update the profile in Supabase
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .update({
+            name: userData.name,
+            postcode: userData.postcode,
+            constituency: userData.constituency,
+            mp: userData.mp,
+            gender: userData.gender,
+            age: userData.age,
+            selected_topics: userData.selected_topics,
+            newsletter: userData.newsletter,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', state.user.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Update local state
+        updateState({ 
+          profile: { ...state.profile!, ...data } as UserProfile,
+          error: null 
+        });
+
+        // Clear profile cache
         await fetch('/api/cache', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -124,100 +213,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             action: 'delete'
           }),
         });
-      }
 
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      // Clear local state
-      updateState({ 
-        user: null, 
-        profile: null, 
-        subscription: null,
-        error: null 
-      });
-
-      // Navigate to home page
-      router.push('/');
-      router.refresh(); // Force a refresh to ensure all authenticated state is cleared
-    } catch (error) {
-      console.error('Sign out error:', error);
-      updateState({ 
-        error: error instanceof Error ? error.message : 'Failed to sign out' 
-      });
-    }
-  };
-
-  // Initialize auth state
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error && error.message !== 'Auth session missing!') {
-          throw error;
-        }
-
-        updateState({ user, loading: false });
-
-        if (user) {
-          await Promise.all([
-            fetchProfile(user.id),
-            fetchSubscription(user.id)
-          ]);
-        }
       } catch (error) {
-        updateState({ 
-          user: null, 
-          loading: false,
-          error: error instanceof Error ? error.message : 'Authentication failed'
-        });
+        console.error('Profile update error:', error);
+        throw new Error(error instanceof Error ? error.message : 'Failed to update profile');
       }
     };
 
-    initAuth();
+    return {
+      ...state,
+      signIn,
+      signUp: async () => ({}),
+      signOut,
+      updateProfile,
+      resetPassword: async () => ({ success: false }),
+      updatePassword: async () => ({ success: false }),
+      getAuthHeader: async () => '',
+      isPremium: isSubscriptionActive(state.subscription) && 
+        state.subscription?.plan_type === 'PROFESSIONAL',
+      isEngagedCitizen: isSubscriptionActive(state.subscription) && 
+        ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan_type || ''),
+      refreshSubscription: async () => {
+        if (state.user?.id) {
+          await fetchSubscription(state.user.id);
+        }
+      }
+    };
+  }, [state, router, fetchProfile, fetchSubscription, supabase, updateState]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: any, session: any) => {
-        if (event === 'SIGNED_OUT') {
-          updateState({
-            user: null,
-            profile: null,
-            subscription: null,
-            loading: false,
-            error: null
+  // Update useEffect dependencies to include updateState
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Only fetch full data on initial session
+        if (event === 'INITIAL_SESSION') {
+          updateState({ 
+            user: session.user,
+            loading: true 
           });
-        } else if (session?.user) {
-          updateState({ user: session.user, loading: false });
+
           await Promise.all([
             fetchProfile(session.user.id),
             fetchSubscription(session.user.id)
           ]);
+
+          updateState({ loading: false });
+        } else if (event === 'SIGNED_IN') {
+          // On subsequent sign-ins, just update the user
+          updateState({ user: session.user });
         }
+      } else {
+        updateState({ 
+          user: null,
+          profile: null,
+          subscription: null,
+          loading: false,
+          error: null 
+        });
       }
-    );
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase.auth]);
-
-  // Memoize context value
-  const value = useMemo(() => ({
-    ...state,
-    signIn,
-    signUp: async () => ({}), // Implement as needed
-    signOut,
-    updateProfile: async () => {}, // Implement as needed
-    resetPassword: async () => ({ success: false }), // Implement as needed
-    updatePassword: async () => ({ success: false }), // Implement as needed
-    getAuthHeader: async () => '', // Implement as needed
-    isPremium: isSubscriptionActive(state.subscription) && 
-      state.subscription?.plan_type === 'PROFESSIONAL',
-    isEngagedCitizen: isSubscriptionActive(state.subscription) && 
-      ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan_type || ''),
-  }), [state]);
+    return () => subscription.unsubscribe();
+  }, [supabase.auth, fetchProfile, fetchSubscription, updateState]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

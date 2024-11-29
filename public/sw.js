@@ -10,8 +10,18 @@ const PRECACHE_ASSETS = [
   '/screenshot.png',
   '/android-chrome-192x192.png',
   '/android-chrome-512x512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/styles/critical.css',
+  '/my-parliament',
+  '/search'
 ];
+
+// Add route-based caching strategy
+const ROUTE_CACHE_CONFIG = {
+  '/api/debates': 'network-first',
+  '/api/static': 'cache-first',
+  'default': 'network-first'
+};
 
 // Install event - precache essential resources
 self.addEventListener('install', (event) => {

@@ -5,6 +5,7 @@ import type { DebateVote } from '@/types'
 import type { VoteData, RawTopicStats, RawUserVotingStats } from '@/types/VoteStats'
 import { CACHE_KEYS } from '../redis/config'
 import { setSubscriptionCache } from './subscription'
+import { getDemographicVoteStats } from './myparliament'
 
 export async function submitVote({ debate_id, vote }: DebateVote) {
   const supabase = createClient();
@@ -27,22 +28,36 @@ export async function submitVote({ debate_id, vote }: DebateVote) {
       throw new Error(error.message || 'Failed to submit vote');
     }
 
-    // Clear relevant caches immediately after successful vote
-    await Promise.all([
-      fetch('/api/cache/invalidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keys: [
-            CACHE_KEYS.topicVoteStats.key(),
-            CACHE_KEYS.userTopicVotes.key(user.id),
-            CACHE_KEYS.demographicStats.key()
-          ]
-        })
-      }),
-      // Also invalidate the subscription cache since voting might affect limits
-      setSubscriptionCache(user.id, null)
-    ]);
+    // Batch warm the caches with fresh data
+    await fetch('/api/cache/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        operations: [
+          {
+            key: CACHE_KEYS.topicVoteStats.key(),
+            fetcher: getTopicVoteStats,
+            ttl: CACHE_KEYS.topicVoteStats.ttl
+          },
+          {
+            key: CACHE_KEYS.userTopicVotes.key(user.id),
+            fetcher: getUserTopicVotes,
+            ttl: CACHE_KEYS.userTopicVotes.ttl
+          },
+          {
+            key: CACHE_KEYS.demographicStats.key(),
+            fetcher: getDemographicVoteStats,
+            ttl: CACHE_KEYS.demographicStats.ttl
+          }
+        ]
+      })
+    }).catch(error => {
+      // Log but don't throw - cache warming failure shouldn't affect vote submission
+      console.error('Cache warming error:', error);
+    });
+
+    // Clear subscription cache since voting might affect limits
+    await setSubscriptionCache(user.id, null);
 
     return data;
   } catch (error) {
