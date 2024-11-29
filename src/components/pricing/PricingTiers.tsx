@@ -80,7 +80,7 @@ const tiers = [
 
 // Create a separate component for the search params logic
 function PricingContent() {
-  const { user, getAuthHeader } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   
