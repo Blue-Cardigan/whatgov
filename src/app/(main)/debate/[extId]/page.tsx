@@ -30,6 +30,7 @@ async function getDebateFromServer(extId: string) {
 }
 
 async function getHansardData(extId: string) {
+  console.log(`Fetching Hansard data for ${extId}`);
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   const host = process.env.VERCEL_URL || 'localhost:3000';
   
