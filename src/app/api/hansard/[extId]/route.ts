@@ -42,6 +42,12 @@ export async function GET(
       next: { revalidate: 3600 } // Cache for 1 hour
     });
 
+    console.log(`Hansard API response for ${extId}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      url: hansardUrl
+    });
+
     if (!response.ok) {
       return NextResponse.json(
         { 
