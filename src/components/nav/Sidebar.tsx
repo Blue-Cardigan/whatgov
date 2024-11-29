@@ -118,7 +118,7 @@ export function Sidebar({ className }: SidebarProps) {
             </DropdownMenuItem>
           ) : (
             <>
-              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+              <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
                 <Link href="/login" className="flex items-center space-x-3">
                   <div className="bg-secondary rounded-lg p-2">
                     <LogIn className="h-5 w-5 text-secondary-foreground" />
@@ -129,7 +129,7 @@ export function Sidebar({ className }: SidebarProps) {
                   </div>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+              <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
                 <Link href="/signup" className="flex items-center space-x-3">
                   <div className="bg-secondary rounded-lg p-2">
                     <UserPlus className="h-5 w-5 text-secondary-foreground" />

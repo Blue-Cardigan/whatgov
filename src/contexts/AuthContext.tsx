@@ -114,8 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      // First clear any user-specific cache
       if (state.user?.id) {
-        // Clear user-specific cache
         await fetch('/api/cache', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -125,11 +125,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }),
         });
       }
-      await supabase.auth.signOut();
-      updateState({ user: null, profile: null, subscription: null });
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Clear local state
+      updateState({ 
+        user: null, 
+        profile: null, 
+        subscription: null,
+        error: null 
+      });
+
+      // Navigate to home page
       router.push('/');
+      router.refresh(); // Force a refresh to ensure all authenticated state is cleared
     } catch (error) {
       console.error('Sign out error:', error);
+      updateState({ 
+        error: error instanceof Error ? error.message : 'Failed to sign out' 
+      });
     }
   };
 

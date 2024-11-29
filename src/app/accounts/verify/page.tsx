@@ -8,7 +8,7 @@ import createClient from "@/lib/supabase/client";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { resendVerificationEmail, verifyEmail } from "@/lib/supabase";
+import { resendVerificationEmail, verifyEmail } from "@/lib/supabase/auth";
 
 // Create a separate component for the verification logic
 function VerificationHandler() {

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
-import { lookupPostcode } from "@/lib/supabase";
+import { lookupPostcode } from "@/lib/supabase/myparliament";
 import { ChartBarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -31,8 +31,8 @@ interface StepsProps {
   setFormData: (data: FormData | ((prev: FormData) => FormData)) => void;
   postcodeError: string;
   setPostcodeError: (error: string) => void;
-  mpDetails: { mp: string | null; constituency: string | null; } | null;
-  setMpDetails: (details: { mp: string | null; constituency: string | null; } | null) => void;
+  mpDetails: { constituency: string | null; mp: string | null } | null;
+  setMpDetails: (details: { constituency: string | null; mp: string | null } | null) => void;
   isLookingUpPostcode: boolean;
   setIsLookingUpPostcode: (loading: boolean) => void;
 }
