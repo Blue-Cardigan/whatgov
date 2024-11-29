@@ -24,7 +24,11 @@ export async function GET(
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: 'Failed to fetch Hansard data' },
+        { 
+          error: 'Failed to fetch Hansard data',
+          status: response.status,
+          statusText: response.statusText
+        },
         { status: response.status }
       );
     }
@@ -34,7 +38,10 @@ export async function GET(
   } catch (error) {
     console.error('Hansard API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
