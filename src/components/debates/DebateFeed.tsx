@@ -56,7 +56,7 @@ export function DebateFeed() {
             <div className="flex flex-col gap-2">
               <h1 className="text-lg font-bold">Parliament, in everyday language.</h1>
               <p className="text-muted-foreground">
-                We paraphrase what MPs say using AI, so you can vote on what they say.
+                We paraphrase what MPs say using AI, so you can finally keep up with Parliament.
               </p>
               <p>
                 Create a free account to:

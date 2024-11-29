@@ -23,12 +23,12 @@ const criticalStyles = `
 `;
 
 export const metadata = {
-  title: 'WhatGov | Parliament in Your Feed',
-  description: 'Track the issues you care about with Parliamentary Monitoring in your feed.',
-  keywords: 'parliament, hansard, parliamentary debates, democracy, UK politics, MP voting records, legislative process',
+  title: 'WhatGov | Direct Access to Parliament',
+  description: 'Follow Parliament without the Politics',
+  keywords: 'parliament, hansard, parliamentary debates, democracy, UK politics, MP voting records, legislative process, direct democracy',
   openGraph: {
-    title: 'WhatGov | Parliament in Your Feed',
-    description: 'Track the issues you care about with Parliamentary Monitoring in your feed.',
+    title: 'WhatGov | Direct Access to Parliament',
+    description: 'Follow Parliament without the Politics',
     type: 'website',
     locale: 'en_GB',
     url: 'https://whatgov.co.uk',
