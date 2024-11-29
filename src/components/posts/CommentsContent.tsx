@@ -17,7 +17,9 @@ const getPortraitUrl = (memberId: number) =>
   `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=oneone&webversion=true`;
 
 // Helper function to normalize names for comparison
-const normalizeName = (name: string): string => {
+const normalizeName = (name: string | null | undefined): string => {
+  if (!name) return '';
+  
   return name
     .toLowerCase()
     // Remove titles like Sir, Dame, Dr, etc.
@@ -29,12 +31,13 @@ const normalizeName = (name: string): string => {
 
 // Helper function to find matching speaker
 const findMatchingSpeaker = (
-  author: string, 
+  author: string | null | undefined, 
   speakers?: Array<{ display_as: string; member_id: number; party: string }>
 ) => {
   if (!speakers?.length || !author) return undefined;
   
   const normalizedAuthor = normalizeName(author);
+  if (!normalizedAuthor) return undefined;
   
   return speakers.find(speaker => 
     normalizeName(speaker.display_as) === normalizedAuthor
