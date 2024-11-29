@@ -1,6 +1,5 @@
 import { FeedItem } from '@/types';
 import { PostCard } from '@/components/posts/PostCard';
-import { DebateSkeleton } from './DebateSkeleton';
 import { useVirtualizedFeed } from '@/hooks/useFeed';
 
 interface DebateListProps {
@@ -15,13 +14,9 @@ interface DebateListProps {
   isEngagedCitizen?: boolean;
 }
 
-export function DebateList({ items, isLoading, loadMoreRef, userMp, isEngagedCitizen, ...props }: DebateListProps) {
+export function DebateList({ items, loadMoreRef, userMp, isEngagedCitizen, ...props }: DebateListProps) {
   const { virtualizer, parentRef, updateItemState } = useVirtualizedFeed(items);
   
-  if (isLoading) {
-    return <DebateSkeleton />;
-  }
-
   const filteredItems = items.filter(item => item.ai_summary);
 
   if (filteredItems.length === 0) {

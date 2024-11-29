@@ -2,15 +2,16 @@
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFeed } from '@/hooks/useFeed';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
 import type { FeedFilters } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
+import { DebateSkeleton } from './DebateSkeleton';
 
 export function DebateFeed() {
-  const { profile, user, loading, isEngagedCitizen } = useAuth();
+  const { isEngagedCitizen, loading, profile, user } = useAuthContext();
   const { toast } = useToast();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
@@ -24,10 +25,25 @@ export function DebateFeed() {
     divisionsOnly: false
   });
 
-  // Show welcome toast for unauthenticated users
+  const { 
+    data, 
+    isLoading, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useFeed({ 
+    pageSize: 8,
+    filters: {
+      ...filters,
+      type: filters.type.length ? filters.type : [],
+      location: filters.location.length ? filters.location : [],
+      days: filters.days.length ? filters.days : [],
+      topics: filters.topics.length ? filters.topics : [],
+    }
+  });
+
   useEffect(() => {
     if (!loading && !user && !hasShownWelcome) {
-      // Check if we've shown the toast today
       const lastShown = localStorage.getItem('welcomeToastLastShown');
       const today = new Date().toDateString();
       
@@ -58,42 +74,9 @@ export function DebateFeed() {
     }
   }, [loading, user, hasShownWelcome, toast]);
 
-  const { 
-    data, 
-    isLoading, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
-  } = useFeed({ 
-    pageSize: 8,
-    filters: {
-      ...filters,
-      type: filters.type.length ? filters.type : [],
-      location: filters.location.length ? filters.location : [],
-      days: filters.days.length ? filters.days : [],
-      topics: filters.topics.length ? filters.topics : [],
-    }
-  });
-
-  // Deduplicate items across pages
-  const allItems = useMemo(() => {
-    if (!data?.pages) return [];
-    
-    const seenIds = new Set<string>();
-    return data.pages.flatMap(page => 
-      page.items.filter(item => {
-        if (seenIds.has(item.id)) return false;
-        seenIds.add(item.id);
-        return true;
-      })
-    );
-  }, [data?.pages]);
-
   useEffect(() => {
-    // Move the entire IntersectionObserver logic inside this check
     if (typeof window === 'undefined') return;
 
-    // Create observer only on the client side
     const createObserver = () => {
       const observer = new IntersectionObserver(
         (entries) => {
@@ -119,7 +102,6 @@ export function DebateFeed() {
     let timeoutId: NodeJS.Timeout;
     const observer = createObserver();
 
-    // Define resize handler
     const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
@@ -128,16 +110,31 @@ export function DebateFeed() {
       }, 100);
     };
 
-    // Add resize listener
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
       clearTimeout(timeoutId);
     };
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const allItems = useMemo(() => {
+    if (!data?.pages) return [];
+    
+    const seenIds = new Set<string>();
+    return data.pages.flatMap(page => 
+      page.items.filter(item => {
+        if (seenIds.has(item.id)) return false;
+        seenIds.add(item.id);
+        return true;
+      })
+    );
+  }, [data?.pages]);
+
+  if (loading || isLoading) {
+    return <DebateSkeleton />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:pr-20">
@@ -148,12 +145,12 @@ export function DebateFeed() {
         />
         <DebateList
           items={allItems}
-          isLoading={isLoading}
           loadMoreRef={loadMoreRef}
           isFetchingNextPage={isFetchingNextPage}
           hasMore={hasNextPage}
           userMp={profile?.mp}
           isEngagedCitizen={isEngagedCitizen}
+          isLoading={isLoading}
         />
       </div>
       <SimpleFooter />

@@ -365,9 +365,6 @@ export function Sidebar({ className }: SidebarProps) {
                 <item.icon className="h-6 w-6" />
                 <span className="text-sm mt-1.5 font-medium">
                   {item.title}
-                  {isEngagedCitizen && (
-                    <Crown className="inline-block h-4 w-4 ml-1.5 text-primary" />
-                  )}
                 </span>
               </div>
             </Link>

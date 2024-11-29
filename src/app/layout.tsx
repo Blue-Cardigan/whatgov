@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster"
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 import { Analytics } from '@vercel/analytics/react';
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata = {
   title: 'WhatGov | Parliament in Your Feed',
@@ -55,9 +56,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <SupabaseProvider>
-            <QueryProvider>
-              {children}
-            </QueryProvider>
+            <AuthProvider>
+              <QueryProvider>
+                {children}
+              </QueryProvider>
+            </AuthProvider>
           </SupabaseProvider>
         </ThemeProvider>
         <Toaster />

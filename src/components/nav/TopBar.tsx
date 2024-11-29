@@ -11,8 +11,8 @@ import {
   UserIcon,
   Vote,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useState, useEffect, useMemo } from "react";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 
 interface TopBarProps {
@@ -99,8 +99,14 @@ export const booleanFilters = [
 ] satisfies BooleanFilterItem[];
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
-  const { isEngagedCitizen, user, profile, loading } = useAuth();
+  const { isEngagedCitizen, user, profile, loading } = useAuthContext();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  // Show available filters immediately based on current auth state
+  const availableFilters = useMemo(() => {
+    const basicFilters = filterItems.filter(f => f.tier !== 'premium');
+    return loading ? basicFilters : (isEngagedCitizen ? filterItems : basicFilters);
+  }, [isEngagedCitizen, loading]);
 
   const handleFilterChange = (updatedFilters: Omit<FeedFilters, 'house'>) => {
     // Don't process filter changes while loading
@@ -178,7 +184,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         <DebateFilters 
           filters={omitHouse(filters)}
           onChange={handleFilterChange} 
-          filterItems={[...filterItems, ...booleanFilters]}
+          filterItems={[...availableFilters, ...booleanFilters]}
           isEnabled={true}
           onUpgrade={() => setShowUpgradeDialog(true)}
         />
@@ -196,7 +202,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         <DebateFilters 
           filters={omitHouse(filters)}
           onChange={handleFilterChange} 
-          filterItems={[...filterItems, ...booleanFilters]}
+          filterItems={[...availableFilters, ...booleanFilters]}
           isEnabled={isEngagedCitizen}
           onUpgrade={() => setShowUpgradeDialog(true)}
         />
