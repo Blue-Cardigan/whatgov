@@ -19,6 +19,7 @@ import {
 import { PLANS } from '@/lib/stripe-client';
 import { useEffect } from 'react';
 import { Suspense } from 'react';
+import createClient from '@/lib/supabase/client';
 
 const tiers = [
   {
@@ -112,13 +113,19 @@ function PricingContent() {
     }
 
     try {
-      const token = await getAuthHeader();
+      // Get the current session instead of just the auth header
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Idempotency-Key': `${user.id}-${Date.now()}`,
         },
         body: JSON.stringify({ priceId }),

@@ -72,13 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
-        .single();
-
-      if (error) throw error;
+        .maybeSingle();
 
       setSubscriptionCache(userId, data);
       updateState({ subscription: data });

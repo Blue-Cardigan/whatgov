@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   ScrollText, Search, BookOpen, Settings, 
-  Menu, User, LogOut, LogIn, UserPlus, Info 
+  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,7 +29,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, subscription } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -39,6 +39,8 @@ export function Sidebar({ className }: SidebarProps) {
       console.error('Error signing out:', error);
     }
   };
+
+  const showUpgradeOption = user && !subscription;
 
   const renderAuthMenuItems = () => {
     return (
@@ -63,6 +65,20 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="p-2">
           {user && (
             <>
+              {showUpgradeOption && (
+                <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
+                  <Link href="/pricing" className="flex items-center space-x-3">
+                    <div className="bg-secondary rounded-lg p-2">
+                      <Sparkles className="h-5 w-5 text-secondary-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Upgrade</p>
+                      <p className="text-sm text-muted-foreground">Get premium features</p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
                 <Link href="/profile" className="flex items-center space-x-3">
                   <div className="bg-secondary rounded-lg p-2">
@@ -219,6 +235,30 @@ export function Sidebar({ className }: SidebarProps) {
 
           {/* Bottom Section */}
           <div className="px-3 mt-auto border-t pt-4 space-y-2">
+            {showUpgradeOption && (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href="/pricing" className="hidden md:block">
+                      <div className={cn(
+                        "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground",
+                        "h-14",
+                        "justify-center lg:justify-start",
+                        pathname === '/pricing' ? "bg-accent text-accent-foreground" : "transparent",
+                        "lg:w-full"
+                      )}>
+                        <Sparkles className="h-7 w-7" />
+                        <span className="hidden lg:block ml-4 font-semibold text-xl">Upgrade</span>
+                      </div>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="lg:hidden text-xl">
+                    Upgrade
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
