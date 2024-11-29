@@ -30,46 +30,64 @@ async function getDebateFromServer(extId: string) {
 }
 
 async function getHansardData(extId: string) {
-  console.log(`Fetching Hansard data for ${extId}`);
   const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
   const host = process.env.VERCEL_URL || 'localhost:3000';
   
-  const response = await fetch(
-    `${protocol}://${host}/api/hansard/${extId}`,
-    { next: { revalidate: 3600 } }
-  );
-  console.log(`Hansard API response for ${extId}:`, response);
-  
-  if (!response.ok) return null;
-  return response.json();
+  try {
+    const response = await fetch(
+      `${protocol}://${host}/api/hansard/${extId}`,
+      { next: { revalidate: 3600 } }
+    );
+    
+    console.info(`[Server] Hansard API response status for ${extId}: ${response.status}`);
+    
+    if (!response.ok) {
+      console.error(`[Server] Failed to fetch Hansard data: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`[Server] Error fetching Hansard data for ${extId}:`, error);
+    return null;
+  }
 }
 
 export default async function DebatePage({ params }: DebatePageProps) {
   const resolvedParams = await params;
-  console.log(`Resolved params:`, resolvedParams);
-  const [rawDebate, hansardData] = await Promise.all([
-    getDebateFromServer(resolvedParams.extId),
-    getHansardData(resolvedParams.extId)
-  ]);
-  console.log(`Raw debate:`, rawDebate);
-  console.log(`Hansard data:`, hansardData);
+  
+  try {
+    const [rawDebate, hansardData] = await Promise.all([
+      getDebateFromServer(resolvedParams.extId),
+      getHansardData(resolvedParams.extId)
+    ]);
+    
+    console.info(`[Server] Debate ${resolvedParams.extId} loaded:`, {
+      hasRawDebate: !!rawDebate,
+      hasHansardData: !!hansardData
+    });
 
-  if (!rawDebate) {
+    if (!rawDebate) {
+      notFound();
+    }
+
+    return (
+      <AuthProvider>
+        <div className="container max-w-4xl mx-auto py-8 px-4">
+          <Suspense fallback={<div>Loading...</div>}>
+            <ProcessDebateClient 
+              rawDebate={rawDebate} 
+              hansardData={hansardData}
+            />
+          </Suspense>
+        </div>
+      </AuthProvider>
+    );
+  } catch (error) {
+    console.error(`[Server] Error loading debate ${resolvedParams.extId}:`, error);
     notFound();
   }
-
-  return (
-    <AuthProvider>
-      <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Suspense fallback={<div>Loading...</div>}>
-          <ProcessDebateClient 
-            rawDebate={rawDebate} 
-            hansardData={hansardData}
-          />
-        </Suspense>
-      </div>
-    </AuthProvider>
-  );
 }
 
 // Generate metadata for the page

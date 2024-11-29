@@ -13,8 +13,7 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png',
   '/styles/critical.css',
   '/my-parliament',
-  '/search',
-  '/_next/static/css/'
+  '/search'
 ];
 
 // Add route-based caching strategy
@@ -66,21 +65,20 @@ self.addEventListener('fetch', (event) => {
   // Skip non-HTTP(S) requests
   if (!event.request.url.startsWith('http')) return;
 
-  // Determine caching strategy based on URL
   const url = new URL(event.request.url);
   let strategy = ROUTE_CACHE_CONFIG.default;
-
-  // Check for specific route matches
-  for (const route in ROUTE_CACHE_CONFIG) {
-    if (url.pathname.startsWith(route)) {
-      strategy = ROUTE_CACHE_CONFIG[route];
-      break;
-    }
-  }
 
   // Special handling for Next.js CSS files
   if (url.pathname.includes('/_next/static/css/')) {
     strategy = 'cache-first';
+  } else {
+    // Check for specific route matches
+    for (const route in ROUTE_CACHE_CONFIG) {
+      if (url.pathname.startsWith(route)) {
+        strategy = ROUTE_CACHE_CONFIG[route];
+        break;
+      }
+    }
   }
 
   event.respondWith(
