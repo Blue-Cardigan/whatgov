@@ -13,7 +13,8 @@ const PRECACHE_ASSETS = [
   '/apple-touch-icon.png',
   '/styles/critical.css',
   '/my-parliament',
-  '/search'
+  '/search',
+  '/_next/static/css/'
 ];
 
 // Add route-based caching strategy
@@ -57,7 +58,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - network-first strategy with offline fallback
+// Fetch event - implement route-based caching strategy
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
@@ -65,25 +66,43 @@ self.addEventListener('fetch', (event) => {
   // Skip non-HTTP(S) requests
   if (!event.request.url.startsWith('http')) return;
 
+  // Determine caching strategy based on URL
+  const url = new URL(event.request.url);
+  let strategy = ROUTE_CACHE_CONFIG.default;
+
+  // Check for specific route matches
+  for (const route in ROUTE_CACHE_CONFIG) {
+    if (url.pathname.startsWith(route)) {
+      strategy = ROUTE_CACHE_CONFIG[route];
+      break;
+    }
+  }
+
+  // Special handling for Next.js CSS files
+  if (url.pathname.includes('/_next/static/css/')) {
+    strategy = 'cache-first';
+  }
+
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(async () => {
-        // Try to get from cache
+    (async () => {
+      if (strategy === 'cache-first') {
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) return cachedResponse;
+      }
 
-        // Return offline page if nothing else works
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          const responseClone = response.clone();
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, responseClone);
+        }
+        return response;
+      } catch (error) {
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) return cachedResponse;
         return caches.match(OFFLINE_URL);
-      })
+      }
+    })()
   );
 }); 

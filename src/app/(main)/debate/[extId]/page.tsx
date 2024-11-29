@@ -46,10 +46,13 @@ async function getHansardData(extId: string) {
 
 export default async function DebatePage({ params }: DebatePageProps) {
   const resolvedParams = await params;
+  console.log(`Resolved params:`, resolvedParams);
   const [rawDebate, hansardData] = await Promise.all([
     getDebateFromServer(resolvedParams.extId),
     getHansardData(resolvedParams.extId)
   ]);
+  console.log(`Raw debate:`, rawDebate);
+  console.log(`Hansard data:`, hansardData);
 
   if (!rawDebate) {
     notFound();
