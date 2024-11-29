@@ -6,6 +6,7 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 4) Hover hints for first time users
 
 #Optimizations
+- Generate Nameid to avoid ugly /debate urls
 - Reduce middleware build size for edge runtime
 
 ### Political Monitoring:

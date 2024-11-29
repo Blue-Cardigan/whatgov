@@ -3,7 +3,7 @@
 import { processDebates } from '@/lib/supabase/feed';
 import type { Database } from '@/types/supabase';
 import { DebateView } from './DebateView';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import type { HansardDebateResponse } from '@/types/hansard';
 
 interface ProcessDebateClientProps {
@@ -18,10 +18,15 @@ export function ProcessDebateClient({ rawDebate, hansardData }: ProcessDebateCli
     return items[0];
   }, [rawDebate]);
   
-  // Add error handling for hansardData
-  if (hansardData === undefined) {
-    console.error('Failed to load Hansard data');
-  }
+  // Add detailed logging for hansardData
+  useEffect(() => {
+    console.log('ProcessDebateClient received hansardData:', {
+      exists: !!hansardData,
+      hasItems: hansardData?.Items?.length ?? 0 > 0,
+      itemCount: hansardData?.Items?.length ?? 0,
+      debateId: rawDebate.ext_id
+    });
+  }, [hansardData, rawDebate.ext_id]);
   
   return (
     <DebateView 
