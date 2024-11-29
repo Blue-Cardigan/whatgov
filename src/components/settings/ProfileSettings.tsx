@@ -421,25 +421,6 @@ export function ProfileSettings() {
                   }
                 />
               </div>
-
-              <div className="flex items-center justify-between space-x-4 rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <div className="flex items-center space-x-2">
-                    <BellRing className="h-4 w-4 text-muted-foreground" />
-                    <Label htmlFor="notifications" className="font-medium">Email Notifications</Label>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified about important updates and responses
-                  </p>
-                </div>
-                <Switch
-                  id="notifications"
-                  checked={profile.newsletter}
-                  onCheckedChange={(checked) => 
-                    setProfile({ ...profile, newsletter: checked })
-                  }
-                />
-              </div>
             </div>
           </div>
 

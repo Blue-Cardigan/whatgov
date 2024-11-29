@@ -63,7 +63,7 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="p-2">
           {user && (
             <>
-              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+              <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
                 <Link href="/profile" className="flex items-center space-x-3">
                   <div className="bg-secondary rounded-lg p-2">
                     <User className="h-5 w-5 text-secondary-foreground" />
@@ -87,7 +87,7 @@ export function Sidebar({ className }: SidebarProps) {
             </>
           )}
 
-          <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer">
+          <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
             <Link href="/about" className="flex items-center space-x-3">
               <div className="bg-secondary rounded-lg p-2">
                 <Info className="h-5 w-5 text-secondary-foreground" />
@@ -105,7 +105,7 @@ export function Sidebar({ className }: SidebarProps) {
           {user ? (
             <DropdownMenuItem 
               onClick={handleSignOut}
-              className="p-3 focus:bg-destructive/10 rounded-lg cursor-pointer"
+              className="p-1 focus:bg-destructive/10 rounded-lg cursor-pointer"
             >
               <div className="flex items-center space-x-3">
                 <div className="bg-destructive/10 rounded-lg p-2">
