@@ -87,7 +87,7 @@ export async function middleware(req: NextRequest) {
 
       // Check premium routes
       if (pathname.startsWith('/api/premium/')) {
-        const cached = getSubscriptionFromCache(user.id);
+        const cached = await getSubscriptionFromCache(user.id);
         if (cached && !isSubscriptionActive(cached)) {
           throw new SubscriptionError('Subscription required');
         }

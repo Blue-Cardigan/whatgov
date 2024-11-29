@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HANSARD_API_BASE } from '@/lib/hansard-api';
+import { HANSARD_API_BASE } from '@/lib/search-api';
 
 export async function GET(request: NextRequest) {
   try {

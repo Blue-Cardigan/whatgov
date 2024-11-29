@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats, migrateAnonymousVotes } from '@/lib/supabase';
 import { FeedItem } from '@/types';
-import { useAuth } from './useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { 
   TopicStats, 
   UserTopicStats, 

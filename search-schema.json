@@ -1,0 +1,519 @@
+"/search.{format}":
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "summary": "Get all results that contain the given search term",
+        "description": "Get contributions, written statements, written answers, corrections,\r\npetitions, committees, divisions and members that contain the given search term.\r\n<br /><br />\r\nThere are a maximum of four search results of each type.\r\n<br /><br />\r\nThe search term can be simple text or it can contain directives for advanced searches.<br />\r\nyou can also connect multiple search directives with AND<br />\r\nuse spokenby:name to get results when named person spoke<br />\r\nuse debate:debate to get results for debates matching supplied text<br />\r\nuse words:words to get results containing specified words<br />",
+        "operationId": "Search_FullSearch",
+        "consumes": [],
+        "produces": [
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "path",
+            "description": "the required output format (xml or json)",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.house",
+            "in": "query",
+            "description": "the parliamentary house (Commons or Lords)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.startDate",
+            "in": "query",
+            "description": "the date to search from (yyyy-mm-dd)",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "queryParameters.endDate",
+            "in": "query",
+            "description": "the date to search to (yyyy-mm-dd)",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "queryParameters.date",
+            "in": "query",
+            "description": "the date to search (yyyy-mm-dd)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.memberId",
+            "in": "query",
+            "description": "the unique id of a member (member details are returned from ‘Search Members’ operation)",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.divisionId",
+            "in": "query",
+            "description": "the unique id of the division to be searched",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.hansardIdentifier",
+            "in": "query",
+            "description": "Hansard identifier",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.searchTerm",
+            "in": "query",
+            "description": "the term for which to search",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.skip",
+            "in": "query",
+            "description": "how many results to skip (Default is 0)",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.take",
+            "in": "query",
+            "description": "how many results to return per page",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.memberIds",
+            "in": "query",
+            "description": "the list of member ids in which to search",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.department",
+            "in": "query",
+            "description": "department to be searched",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.debateType",
+            "in": "query",
+            "description": "debate type to be searched",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.includeFormer",
+            "in": "query",
+            "description": "whether or not to include former members",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "queryParameters.includeCurrent",
+            "in": "query",
+            "description": "whether or not to include current members",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "queryParameters.withDivision",
+            "in": "query",
+            "description": "whether or not to only include results with a division",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "queryParameters.seriesNumber",
+            "in": "query",
+            "description": "the series number in which to search",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.volumeNumber",
+            "in": "query",
+            "description": "the Volume Number in which to search",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.columnNumber",
+            "in": "query",
+            "description": "the Column number for which to search",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.committeeTitle",
+            "in": "query",
+            "description": "the title of the committee to be searched",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.committeeType",
+            "in": "query",
+            "description": "committee type to be searched",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.includeCommitteeDivisions",
+            "in": "query",
+            "description": "whether or not to include committee divisions",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "queryParameters.section",
+            "in": "query",
+            "description": "unique id of the section to search",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.outputType",
+            "in": "query",
+            "description": "output type (List or Group)",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "queryParameters.debateSectionId",
+            "in": "query",
+            "description": "the unique id of the debate section to search",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "queryParameters.timelineGroupingSize",
+            "in": "query",
+            "description": "timeline grouping size. Enter Day, Month or Year",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "Day",
+              "Month",
+              "Year"
+            ]
+          },
+          {
+            "name": "queryParameters.orderBy",
+            "in": "query",
+            "description": "order results (SittingDateAsc or SittingDateDesc)",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "SittingDateAsc",
+              "SittingDateDesc"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/FullSearchResult"
+            }
+          }
+        }
+      }
+    },
+"FullSearchResult": {
+      "type": "object",
+      "properties": {
+        "TotalMembers": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalContributions": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalWrittenStatements": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalWrittenAnswers": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalCorrections": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalPetitions": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalDebates": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalCommittees": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "TotalDivisions": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "SearchTerms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "Members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Member"
+          }
+        },
+        "Contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchReferencesItem"
+          }
+        },
+        "WrittenStatements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchReferencesItem"
+          }
+        },
+        "WrittenAnswers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchReferencesItem"
+          }
+        },
+        "Corrections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchReferencesItem"
+          }
+        },
+        "Petitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchDebateItem"
+          }
+        },
+        "Debates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchDebateItem"
+          }
+        },
+        "Divisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DivisionOverview"
+          }
+        },
+        "Committees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchCommitteeItem"
+          }
+        }
+      }
+    },
+"Member": {
+      "type": "object",
+      "properties": {
+        "MemberId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "DodsId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "PimsId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "DisplayAs": {
+          "type": "string"
+        },
+        "ListAs": {
+          "type": "string"
+        },
+        "FullTitle": {
+          "type": "string"
+        },
+        "LayingMinisterName": {
+          "type": "string"
+        },
+        "HistoricalMemberName": {
+          "type": "string"
+        },
+        "HistoricalFullTitle": {
+          "type": "string"
+        },
+        "Gender": {
+          "type": "string"
+        },
+        "Party": {
+          "type": "string"
+        },
+        "PartyId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "House": {
+          "type": "string"
+        },
+        "MemberFrom": {
+          "type": "string"
+        },
+        "HouseStartDate": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "HouseEndDate": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "IsTeller": {
+          "type": "boolean"
+        },
+        "SortOrder": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "ConstituencyCountry": {
+          "type": "string"
+        }
+      }
+    },
+"SearchReferencesItem": {
+      "type": "object",
+      "properties": {
+        "MemberName": {
+          "type": "string"
+        },
+        "MemberId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "AttributedTo": {
+          "type": "string"
+        },
+        "ItemId": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "ContributionExtId": {
+          "type": "string"
+        },
+        "ContributionText": {
+          "type": "string"
+        },
+        "HRSTag": {
+          "type": "string"
+        },
+        "HansardSection": {
+          "type": "string"
+        },
+        "Timecode": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "DebateSection": {
+          "type": "string"
+        },
+        "DebateSectionId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "DebateSectionExtId": {
+          "type": "string"
+        },
+        "SittingDate": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "Section": {
+          "type": "string"
+        },
+        "House": {
+          "type": "string"
+        },
+        "OrderInDebateSection": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "DebateSectionOrder": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "Rank": {
+          "format": "int32",
+          "type": "integer"
+        }
+      }
+    },
+"SearchDebateItem": {
+      "type": "object",
+      "properties": {
+        "DebateSection": {
+          "type": "string"
+        },
+        "SittingDate": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "House": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "Rank": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "DebateSectionExtId": {
+          "type": "string"
+        }
+      }
+    },
+  "SearchCommitteeItem": {
+      "type": "object",
+      "properties": {
+        "House": {
+          "type": "string"
+        },
+        "Title": {
+          "type": "string"
+        },
+        "DebateSection": {
+          "type": "string"
+        }
+      }
+    },
+  
+  

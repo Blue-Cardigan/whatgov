@@ -1,11 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { HansardAPI } from '@/lib/hansard-api';
 import { useState, useMemo, useCallback } from 'react';
 import { UseQueryResult } from '@tanstack/react-query';
-import { OralQuestion } from '@/lib/hansard-api';
+import { OralQuestion } from '@/types/questions';
 import { CACHE_KEYS } from '@/lib/redis/config';
 import { useCache } from './useCache';
-
+import { QuestionsApi } from '@/lib/questions-api';
 // Helper function to check if data is empty or invalid
 function isDataEmpty(data: OralQuestion[] | undefined): boolean {
   return !data || data.length === 0;
@@ -35,7 +34,7 @@ function shouldAutoSwitchToNext(
   return currentWeekEmpty && nextWeekHasData;
 }
 
-export function useDebatesData() {
+export function useQuestionsData() {
   const [requestedWeek, setRequestedWeek] = useState<'current' | 'next'>('current');
   const [autoSwitchedToNext, setAutoSwitchedToNext] = useState(false);
   const queryClient = useQueryClient();
@@ -54,7 +53,7 @@ export function useDebatesData() {
       
       if (cached) {
         // Refresh cache in background
-        HansardAPI.getUpcomingOralQuestions(false)
+        QuestionsApi.getUpcomingOralQuestions(false)
           .then(fresh => {
             if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
               setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
@@ -66,7 +65,7 @@ export function useDebatesData() {
       }
 
       // If not in cache, fetch fresh data
-      const data = await HansardAPI.getUpcomingOralQuestions(false);
+      const data = await QuestionsApi.getUpcomingOralQuestions(false);
       await setCache(cacheKey, data, CACHE_KEYS.upcomingDebates.ttl);
       return data;
     },
@@ -82,7 +81,7 @@ export function useDebatesData() {
       const cached = await getCache<OralQuestion[]>(cacheKey);
       
       if (cached) {
-        HansardAPI.getUpcomingOralQuestions(true)
+        QuestionsApi.getUpcomingOralQuestions(true)
           .then(fresh => {
             if (JSON.stringify(fresh) !== JSON.stringify(cached)) {
               setCache(cacheKey, fresh, CACHE_KEYS.upcomingDebates.ttl);
@@ -93,7 +92,7 @@ export function useDebatesData() {
         return cached;
       }
 
-      const data = await HansardAPI.getUpcomingOralQuestions(true);
+      const data = await QuestionsApi.getUpcomingOralQuestions(true);
       await setCache(cacheKey, data, CACHE_KEYS.upcomingDebates.ttl);
       return data;
     },
@@ -127,7 +126,7 @@ export function useDebatesData() {
     if (requestedWeek === 'current') {
       queryClient.prefetchQuery({
         queryKey: ['upcomingDebates', 'next'],
-        queryFn: () => HansardAPI.getUpcomingOralQuestions(true),
+        queryFn: () => QuestionsApi.getUpcomingOralQuestions(true),
         staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
       });
     }

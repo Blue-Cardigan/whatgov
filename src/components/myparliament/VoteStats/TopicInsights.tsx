@@ -19,7 +19,7 @@ interface TopicInsightsProps {
           features={[
             "See your most active topics",
             "Track agreement rates",
-            "Analyze voting patterns",
+            "Analyse voting patterns",
             "Identify voting trends"
           ]}
         />

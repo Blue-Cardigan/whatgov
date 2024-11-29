@@ -20,7 +20,7 @@ export function UserTopicVotes({ userTopicVotes }: UserTopicVotesProps) {
           "Track your votes by topic",
           "See your agreement rates",
           "View your voting history",
-          "Analyze your voting patterns"
+          "Analyse your voting patterns"
         ]}
       />
     );

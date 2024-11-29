@@ -92,11 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-
-      updateState({ subscription: data });
+      updateState({ subscription: data || null });
     } catch (error) {
       console.error('Subscription fetch error:', error);
       updateState({ subscription: null });

@@ -3,7 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ProfileImage } from "./ProfileImage";
-import { OralQuestion } from "@/lib/hansard-api";
+import { OralQuestion } from "@/lib/search-api";
 
 interface DayHeaderProps {
   date: Date;

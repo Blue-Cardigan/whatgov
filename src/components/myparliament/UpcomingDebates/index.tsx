@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import Image from "next/image";
-import { OralQuestion } from "@/lib/hansard-api";
+import { OralQuestion } from "@/types/questions";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, User2, ChevronDown, AlertCircle, Clock } from "lucide-react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useDebatesData } from '@/hooks/useDebatesData';
+import { useQuestionsData } from '@/hooks/useQuestionsData';
 
 function ProfileImage({ 
   src, 
@@ -308,7 +308,7 @@ export function UpcomingDebates() {
     toggleWeek,
     queryClient,
     autoSwitchedToNext
-  } = useDebatesData();
+  } = useQuestionsData();
 
   // Process schedule data with auto-expand logic
   const schedule = useMemo(() => {

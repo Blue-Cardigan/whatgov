@@ -1,5 +1,12 @@
 import { LucideIcon } from "lucide-react";
 
+// Add new types for better type safety
+export interface FetchOptions {
+  retries?: number;
+  cacheTTL?: number;
+  forceRefresh?: boolean;
+}
+
 export interface FeedItem {
     id: string;
     ext_id: string;

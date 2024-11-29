@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from './useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { ANON_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
+import { isSubscriptionActive } from '@/lib/subscription';
 
 const STORAGE_KEY = 'whatgov_engagement';
 const RESET_HOUR = 0; // Reset at midnight UTC
+
+// Add AI search limit to the constants
+export const MONTHLY_AI_SEARCH_LIMIT = 12
 
 interface EngagementStats {
   votes: number;
   lastResetDate: string;
   shownPrompts: number[];
+  aiSearches: number;  // Add this field
+  aiSearchLastReset: string;  // Add this field for monthly reset
 }
 
 export function useEngagement() {
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const [stats, setStats] = useState<EngagementStats>(() => {
     if (typeof window === 'undefined') return initializeStats();
     
@@ -43,6 +49,8 @@ export function useEngagement() {
       votes: 0,
       lastResetDate: new Date().toISOString(),
       shownPrompts: [],
+      aiSearches: 0,
+      aiSearchLastReset: new Date().toISOString(),
     };
   }
 
@@ -103,10 +111,59 @@ export function useEngagement() {
     return getRemainingVotes() <= 0;
   }, [user, getRemainingVotes]);
 
+  // Add function to check if we should reset monthly counters
+  const shouldResetMonthly = useCallback((lastReset: Date): boolean => {
+    const now = new Date();
+    const resetTime = new Date(lastReset);
+    return now.getMonth() !== resetTime.getMonth() || 
+           now.getFullYear() !== resetTime.getFullYear();
+  }, []);
+
+  // Add function to check and reset monthly stats
+  const checkAndResetMonthly = useCallback(() => {
+    if (shouldResetMonthly(new Date(stats.aiSearchLastReset))) {
+      setStats(prev => ({
+        ...prev,
+        aiSearches: 0,
+        aiSearchLastReset: new Date().toISOString()
+      }));
+      return true;
+    }
+    return false;
+  }, [stats.aiSearchLastReset, shouldResetMonthly]);
+
+  // Add function to record AI search
+  const recordAISearch = useCallback(() => {
+    if (!checkAndResetMonthly()) {
+      setStats(prev => ({
+        ...prev,
+        aiSearches: prev.aiSearches + 1
+      }));
+    }
+  }, [checkAndResetMonthly]);
+
+  // Add function to get remaining AI searches
+  const getRemainingAISearches = useCallback((): number => {
+    if (user?.id && isSubscriptionActive(subscription)) return Infinity;
+    
+    checkAndResetMonthly();
+    return Math.max(0, MONTHLY_AI_SEARCH_LIMIT - stats.aiSearches);
+  }, [user, stats.aiSearches, checkAndResetMonthly, subscription]);
+
+  // Add function to check if user has reached AI search limit
+  const hasReachedAISearchLimit = useCallback((): boolean => {
+    if (user?.id && isSubscriptionActive(subscription)) return false;
+    
+    return getRemainingAISearches() <= 0;
+  }, [user, getRemainingAISearches, subscription]);
+
   return {
     recordVote,
     getRemainingVotes,
     shouldShowVotePrompt,
     hasReachedVoteLimit,
+    recordAISearch,
+    getRemainingAISearches,
+    hasReachedAISearchLimit,
   };
 }

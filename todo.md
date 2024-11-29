@@ -14,7 +14,7 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 ### Political Monitoring:
 ## Search
 [/] Summaries and key points in search results
-[ ] Metadata from match in search results
+[/] Metadata from match in search results
 [ ] Full report generation with Vector search/assistant
 
 API to request ai content for a debate

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HANSARD_API_BASE } from '@/lib/hansard-api';
+import { HANSARD_API_BASE } from '@/lib/search-api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       throw new Error('Invalid API response format');
     }
 
-    // Ensure the response has the expected properties
+    // Expanded validated data structure to include all possible fields
     const validatedData = {
       TotalMembers: data.TotalMembers || 0,
       TotalContributions: data.TotalContributions || 0,
@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
       TotalDivisions: data.TotalDivisions || 0,
       SearchTerms: Array.isArray(data.SearchTerms) ? data.SearchTerms : [],
       Members: Array.isArray(data.Members) ? data.Members : [],
-      Contributions: Array.isArray(data.Contributions) ? data.Contributions : []
+      Contributions: Array.isArray(data.Contributions) ? data.Contributions : [],
+      WrittenStatements: Array.isArray(data.WrittenStatements) ? data.WrittenStatements : [],
+      WrittenAnswers: Array.isArray(data.WrittenAnswers) ? data.WrittenAnswers : [],
+      Corrections: Array.isArray(data.Corrections) ? data.Corrections : [],
+      Petitions: Array.isArray(data.Petitions) ? data.Petitions : [],
+      Debates: Array.isArray(data.Debates) ? data.Debates : [],
+      Divisions: Array.isArray(data.Divisions) ? data.Divisions : [],
+      Committees: Array.isArray(data.Committees) ? data.Committees : []
     };
 
     return NextResponse.json(validatedData);

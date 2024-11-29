@@ -103,7 +103,7 @@ export function VotingTrendsChart({ topicVotes, isUserVotes = false }: VotingTre
             "Track voting trends over time",
             "Filter by different timeframes",
             "Compare Aye/No vote patterns",
-            "Analyze voting frequency"
+            "Analyse voting frequency"
           ]}
         />
       </div>

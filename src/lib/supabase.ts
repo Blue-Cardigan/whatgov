@@ -8,8 +8,8 @@ import type { AuthResponse, UserProfile } from '@/types/supabase';
 import { User } from '@supabase/supabase-js';
 import { MPData, MPKeyPoint } from '@/types';
 import { CACHE_KEYS } from './redis/config';
-
-const getSupabase = () => createClient()
+import { parseKeyPoints } from './utils';
+export const getSupabase = () => createClient()
 
 export const signUpWithEmail = async (
   email: string, 
@@ -238,61 +238,6 @@ export async function getFeedItems(
     console.error('getFeedItems error:', error);
     throw error;
   }
-}
-
-// Helper function to safely parse JSON fields
-function parseKeyPoints(json: Json): KeyPoint[] {
-  // If json is null or undefined, return empty array
-  if (!json) return [];
-  
-  // If json is a string, try to parse it
-  let parsedJson = json;
-  if (typeof json === 'string') {
-    try {
-      parsedJson = JSON.parse(json);
-    } catch (e) {
-      console.error('Error parsing key points JSON string:', e);
-      return [];
-    }
-  }
-  
-  // Ensure we have an array to work with
-  if (!Array.isArray(parsedJson)) {
-    console.error('Key points data is not an array:', parsedJson);
-    return [];
-  }
-  
-  return parsedJson
-    .map(item => {
-      // Basic type check for item
-      if (!item || typeof item !== 'object') {
-        console.error('Invalid key point item:', item);
-        return null;
-      }
-
-      // Type assertion after basic check
-      const keyPoint = item as Record<string, unknown>;
-      
-      // Validate required fields
-      if (
-        typeof keyPoint.point !== 'string' ||
-        typeof keyPoint.speaker !== 'string' ||
-        !Array.isArray(keyPoint.support) ||
-        !Array.isArray(keyPoint.opposition)
-      ) {
-        console.error('Invalid key point structure:', keyPoint);
-        return null;
-      }
-
-      // Return properly typed key point
-      return {
-        point: keyPoint.point,
-        speaker: keyPoint.speaker,
-        support: keyPoint.support.filter((s): s is string => typeof s === 'string'),
-        opposition: keyPoint.opposition.filter((o): o is string => typeof o === 'string')
-      };
-    })
-    .filter((item): item is KeyPoint => item !== null);
 }
 
 // Add this helper function to safely parse InterestFactors
@@ -793,57 +738,3 @@ export const migrateAnonymousVotes = async (
     };
   }
 };
-
-
-export async function getSearchResultAIContent(externalId: string): Promise<SearchResultAIContent | null> {
-  const supabase = getSupabase();
-  
-  try {
-    const formattedExtId = externalId.toUpperCase();
-    
-    const { data, error } = await supabase
-      .from('debates')
-      .select(`
-        id,
-        ext_id,
-        title,
-        date,
-        type,
-        house,
-        location,
-        ai_title,
-        ai_summary,
-        ai_key_points,
-        speaker_count,
-        party_count,
-        speakers
-      `)
-      .eq('ext_id', formattedExtId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      console.error('Error fetching debate content:', error);
-      return null;
-    }
-    const keyPoints = data.ai_key_points ? parseKeyPoints(data.ai_key_points) : undefined;
-
-    return {
-      id: data.id,
-      title: data.title,
-      ai_title: data.ai_title || undefined,
-      date: data.date,
-      type: data.type,
-      house: data.house,
-      location: data.location,
-      ai_summary: data.ai_summary || undefined,
-      ai_key_points: keyPoints,
-      speaker_count: data.speaker_count || undefined,
-      party_count: data.party_count || undefined,
-      speakers: data.speakers || undefined
-    };
-  } catch (error) {
-    console.error('Failed to fetch debate content:', error);
-    return null;
-  }
-}

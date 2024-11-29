@@ -7,7 +7,7 @@ import { Check, CheckCheck, LucideIcon } from "lucide-react";
 import { cn, locationColors } from "@/lib/utils";
 import { UserIcon } from "lucide-react";
 import { DEBATE_TYPES } from '@/lib/utils';
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Vote } from "lucide-react";

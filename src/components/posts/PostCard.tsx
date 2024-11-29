@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { memo } from 'react';
 import { KeyPointsContent } from './KeyPointsContent';
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { useVotes } from '@/hooks/useVotes';
 

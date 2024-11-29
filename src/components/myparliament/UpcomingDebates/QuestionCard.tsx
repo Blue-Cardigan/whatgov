@@ -1,4 +1,4 @@
-import { OralQuestion } from "@/lib/hansard-api";
+import { OralQuestion } from "@/lib/search-api";
 import { ProfileImage } from "./ProfileImage";
 
 interface QuestionCardProps {

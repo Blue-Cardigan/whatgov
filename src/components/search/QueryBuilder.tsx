@@ -11,7 +11,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { searchTypes } from "./config";
-import type { SearchParams } from "@/lib/hansard-api";
+import type { SearchParams } from "@/types/search";
 import {
   Popover,
   PopoverContent,
@@ -19,8 +19,12 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from '@/contexts/AuthContext';
 import { Lock } from 'lucide-react';
-import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { LightbulbIcon } from 'lucide-react';
+import { useEngagement } from '@/hooks/useEngagement';
+import { useRouter } from 'next/navigation';
+import { Switch } from "@/components/ui/switch";
+import { AlertCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export function QueryBuilder({ 
   searchParams,
@@ -29,9 +33,11 @@ export function QueryBuilder({
   searchParams: SearchParams;
   onSearch: (params: Partial<SearchParams>) => void;
 }) {
-  const { isEngagedCitizen } = useAuth();
+  const { isEngagedCitizen, user } = useAuth();
+  const { getRemainingAISearches } = useEngagement();
   const isFirstRender = useRef(true);
   const previousSearchTerm = useRef(searchParams.searchTerm);
+  const router = useRouter();
   
   const [state, dispatch] = useReducer(queryReducer, {
     parts: searchParams.searchTerm ? parseInitialValue(searchParams.searchTerm) : [{ type: 'text', value: '', isValid: true }],
@@ -45,7 +51,7 @@ export function QueryBuilder({
     house: searchParams.house,
   });
 
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [enableAI, setEnableAI] = useState(true);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -89,8 +95,13 @@ export function QueryBuilder({
 
   const handleSubmit = useCallback(() => {
     const queryString = buildQueryString(state.parts);
-    onSearch({ ...searchParams, ...localParams, searchTerm: queryString });
-  }, [state.parts, buildQueryString, localParams, searchParams, onSearch]);
+    onSearch({ 
+      ...searchParams, 
+      ...localParams, 
+      searchTerm: queryString,
+      enableAI: enableAI && user !== null
+    });
+  }, [state.parts, buildQueryString, localParams, searchParams, onSearch, enableAI, user]);
 
   const handleAddPart = useCallback((type: QueryPart['type']) => {
     dispatch({ type: 'ADD_PART', payload: type });
@@ -327,44 +338,111 @@ export function QueryBuilder({
 
         {/* Add single advanced search button if not subscribed */}
         {!isEngagedCitizen && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowUpgradeDialog(true)}
-                  className="h-8 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md opacity-70"
-                >
-                  <Lock className="h-4 w-4" />
-                  <span className="text-xs">Advanced Search</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Subscribe to access advanced search features</p>
-                <p className="text-muted-foreground text-sm">
-                  Filter by speaker, debate type, and specific words
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!user) {
+                    router.push('/login');
+                  }
+                }}
+                className="h-8 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md opacity-70"
+              >
+                <Lock className="h-4 w-4" />
+                <span className="text-xs">Advanced Search</span>
+              </Button>
+            </PopoverTrigger>
+            {user && (
+              <PopoverContent className="w-auto" align="start">
+                <div className="flex items-center gap-2 text-sm">
+                  <span>
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto font-medium"
+                      onClick={() => router.push('/pricing')}
+                    >
+                      Upgrade
+                    </Button>
+                    {" "}to use this feature
+                  </span>
+                </div>
+              </PopoverContent>
+            )}
+          </Popover>
         )}
       </div>
 
-      <UpgradeDialog 
-        open={showUpgradeDialog} 
-        onOpenChange={setShowUpgradeDialog}
-        title="Upgrade to Engaged Citizen"
-        description="Access advanced search capabilities with an Engaged Citizen subscription."
-      />
-
       <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-        <h3 className="font-medium flex items-center gap-2">
-          <LightbulbIcon className="h-4 w-4 text-primary" />
-          AI-Enhanced Search Results
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium flex items-center gap-2">
+            <LightbulbIcon className="h-4 w-4 text-primary" />
+            AI-Enhanced Search Results
+          </h3>
+          {user ? (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                {getRemainingAISearches() === Infinity ? (
+                  "Unlimited searches"
+                ) : (
+                  `${getRemainingAISearches()} searches remaining`
+                )}
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={enableAI ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (getRemainingAISearches() > 0) {
+                        setEnableAI(!enableAI);
+                      }
+                    }}
+                    className={cn(
+                      "gap-2",
+                      enableAI && getRemainingAISearches() <= 0 && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <LightbulbIcon className="h-4 w-4" />
+                    {enableAI ? "AI Enabled" : "Enable AI"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto" align="start">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto font-medium"
+                        onClick={() => router.push('/pricing')}
+                      >
+                        Upgrade
+                      </Button>
+                      {" "}for unlimited
+                    </span>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/login')}
+              className="text-xs"
+            >
+              Sign in to enable
+            </Button>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
-          Get clear summaries and key points from parliamentary debates, making Hansard more accessible than ever.
+          {enableAI && user ? (
+            "AI will analyze search results to provide clear summaries and key points from parliamentary debates."
+          ) : user ? (
+            "Enable AI analysis to get summaries and key points from parliamentary debates."
+          ) : (
+            "Get clear summaries and key points from parliamentary debates, making Hansard more accessible than ever. Sign in to access this feature."
+          )}
         </p>
       </div>
     </div>

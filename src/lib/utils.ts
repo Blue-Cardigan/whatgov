@@ -1,9 +1,90 @@
+import { KeyPoint } from "@/types";
+import { Json } from "@/types/supabase";
 import { clsx, type ClassValue } from "clsx"
 import { Leaf, Heart, Building2, Microscope, Scale, Globe2, LandPlot, GraduationCap, type LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge"
+import { Contribution } from "@/types/search";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+
+// Helper function to safely parse JSON fields
+export function parseKeyPoints(json: Json): KeyPoint[] {
+  // If json is null or undefined, return empty array
+  if (!json) return [];
+  
+  // If json is a string, try to parse it
+  let parsedJson = json;
+  if (typeof json === 'string') {
+    try {
+      parsedJson = JSON.parse(json);
+    } catch (e) {
+      console.error('Error parsing key points JSON string:', e);
+      return [];
+    }
+  }
+  
+  // Ensure we have an array to work with
+  if (!Array.isArray(parsedJson)) {
+    console.error('Key points data is not an array:', parsedJson);
+    return [];
+  }
+  
+  return parsedJson
+    .map(item => {
+      // Basic type check for item
+      if (!item || typeof item !== 'object') {
+        console.error('Invalid key point item:', item);
+        return null;
+      }
+
+      // Type assertion after basic check
+      const keyPoint = item as Record<string, unknown>;
+      
+      // Validate required fields
+      if (
+        typeof keyPoint.point !== 'string' ||
+        typeof keyPoint.speaker !== 'string' ||
+        !Array.isArray(keyPoint.support) ||
+        !Array.isArray(keyPoint.opposition)
+      ) {
+        console.error('Invalid key point structure:', keyPoint);
+        return null;
+      }
+
+      // Return properly typed key point
+      return {
+        point: keyPoint.point,
+        speaker: keyPoint.speaker,
+        support: keyPoint.support.filter((s): s is string => typeof s === 'string'),
+        opposition: keyPoint.opposition.filter((o): o is string => typeof o === 'string')
+      };
+    })
+    .filter((item): item is KeyPoint => item !== null);
+}
+
+export function constructHansardUrl(result: Contribution, searchTerm?: string) {
+  // Format the date (yyyy-mm-dd)
+  const formattedDate = result.SittingDate.split('T')[0];
+
+  // Format the debate title for the URL (lowercase, hyphens)
+  const formattedTitle = result.DebateSection
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
+
+  // Construct the base URL
+  const baseUrl = `https://hansard.parliament.uk/${result.House}/${formattedDate}/debates/${result.DebateSectionExtId}/${formattedTitle}`;
+
+  // Add search term highlight if provided
+  const highlightParam = searchTerm ? `?highlight=${encodeURIComponent(searchTerm)}` : '';
+
+  // Add contribution anchor
+  const contributionAnchor = `#contribution-${result.ContributionExtId}`;
+
+  return `${baseUrl}${highlightParam}${contributionAnchor}`;
 }
 
 export function formatDate(dateString: string) {
