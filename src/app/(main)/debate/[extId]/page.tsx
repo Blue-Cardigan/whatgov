@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { notFound } from 'next/navigation';
 import { ProcessDebateClient } from '@/components/debates/ProcessDebateClient';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { HansardAPI } from '@/lib/search-api';
 
 interface DebatePageProps {
   params: Promise<{
@@ -29,41 +30,14 @@ async function getDebateFromServer(extId: string) {
   return debates[0];
 }
 
-async function getHansardData(extId: string) {
-  try {
-    const response = await fetch(
-      `/api/hansard/${extId}`,
-      { next: { revalidate: 3600 } }
-    );
-    
-    console.info(`[Server] Hansard API response status for ${extId}: ${response.status}`);
-    
-    if (!response.ok) {
-      console.error(`[Server] Failed to fetch Hansard data: ${response.status} ${response.statusText}`);
-      return null;
-    }
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`[Server] Error fetching Hansard data for ${extId}:`, error);
-    return null;
-  }
-}
-
 export default async function DebatePage({ params }: DebatePageProps) {
-  const resolvedParams = await params;
+  const { extId } = await params;
   
   try {
     const [rawDebate, hansardData] = await Promise.all([
-      getDebateFromServer(resolvedParams.extId),
-      getHansardData(resolvedParams.extId)
+      getDebateFromServer(extId),
+      HansardAPI.getDebateTranscript(extId)
     ]);
-    
-    console.info(`[Server] Debate ${resolvedParams.extId} loaded:`, {
-      hasRawDebate: !!rawDebate,
-      hasHansardData: !!hansardData
-    });
 
     if (!rawDebate) {
       notFound();
@@ -81,8 +55,7 @@ export default async function DebatePage({ params }: DebatePageProps) {
         </div>
       </AuthProvider>
     );
-  } catch (error) {
-    console.error(`[Server] Error loading debate ${resolvedParams.extId}:`, error);
+  } catch {
     notFound();
   }
 }

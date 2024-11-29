@@ -5,6 +5,7 @@ import { parseKeyPoints } from '@/lib/utils';
 import type { FetchOptions } from '@/types';
 import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
+import type { HansardDebateResponse } from '@/types/hansard';
 
 export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
 
@@ -262,6 +263,28 @@ export class HansardAPI {
   } catch (error) {
     console.error('Failed to fetch debate content:', error);
       return null;
+    }
+  }
+
+  static async getDebateTranscript(extId: string): Promise<HansardDebateResponse | undefined> {
+    try {
+      const hansardUrl = `${HANSARD_API_BASE}/debates/debate/${extId}.json`;
+      
+      const response = await fetch(hansardUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+        next: { revalidate: 3600 } // Cache for 1 hour
+      });
+
+      if (!response.ok) {
+        throw new Error(`Hansard API returned ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch debate transcript:', error);
+      return undefined;
     }
   }
 }
