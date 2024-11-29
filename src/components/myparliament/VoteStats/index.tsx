@@ -19,7 +19,7 @@ import { TopicComparison } from './TopicComparison';
 import { calculateEngagementScore, calculateAgreementRate, calculateConsistencyScore } from './utils/scoring';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { QuestionCard } from "./QuestionCard";
 import { TopicGroupedQuestions } from './TopicGroupedQuestions';
 import { FlatQuestionList } from './FlatQuestionList';
@@ -89,6 +89,14 @@ interface RawQuestionData {
 }
 
 export function VoteStats() {
+  return (
+    <AuthenticatedRoute requireProfile={true}>
+      <VoteStatsContent />
+    </AuthenticatedRoute>
+  );
+}
+
+function VoteStatsContent() {
   const { isEngagedCitizen } = useAuth();
   const { topicVoteStats, userTopicVotes, demographicStats } = useVotes();
   const [groupBy, setGroupBy] = useState<'all' | 'topic'>('all');
@@ -372,14 +380,12 @@ export function VoteStats() {
   );
 
   return (
-    <AuthenticatedRoute>
-      <Card className="p-0">
-        <CardContent className="pt-4">
-          <Tabs defaultValue="popular" className="space-y-4">
-            {isEngagedCitizen ? <EngagedCitizenStats /> : <BasicStats />}
-          </Tabs>
-        </CardContent>
-      </Card>
-    </AuthenticatedRoute>
+    <Card className="p-0">
+      <CardContent className="pt-4">
+        <Tabs defaultValue="popular" className="space-y-4">
+          {isEngagedCitizen ? <EngagedCitizenStats /> : <BasicStats />}
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }

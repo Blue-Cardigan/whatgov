@@ -11,7 +11,7 @@ import {
   UserIcon,
   Vote,
 } from "lucide-react";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useMemo } from "react";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 
@@ -99,7 +99,7 @@ export const booleanFilters = [
 ] satisfies BooleanFilterItem[];
 
 export function TopBar({ filters, onChange, className }: TopBarProps) {
-  const { isEngagedCitizen, user, profile, loading } = useAuthContext();
+  const { isEngagedCitizen, user, profile, loading } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // Show available filters immediately based on current auth state

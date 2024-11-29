@@ -4,7 +4,7 @@ import { AppearanceSettings } from './AppearanceSettings';
 import BillingPage from './BillingPage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Palette, CreditCard } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 export function SettingsContainer() {

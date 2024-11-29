@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { analyzeTrends } from './utils/analyzeTrends';
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
  {}
 interface VotingTrendsChartProps {

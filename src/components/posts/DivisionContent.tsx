@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';
 import { cn } from "@/lib/utils";
 import { useMemo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DivisionContentProps {

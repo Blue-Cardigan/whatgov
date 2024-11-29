@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { useFeed } from '@/hooks/useFeed';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { DebateList } from './DebateList';
 import { TopBar } from '@/components/nav/TopBar';
 import type { FeedFilters } from '@/types';
@@ -11,7 +11,7 @@ import { SimpleFooter } from '@/components/layout/SimpleFooter';
 import { DebateSkeleton } from './DebateSkeleton';
 
 export function DebateFeed() {
-  const { isEngagedCitizen, loading, profile, user } = useAuthContext();
+  const { isEngagedCitizen, loading, profile, user } = useAuth();
   const { toast } = useToast();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
@@ -133,7 +133,13 @@ export function DebateFeed() {
   }, [data?.pages]);
 
   if (loading || isLoading) {
-    return <DebateSkeleton />;
+    return (
+      <div className="min-h-screen flex flex-col md:pr-20">
+        <div className="container max-w-xl mx-auto px-4 flex-1">
+          <DebateSkeleton />
+        </div>
+      </div>
+    );
   }
 
   return (

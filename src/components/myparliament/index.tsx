@@ -5,10 +5,10 @@ import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
 import { AuthenticatedRoute } from '@/components/auth/AuthenticatedRoute';
-import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 import { PLANS } from '@/lib/stripe-client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const VoteStats = dynamic(() => import("./VoteStats").then(mod => mod.VoteStats), {
   loading: () => <div className="animate-pulse h-[600px] bg-muted rounded-lg" />
@@ -23,6 +23,21 @@ const UpcomingDebates = dynamic(() => import("./UpcomingDebates").then(mod => mo
 });
 
 export function MyParliament() {
+  return (
+    <AuthenticatedRoute
+      requireProfile={true}
+      signInPrompt={{
+        title: "Sign in to access your dashboard",
+        description: "Track your MP's activity, and voting patterns of the UK and your constituency"
+      }}
+    >
+      <MyParliamentContent />
+    </AuthenticatedRoute>
+  );
+}
+
+// Separate the content to avoid unnecessary re-renders
+function MyParliamentContent() {
   const [activeTab, setActiveTab] = useState("mp");
   const { user, getAuthHeader } = useAuth();
   const router = useRouter();
@@ -114,38 +129,36 @@ export function MyParliament() {
   ];
 
   return (
-    <AuthenticatedRoute>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Grid of Action Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {menuItems.map((item) => (
-            <MenuItem
-              key={item.id}
-              item={item}
-              isActive={item.id === activeTab}
-              onSelect={() => {
-                if (!item.isDisabled) {
-                  if (item.isPremium) {
-                    handlePremiumFeature();
-                  } else {
-                    setActiveTab(item.id);
-                  }
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Grid of Action Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {menuItems.map((item) => (
+          <MenuItem
+            key={item.id}
+            item={item}
+            isActive={item.id === activeTab}
+            onSelect={() => {
+              if (!item.isDisabled) {
+                if (item.isPremium) {
+                  handlePremiumFeature();
+                } else {
+                  setActiveTab(item.id);
                 }
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Content Area with loading state */}
-        <div className="mt-6">
-          <Suspense fallback={<div className="animate-pulse h-[500px] bg-muted rounded-lg" />}>
-            {activeTab === "activity" && <VoteStats />}
-            {activeTab === "mp" && <MPProfile />}
-            {activeTab === "upcoming" && <UpcomingDebates />}
-            {activeTab === "stats" && <VoteStats />}
-          </Suspense>
-        </div>
+              }
+            }}
+          />
+        ))}
       </div>
-    </AuthenticatedRoute>
+
+      {/* Content Area with loading state */}
+      <div className="mt-6">
+        <Suspense fallback={<div className="animate-pulse h-[500px] bg-muted rounded-lg" />}>
+          {activeTab === "activity" && <VoteStats />}
+          {activeTab === "mp" && <MPProfile />}
+          {activeTab === "upcoming" && <UpcomingDebates />}
+          {activeTab === "stats" && <VoteStats />}
+        </Suspense>
+      </div>
+    </div>
   );
 } 

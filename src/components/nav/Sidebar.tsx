@@ -1,25 +1,12 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-import { PLANS } from "@/lib/stripe-client";
-
-import {
-  Search,
-  BookOpen,
-  Settings,
-  Info,
-  LogOut,
-  LogIn,
-  Menu,
-  UserPlus,
-  Crown,
-  ScrollText,
-  BookMarked,
-  User
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  ScrollText, Search, BookOpen, Settings, 
+  Menu, User, LogOut, LogIn, UserPlus, Info 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,63 +21,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-  
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+
+interface SidebarProps {
   className?: string;
 }
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut, isEngagedCitizen, getAuthHeader } = useAuth();
-
-  const handlePremiumNavigation = async (e: React.MouseEvent, href: string) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "Sign in or create an account to access this feature",
-        variant: "default",
-      });
-      router.push('/login');
-      return;
-    }
-
-    if (!isEngagedCitizen) {
-      try {
-        const token = await getAuthHeader();
-        
-        const response = await fetch('/api/stripe/create-checkout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Idempotency-Key': `${user.id}-${Date.now()}`,
-          },
-          body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
-        });
-
-        if (!response.ok) throw new Error(await response.text());
-
-        const { url, sessionId } = await response.json();
-        if (!url) throw new Error('No checkout URL received');
-        
-        localStorage.setItem('checkoutSessionId', sessionId);
-        window.location.href = url;
-      } catch (error) {
-        console.error('Subscription error:', error);
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Something went wrong",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-
-    router.push(href);
-  };
+  const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -112,9 +51,6 @@ export function Sidebar({ className }: SidebarProps) {
               </div>
               <div>
                 <p className="font-medium">{user.email}</p>
-                <p className="text-sm text-muted-foreground">
-                  {isEngagedCitizen ? 'Engaged Citizen' : 'Free Account'}
-                </p>
               </div>
             </div>
           ) : (
@@ -233,33 +169,23 @@ export function Sidebar({ className }: SidebarProps) {
     <TooltipProvider key={item.href} delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link 
-            href={item.href}
-            onClick={(e) => handlePremiumNavigation(e, item.href)}
-          >
+          <Link href={item.href}>
             <div className={cn(
               "flex items-center rounded-md px-4 text-lg font-medium hover:bg-accent hover:text-accent-foreground",
               "h-16 mt-6",
               "justify-center lg:justify-start",
               pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-              "lg:w-full",
-              !isEngagedCitizen && "opacity-75"
+              "lg:w-full"
             )}>
               <item.icon className="h-8 w-8" />
               <span className="hidden lg:block ml-4 font-semibold text-xl">
                 {item.title}
-                {isEngagedCitizen && (
-                  <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
-                )}
               </span>
             </div>
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right" className="lg:hidden text-xl">
           <span>{item.title}</span>
-          {isEngagedCitizen && (
-            <Crown className="inline-block h-6 w-6 ml-1.5 text-primary" />
-          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -355,12 +281,10 @@ export function Sidebar({ className }: SidebarProps) {
             <Link 
               key={item.href} 
               href={item.href}
-              onClick={(e) => handlePremiumNavigation(e, item.href)}
             >
               <div className={cn(
                 "flex flex-col items-center p-2",
-                pathname === item.href ? "text-primary" : "text-muted-foreground",
-                !isEngagedCitizen && "opacity-75"
+                pathname === item.href ? "text-primary" : "text-muted-foreground"
               )}>
                 <item.icon className="h-6 w-6" />
                 <span className="text-sm mt-1.5 font-medium">

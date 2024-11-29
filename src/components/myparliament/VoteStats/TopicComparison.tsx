@@ -1,6 +1,6 @@
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts";
 import type { TopicStatsEntry } from "@/types/VoteStats";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 
 interface TopicWithName extends TopicStatsEntry {

@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Lock } from 'lucide-react';
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { LightbulbIcon } from 'lucide-react';

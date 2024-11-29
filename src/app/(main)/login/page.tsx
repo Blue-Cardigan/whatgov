@@ -3,7 +3,7 @@
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Loader2 } from "lucide-react";
@@ -41,9 +41,15 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const { signIn, resetPassword } = useAuth();
+  const { signIn, resetPassword, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const emailParam = searchParams.get('email');
@@ -56,13 +62,9 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await signIn(email, password);
-      if (response?.status === 'verify_email') {
-        router.push('/accounts/verify');
-      } else if (response?.user) {
-        router.push("/");
-      } else {
-        setError(response?.error || "Invalid email or password");
+      const { error } = await signIn(email, password);
+      if (error) {
+        setError(error);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");

@@ -1,6 +1,7 @@
 import { FeedItem } from '@/types';
 import { PostCard } from '@/components/posts/PostCard';
 import { useVirtualizedFeed } from '@/hooks/useFeed';
+import { DebateSkeleton } from './DebateSkeleton';
 
 interface DebateListProps {
   items: FeedItem[];
@@ -66,7 +67,10 @@ export function DebateList({ items, loadMoreRef, userMp, isEngagedCitizen, ...pr
           );
         })}
       </div>
-      <div ref={loadMoreRef} />
+      <div>
+        {props.isFetchingNextPage && <DebateSkeleton />}
+        <div ref={loadMoreRef} />
+      </div>
     </div>
   );
 } 

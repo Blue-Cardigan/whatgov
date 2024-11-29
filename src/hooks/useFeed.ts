@@ -3,7 +3,7 @@ import { getFeedItems, type FeedCursor } from '@/lib/supabase';
 import { FeedFilters, FeedItem } from '@/types';
 import { useCache } from './useCache';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useRef, useCallback } from 'react';
 

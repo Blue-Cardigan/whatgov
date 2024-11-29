@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TopicStatCard } from "./subcomponents/TopicStatCard";
 import type { TopicStatsEntry, UserTopicStats } from "@/types/VoteStats";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 
 interface UserTopicVotesProps {
