@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ANON_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
-import { isSubscriptionActive } from '@/lib/subscription';
+import { isSubscriptionActive } from '@/lib/supabase/subscription';
 
 const STORAGE_KEY = 'whatgov_engagement';
 const RESET_HOUR = 0; // Reset at midnight UTC

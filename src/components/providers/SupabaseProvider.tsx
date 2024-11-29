@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase-client'
+import createClient from '@/lib/supabase/client'
 import { createContext, useContext } from 'react'
 
 const SupabaseContext = createContext(createClient())

@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { Database } from '@/types/supabase'
-import { getSubscriptionFromCache, isSubscriptionActive } from '@/lib/subscription';
+import { getSubscriptionFromCache, isSubscriptionActive } from '@/lib/supabase/subscription';
 
 // Create custom error types
 class MiddlewareError extends Error {

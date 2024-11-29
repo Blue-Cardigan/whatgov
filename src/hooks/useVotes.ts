@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { submitVote, getTopicVoteStats, getUserTopicVotes, getDemographicVoteStats, migrateAnonymousVotes } from '@/lib/supabase';
+import { submitVote, getTopicVoteStats, getUserTopicVotes, migrateAnonymousVotes } from '@/lib/supabase/votes';
+import { getDemographicVoteStats } from '@/lib/supabase/myparliament';
 import { FeedItem } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import type { 
@@ -325,36 +326,34 @@ export function useVotes(): UseVotesReturn {
       // Handle authenticated user vote
       try {
         await submitVote(voteData);
+        recordVote(); // Record the vote in engagement stats
         
-        // Invalidate all relevant caches in parallel
+        // Invalidate queries after successful vote
         await Promise.all([
-          setCache(CACHE_KEYS.topicVoteStats.key(), null),
-          setCache(CACHE_KEYS.userTopicVotes.key(user.id), null),
-          setCache(CACHE_KEYS.demographicStats.key(), null),
-          // Invalidate React Query cache
           queryClient.invalidateQueries({ queryKey: ['topicVoteStats'] }),
           queryClient.invalidateQueries({ queryKey: ['userTopicVotes', user.id] }),
-          queryClient.invalidateQueries({ queryKey: ['demographicStats'] })
+          queryClient.invalidateQueries({ queryKey: ['demographicStats'] }),
+          queryClient.invalidateQueries({ queryKey: ['votes'] })
         ]);
-
-        recordVote(); // Record the vote in engagement stats
       } catch (error) {
-        // Ensure error is properly propagated
         console.error('Vote submission error:', error);
         throw error;
       }
     },
     onMutate: async ({ debate_id, vote }) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ 
-        queryKey: ['feed', { votedOnly: false }] 
-      });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['feed', { votedOnly: false }] }),
+        queryClient.cancelQueries({ queryKey: ['votes'] })
+      ]);
 
+      // Get previous data for rollback
       const previousFeed = queryClient.getQueryData(['feed', { votedOnly: false }]);
+      const previousVotes = queryClient.getQueryData(['votes']);
 
       // Skip optimistic update if already voted
       if (hasVoted(debate_id)) {
-        return { previousFeed };
+        return { previousFeed, previousVotes };
       }
 
       // Optimistically update UI
@@ -392,38 +391,18 @@ export function useVotes(): UseVotesReturn {
         };
       });
 
-      return { previousFeed };
+      return { previousFeed, previousVotes };
     },
     onError: (err, variables, context) => {
       // Revert optimistic updates on error
       if (context?.previousFeed) {
         queryClient.setQueryData(['feed', { votedOnly: false }], context.previousFeed);
       }
-      
-      if (user) {
-        // Revert the votes cache for authenticated users
-        queryClient.setQueryData(['votes'], (old: Map<string, Map<number, boolean>> | undefined) => {
-          const newVotes = new Map(old || new Map());
-          const debateVotes = newVotes.get(variables.debate_id);
-          if (debateVotes) {
-            debateVotes.delete(1);
-          }
-          return newVotes;
-        });
-      } else {
-        // Remove from local storage for anonymous users
-        const votes = getAnonVotes();
-        const filteredVotes = votes.votes.filter(v => 
-          v.debate_id !== variables.debate_id
-        );
-        localStorage.setItem(ANON_VOTES_KEY, JSON.stringify({
-          votes: filteredVotes,
-          lastResetDate: votes.lastResetDate,
-          dailyCount: votes.dailyCount
-        }));
+      if (context?.previousVotes) {
+        queryClient.setQueryData(['votes'], context.previousVotes);
       }
-
-      // Show appropriate error message
+      
+      // Handle error messages
       if (err instanceof Error) {
         if (err.message === 'Daily vote limit reached') {
           toast({

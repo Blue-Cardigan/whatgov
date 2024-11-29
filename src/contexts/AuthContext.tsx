@@ -6,8 +6,8 @@ import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useCache } from '@/hooks/useCache';
 import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types/supabase';
-import type { Subscription } from '@/lib/subscription';
-import { isSubscriptionActive } from '@/lib/subscription';
+import type { Subscription } from '@/lib/supabase/subscription';
+import { isSubscriptionActive } from '@/lib/supabase/subscription';
 
 interface AuthState {
   user: User | null;
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: any, session: any) => {
         if (event === 'SIGNED_OUT') {
           updateState({
             user: null,

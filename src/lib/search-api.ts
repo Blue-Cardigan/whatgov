@@ -1,6 +1,6 @@
 import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
-import { getSupabase } from '@/lib/supabase';
+import getSupabase from '@/lib/supabase/client';
 import { parseKeyPoints } from '@/lib/utils';
 import type { FetchOptions } from '@/types';
 import type { SearchResultAIContent } from '@/types';
@@ -133,7 +133,7 @@ export class HansardAPI {
 
       if (error) throw error;
 
-      data?.forEach(item => {
+      data?.forEach((item: any) => {
         const keyPoints = item.ai_key_points ? parseKeyPoints(item.ai_key_points) : undefined;
         
         results[item.ext_id] = {

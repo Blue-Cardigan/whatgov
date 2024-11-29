@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
+import createClient from "@/lib/supabase/client";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";

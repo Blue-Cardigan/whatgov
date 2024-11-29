@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { getFeedItems, type FeedCursor } from '@/lib/supabase';
+import { getFeedItems, type FeedCursor } from '@/lib/supabase/feed';
 import { FeedFilters, FeedItem } from '@/types';
 import { useCache } from './useCache';
 import { toast } from '@/hooks/use-toast';

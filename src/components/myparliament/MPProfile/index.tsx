@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { getMPData, getMPKeyPoints } from "@/lib/supabase";
+import { getMPData, getMPKeyPoints } from "@/lib/supabase/myparliament";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthenticatedRoute } from "@/components/auth/AuthenticatedRoute";
 import { MPProfileCard } from "./MPProfileCard";

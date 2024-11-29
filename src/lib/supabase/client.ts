@@ -6,7 +6,7 @@ import { Database } from '@/types/supabase'
 // Create a single instance
 let supabaseClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
-export const createClient = () => {
+const createClient = () => {
   if (!supabaseClient) {
     supabaseClient = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,3 +15,5 @@ export const createClient = () => {
   }
   return supabaseClient
 }
+
+export default createClient;
