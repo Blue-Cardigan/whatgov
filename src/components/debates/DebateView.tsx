@@ -4,7 +4,7 @@ import { FeedItem, PartyCount } from '@/types';
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
 import { DivisionContent } from '../posts/DivisionContent';
 import { CommentsContent } from '../posts/CommentsContent';
@@ -296,6 +296,16 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
       </div>
     );
   };
+
+  // Add logging to debug hansardData
+  useEffect(() => {
+    if (!hansardData) {
+      console.warn('No hansard data available:', {
+        debateId: debate.ext_id,
+        date: debate.date
+      });
+    }
+  }, [hansardData, debate.ext_id, debate.date]);
 
   return (
     <div className="space-y-6">

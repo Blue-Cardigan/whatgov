@@ -18,6 +18,11 @@ export function ProcessDebateClient({ rawDebate, hansardData }: ProcessDebateCli
     return items[0];
   }, [rawDebate]);
   
+  // Add error handling for hansardData
+  if (hansardData === undefined) {
+    console.error('Failed to load Hansard data');
+  }
+  
   return (
     <DebateView 
       debate={processedDebate} 

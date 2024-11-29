@@ -31,7 +31,7 @@ export function constructSearchUrl(params: SearchParams): string {
     }
   });
 
-  return `/api/hansard/search?${searchParams.toString()}`;
+  return `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/hansard/search?${searchParams.toString()}`;
 }
 
 export class HansardAPI {
@@ -202,7 +202,7 @@ export class HansardAPI {
         searchTerm: searchTerm
       });
       const response = await this.fetchWithErrorHandling<MemberSearchResponse>(
-        `/api/hansard/search/members?${params.toString()}`
+        `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/hansard/search/members?${params.toString()}`
       );
       return response.Results || [];
     } catch (error) {
