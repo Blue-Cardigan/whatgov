@@ -74,7 +74,7 @@ export function Sidebar({ className }: SidebarProps) {
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem asChild className="p-3 focus:bg-accent rounded-lg cursor-pointer md:hidden">
+              <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer md:hidden">
                 <Link href="/settings" className="flex items-center space-x-3">
                   <div className="bg-secondary rounded-lg p-2">
                     <Settings className="h-5 w-5 text-secondary-foreground" />

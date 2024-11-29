@@ -15,7 +15,7 @@ interface DebateListProps {
   isEngagedCitizen?: boolean;
 }
 
-export function DebateList({ items, loadMoreRef, userMp, isEngagedCitizen, ...props }: DebateListProps) {
+export function DebateList({ items, loadMoreRef, userMp, ...props }: DebateListProps) {
   const { virtualizer, parentRef, updateItemState } = useVirtualizedFeed(items);
   
   const filteredItems = items.filter(item => item.ai_summary);
@@ -56,7 +56,6 @@ export function DebateList({ items, loadMoreRef, userMp, isEngagedCitizen, ...pr
               <PostCard
                 item={item}
                 userMp={userMp}
-                isEngagedCitizen={isEngagedCitizen}
                 {...props}
                 onVote={props.onVote}
                 onExpandChange={(isExpanded) => {

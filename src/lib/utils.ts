@@ -9,7 +9,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-
 // Helper function to safely parse JSON fields
 export function parseKeyPoints(json: Json): KeyPoint[] {
   // If json is null or undefined, return empty array

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'About WhatGov | Making Parliament Accessible',
+  title: 'About WhatGov | Direct Access to Parliament',
   description: 'Learn about WhatGov\'s mission to make parliamentary democracy more accessible, understandable, and engaging for everyone in the UK.',
 };
 

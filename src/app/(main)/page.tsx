@@ -10,8 +10,8 @@ const DebateFeed = dynamic(
 )
 
 export const metadata = {
-  title: 'WhatGov | Have Your Say',
-  description: 'Parliament in your feed. Vote on issues you care about, and understand how Parliament\'s decisions affect your community.',
+  title: 'WhatGov | Direct Access to Parliament',
+  description: 'Parliament, without the Spin',
 };
 
 export default function DebatesPage() {

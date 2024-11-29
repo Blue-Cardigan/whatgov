@@ -2,7 +2,8 @@ CREATE OR REPLACE FUNCTION get_unvoted_debates_unauth(
   p_limit INTEGER DEFAULT 8,
   p_cursor UUID DEFAULT NULL,
   p_cursor_date DATE DEFAULT NULL,
-  p_cursor_score FLOAT DEFAULT NULL
+  p_cursor_score FLOAT DEFAULT NULL,
+  p_ext_id TEXT DEFAULT NULL
 )
 RETURNS TABLE (
   result_id UUID,
@@ -25,7 +26,7 @@ RETURNS TABLE (
   speaker_count INTEGER,
   title TEXT,
   type TEXT,
-  engagement_score FLOAT,
+  engagement_count FLOAT,
   ai_comment_thread JSONB,
   speakers JSONB
 ) AS $$
@@ -75,6 +76,7 @@ BEGIN
         ELSE d.speakers
       END
     ) as speaker ON true
+    WHERE (p_ext_id IS NULL OR d.ext_id = p_ext_id)
     GROUP BY 
       d.id,
       d.ai_key_points,
@@ -131,7 +133,7 @@ BEGIN
     scored_debates.speaker_count,
     scored_debates.title,
     scored_debates.type,
-    scored_debates.total_votes as engagement_score,
+    scored_debates.total_votes as engagement_count,
     COALESCE(scored_debates.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
     scored_debates.speakers
   FROM scored_debates
@@ -139,6 +141,9 @@ BEGIN
     scored_debates.debate_date DESC NULLS LAST,
     scored_debates.total_votes DESC NULLS LAST,
     scored_debates.id ASC
-  LIMIT p_limit;
+  LIMIT CASE 
+    WHEN p_ext_id IS NULL THEN p_limit
+    ELSE NULL
+  END;
 END;
 $$ LANGUAGE plpgsql STABLE;

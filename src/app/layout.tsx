@@ -24,11 +24,11 @@ const criticalStyles = `
 
 export const metadata = {
   title: 'WhatGov | Direct Access to Parliament',
-  description: 'Follow Parliament without the Politics',
+  description: 'Parliament, without the Spin',
   keywords: 'parliament, hansard, parliamentary debates, democracy, UK politics, MP voting records, legislative process, direct democracy',
   openGraph: {
     title: 'WhatGov | Direct Access to Parliament',
-    description: 'Follow Parliament without the Politics',
+    description: 'Parliament, Without the Spin',
     type: 'website',
     locale: 'en_GB',
     url: 'https://whatgov.co.uk',

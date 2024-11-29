@@ -1,11 +1,10 @@
 import { FeedItem, PartyCount } from '@/types';
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Users2, ExternalLink, UserIcon, MessageSquare, LightbulbIcon } from 'lucide-react';
+import { CalendarIcon, UserIcon, MessageSquare, LightbulbIcon, ArrowUpRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { partyColours } from '@/lib/utils';
 import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
 import { CommentsContent } from './CommentsContent';
@@ -14,10 +13,11 @@ import { locationColors, getDebateType } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
 import { KeyPointsContent } from './KeyPointsContent';
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { useVotes } from '@/hooks/useVotes';
+import { PartyDistribution } from './PartyDistribution';
+import Link from 'next/link';
 
 interface PostCardProps {
   item: FeedItem;
@@ -27,119 +27,35 @@ interface PostCardProps {
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
   remainingVotes?: number;
-  isEngagedCitizen?: boolean;
 }
 
-// Helper function to format the URL
-function constructDebateUrl(debateExtId: string, title: string, date: string) {
-  // Format the title for URL (lowercase, hyphens)
-  const formattedTitle = title
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '');
-
-  return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
+// Extract into separate component
+function PostActions({ 
+  debate
+}: { 
+  debate: FeedItem; 
+  onShare: () => void 
+}) {
+  return (
+    <Link 
+      href={`/debate/${debate.ext_id.toUpperCase()}`}
+      className="group"
+    >
+      <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors flex items-center gap-1">
+        {debate.ai_title}
+        <ArrowUpRight className="h-4 w-4 opacity-50 -translate-y-1 translate-x-1 transition-all group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0" />
+      </CardTitle>
+    </Link>
+  );
 }
 
-export const PostCard = memo(function PostCard({ 
-  item, 
-  hasReachedLimit,
-  userMp,
-  onVote,
-  readOnly
-}: PostCardProps) {
-  const hasDivisions = useMemo(() => 
-    item.divisions && item.divisions.length > 0
-  , [item.divisions]);
-
+// Extract content navigation logic into custom hook
+function useContentNavigation(hasDivisions: boolean) {
   const [activeSlide, setActiveSlide] = useState<string>(
     hasDivisions ? 'division' : 'debate'
   );
   const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Track heights of all content sections
-  const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
-  const contentRefs = useRef<Record<string, HTMLDivElement | null>>({
-    division: null,
-    debate: null
-  });
-
-  // Use ResizeObserver to track heights of all sections
-  useEffect(() => {
-    const observers: ResizeObserver[] = [];
-    
-    Object.entries(contentRefs.current).forEach(([key, element]) => {
-      if (!element) return;
-
-      const observer = new ResizeObserver(entries => {
-        const height = entries[0]?.contentRect.height;
-        if (height) {
-          setContentHeights(prev => ({
-            ...prev,
-            [key]: height
-          }));
-        }
-      });
-
-      observer.observe(element);
-      observers.push(observer);
-    });
-
-    return () => {
-      observers.forEach(observer => observer.disconnect());
-    };
-  }, []);
-
-  // Calculate maximum height from all sections
-  const maxContentHeight = useMemo(() => {
-    const heights = Object.values(contentHeights);
-    return heights.length > 0 ? Math.max(...heights) : 0;
-  }, [contentHeights]);
-  
-  // Updated slide change handler
-  const handleSlideChange = useCallback((type: string, index?: number) => {
-    if (!scrollRef.current) return;
-    
-    let targetIndex = 0;
-    if (type === 'debate') {
-      targetIndex = hasDivisions ? 1 : 0;
-    } else if (type.startsWith('keyPoints-')) {
-      const speakerIndex = parseInt(type.split('-')[1]);
-      targetIndex = (hasDivisions ? 2 : 1) + speakerIndex;
-    }
-    
-    const target = scrollRef.current.offsetWidth * targetIndex;
-    scrollRef.current.scrollTo({ left: target, behavior: 'smooth' });
-    
-    setActiveSlide(type);
-    if (typeof index === 'number') setCurrentDivisionIndex(index);
-  }, [hasDivisions]);
-
-  // Updated swipe handlers
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
-      const currentIndex = getSlideIndex(activeSlide);
-      const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
-      if (currentIndex < maxIndex) {
-        const nextSlide = getSlideType(currentIndex + 1);
-        handleSlideChange(nextSlide);
-      }
-    },
-    onSwipedRight: () => {
-      const currentIndex = getSlideIndex(activeSlide);
-      if (currentIndex > 0) {
-        const prevSlide = getSlideType(currentIndex - 1);
-        handleSlideChange(prevSlide);
-      }
-    },
-    preventScrollOnSwipe: true,
-    trackMouse: true,
-    trackTouch: true,
-    delta: 10,
-    swipeDuration: 500,
-  });
-
-  // Move these functions inside PostCard and wrap with useCallback
   const getSlideIndex = useCallback((slide: string): number => {
     if (slide === 'division') return 0;
     if (slide === 'debate') return hasDivisions ? 1 : 0;
@@ -154,57 +70,125 @@ export const PostCard = memo(function PostCard({
     return `keyPoints-${cardIndex}`;
   }, [hasDivisions]);
 
-  const { user, isEngagedCitizen } = useAuth();
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const handleSlideChange = useCallback((type: string, index?: number) => {
+    setActiveSlide(type);
+    if (typeof index === 'number') setCurrentDivisionIndex(index);
+  }, []);
+
+  return {
+    activeSlide,
+    currentDivisionIndex,
+    getSlideIndex,
+    getSlideType,
+    handleSlideChange
+  };
+}
+
+export const PostCard = memo(function PostCard({ 
+  item, 
+  hasReachedLimit,
+  userMp,
+  onVote,
+  readOnly
+}: PostCardProps) {
+  const hasDivisions = useMemo(() => 
+    item.divisions && item.divisions.length > 0
+  , [item.divisions]);
+
+  const { 
+    activeSlide, 
+    currentDivisionIndex, 
+    getSlideIndex, 
+    getSlideType, 
+    handleSlideChange 
+  } = useContentNavigation(hasDivisions || false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [showComments, setShowComments] = useState(false);
   const [showKeyPoints, setShowKeyPoints] = useState(false);
-
-  // Add useVotes hook
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const { user, isEngagedCitizen } = useAuth();
   const { submitVote } = useVotes();
 
-  // Unified handler for key points clicks
-  const handleKeyPointsClick = () => {
+  // Memoize computed values
+  const isUserMpSpeaker = useMemo(() => 
+    userMp && item.speakers?.[0]?.display_as === userMp,
+    [userMp, item.speakers]
+  );
+
+  const showKeyPointsButton = useMemo(() => 
+    item.ai_key_points?.length > 0 && (user && isEngagedCitizen),
+    [item.ai_key_points, user, isEngagedCitizen]
+  );
+
+  // Extract swipe handlers
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      const currentIndex = getSlideIndex(activeSlide);
+      const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
+      if (currentIndex < maxIndex) {
+        handleSlideChange(getSlideType(currentIndex + 1));
+      }
+    },
+    onSwipedRight: () => {
+      const currentIndex = getSlideIndex(activeSlide);
+      if (currentIndex > 0) {
+        handleSlideChange(getSlideType(currentIndex - 1));
+      }
+    },
+    preventScrollOnSwipe: true,
+    trackMouse: true,
+    trackTouch: true,
+    delta: 10,
+    swipeDuration: 500,
+  });
+
+  // Handle vote submission
+  const handleVote = useCallback(async (debateId: string, vote: boolean) => {
+    try {
+      await submitVote({ debate_id: debateId, vote });
+      onVote?.(debateId, vote);
+    } catch (error) {
+      console.error('Failed to submit vote:', error);
+    }
+  }, [submitVote, onVote]);
+
+  // Handle key points interaction
+  const handleKeyPointsClick = useCallback(() => {
     if (!user || !isEngagedCitizen) {
       setShowUpgradeDialog(true);
       return;
     }
     setShowComments(true);
     setShowKeyPoints(true);
-  };
+  }, [user, isEngagedCitizen]);
 
-  // Update handleVote to use submitVote mutation
-  const handleVote = useCallback(async (debateId: string, vote: boolean) => {
-    try {
-      // Submit vote using the mutation
-      await submitVote({ 
-        debate_id: debateId, 
-        vote 
-      });
+  // Add refs for content sections
+  const contentRefs = useRef<{
+    [key: string]: HTMLDivElement | null;
+  }>({
+    division: null,
+    debate: null
+  });
 
-      // Call parent onVote callback if provided
-      if (onVote) {
-        onVote(debateId, vote);
-      }
-    } catch (error) {
-      console.error('Failed to submit vote:', error);
-      // Error handling is done within useVotes
-    }
-  }, [submitVote, onVote]);
-
-  const [scrollProgress, setScrollProgress] = useState(0);
+  // Add scroll state
   const [showScrollbar, setShowScrollbar] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Add this inside PostCard component, after other useEffects
+  // Handle scroll events
   useEffect(() => {
     const scrollElement = scrollRef.current;
     if (!scrollElement) return;
 
     const handleScroll = () => {
-      const progress = scrollElement.scrollLeft / (scrollElement.scrollWidth - scrollElement.clientWidth);
-      setScrollProgress(progress);
+      const { scrollLeft, scrollWidth, clientWidth } = scrollElement;
+      const hasScroll = scrollWidth > clientWidth;
+      setShowScrollbar(hasScroll);
       
-      // Show scrollbar when content is scrollable
-      setShowScrollbar(scrollElement.scrollWidth > scrollElement.clientWidth);
+      if (hasScroll) {
+        const progress = scrollLeft / (scrollWidth - clientWidth);
+        setScrollProgress(progress);
+      }
     };
 
     // Initial check
@@ -219,50 +203,13 @@ export const PostCard = memo(function PostCard({
     };
   }, []);
 
-  // The wheel event handler useEffect will now have stable dependencies
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
-        e.preventDefault();
-        
-        if (e.deltaX > 0) {
-          const currentIndex = getSlideIndex(activeSlide);
-          const maxIndex = (hasDivisions ? 1 : 0) + (item.ai_comment_thread?.length || 0);
-          if (currentIndex < maxIndex) {
-            const nextSlide = getSlideType(currentIndex + 1);
-            handleSlideChange(nextSlide);
-          }
-        } else if (e.deltaX < 0) {
-          const currentIndex = getSlideIndex(activeSlide);
-          if (currentIndex > 0) {
-            const prevSlide = getSlideType(currentIndex - 1);
-            handleSlideChange(prevSlide);
-          }
-        }
-      }
-    };
-
-    element.addEventListener('wheel', handleWheel, { passive: false });
-    return () => element.removeEventListener('wheel', handleWheel);
-  }, [
-    activeSlide,
-    hasDivisions,
-    handleSlideChange,
-    getSlideIndex,
-    getSlideType,
-    item.ai_comment_thread?.length
-  ]);
-
   return (
     <>
       <Card 
         className={cn(
           "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
           "flex flex-col mt-8",
-          userMp && item.speakers?.[0]?.display_as === userMp ? "ring-1 ring-primary/20" : ""
+          isUserMpSpeaker ? "ring-1 ring-primary/20" : ""
         )}
         style={{ 
           borderLeftColor: locationColors[item.location] || '#2b2b2b',
@@ -280,9 +227,10 @@ export const PostCard = memo(function PostCard({
         )}>
           <div className="flex justify-between items-start gap-4">
             <div className="flex flex-col">
-              <CardTitle className="text-xl font-bold">
-                {item.ai_title}
-              </CardTitle>
+              <PostActions 
+                debate={item} 
+                onShare={handleKeyPointsClick}
+              />
               {userMp && item.speakers?.[0]?.display_as === userMp && (
                 <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
                   <UserIcon className="h-3.5 w-3.5" />
@@ -290,16 +238,6 @@ export const PostCard = memo(function PostCard({
                 </span>
               )}
             </div>
-            {item.ext_id && (
-              <a
-                href={constructDebateUrl(item.ext_id, item.title, item.date)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors shrink-0"
-              >
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
           </div>
         </CardHeader>
 
@@ -314,7 +252,7 @@ export const PostCard = memo(function PostCard({
             style={{ 
               scrollSnapType: 'x mandatory',
               WebkitOverflowScrolling: 'touch',
-              minHeight: maxContentHeight || 'auto',
+              minHeight: 'auto',
               transition: 'min-height 0.3s ease-in-out',
               touchAction: 'none'
             }}
@@ -358,7 +296,6 @@ export const PostCard = memo(function PostCard({
           {showScrollbar && (
             <div 
               className="absolute bottom-0 left-0 right-0 h-[2px] bg-muted/10 mx-6"
-              style={{ opacity: showScrollbar ? 1 : 0 }}
             >
               <motion.div 
                 className="h-full bg-primary/50 rounded-full"
@@ -374,7 +311,7 @@ export const PostCard = memo(function PostCard({
         </div>
 
         {/* Comments & Key Points Section */}
-        {(item.ai_comment_thread?.length > 0 || item.ai_key_points?.length > 0) && (
+        {(item.ai_comment_thread?.length > 0 || showKeyPointsButton) && (
           <div className="border-t flex-shrink-0">
             {!showComments ? (
               <div className="px-6 py-3 flex items-center gap-4">
@@ -391,15 +328,10 @@ export const PostCard = memo(function PostCard({
                       {item.ai_comment_thread.length} {item.ai_comment_thread.length === 1 ? 'Point' : 'Points'}
                     </button>
                   )}
-                  {item.ai_key_points?.length > 0 && (
+                  {showKeyPointsButton && (
                     <button
                       onClick={handleKeyPointsClick}
-                      className={cn(
-                        "text-sm flex items-center gap-1.5 transition-colors",
-                        (!user || !isEngagedCitizen)
-                          ? "text-muted-foreground/50 hover:text-muted-foreground cursor-pointer"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
+                      className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <LightbulbIcon className="h-4 w-4" />
                       Key Points
@@ -407,7 +339,7 @@ export const PostCard = memo(function PostCard({
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground/50 italic ml-auto">
-                  Generated by GPT-4o
+                  Generated by GPT-4
                 </span>
               </div>
             ) : (
@@ -433,7 +365,7 @@ export const PostCard = memo(function PostCard({
                       Hot Takes ({item.ai_comment_thread.length})
                     </button>
                   )}
-                  {item.ai_key_points?.length > 0 && (
+                  {showKeyPointsButton && (
                     <button
                       onClick={() => {
                         if (showKeyPoints) {
@@ -458,7 +390,7 @@ export const PostCard = memo(function PostCard({
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground/50 italic ml-auto">
-                  Generated by GPT-4o
+                  Generated by GPT-4
                 </span>
               </div>
             )}
@@ -504,12 +436,13 @@ export const PostCard = memo(function PostCard({
     </>
   );
 }, (prev, next) => {
-  // Custom comparison to determine if re-render is needed
+  // Improved memo comparison
   return (
     prev.item.id === next.item.id &&
     prev.readOnly === next.readOnly &&
     prev.hasReachedLimit === next.hasReachedLimit &&
-    prev.remainingVotes === next.remainingVotes
+    prev.remainingVotes === next.remainingVotes &&
+    prev.userMp === next.userMp
   );
 });
 
@@ -544,116 +477,6 @@ function MetaInformation({ item }: { item: FeedItem }) {
 
       {/* Party Distribution */}
       <PartyDistribution partyCount={partyCount} />
-    </div>
-  );
-}
-
-function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
-  const sortedParties = useMemo(() => {
-    return Object.entries(partyCount)
-      .sort(([, a], [, b]) => (b || 0) - (a || 0))
-      .reduce((acc, [party, count]) => {
-        const baseParty = party.split('(')[0].trim();
-        if (!acc[baseParty]) {
-          acc[baseParty] = { count: 0, color: partyColours[party]?.color || '#808080' };
-        }
-        acc[baseParty].count += count || 0;
-        return acc;
-      }, {} as Record<string, { count: number; color: string }>);
-  }, [partyCount]);
-
-  const totalCount = useMemo(() => 
-    Object.values(sortedParties).reduce((sum, { count }) => sum + count, 0)
-  , [sortedParties]);
-
-  // Don't render if no speakers
-  if (totalCount === 0) return null;
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <Users2 className="h-4 w-4" />
-        <span className="text-xs font-medium">{totalCount}</span>
-      </div>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="flex items-center hover:opacity-80 transition-opacity">
-            {/* Party distribution bar */}
-            <div className="flex h-2 w-24 rounded-full overflow-hidden">
-              {Object.entries(sortedParties).map(([party, { count, color }]) => {
-                const width = (count / totalCount) * 100;
-                return (
-                  <div
-                    key={party}
-                    className="h-full first:rounded-l-full last:rounded-r-full"
-                    style={{ 
-                      backgroundColor: color,
-                      width: `${width}%`,
-                    }}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Top 2 parties preview */}
-            <div className="ml-2 hidden sm:flex items-center gap-2">
-              {Object.entries(sortedParties).slice(0, 2).map(([party, { count, color }]) => (
-                <div
-                  key={party}
-                  className="flex items-center gap-1"
-                >
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-xs">
-                    {count}
-                  </span>
-                </div>
-              ))}
-              {Object.keys(sortedParties).length > 2 && (
-                <span className="text-xs text-muted-foreground">
-                  +{Object.keys(sortedParties).length - 2}
-                </span>
-              )}
-            </div>
-          </button>
-        </PopoverTrigger>
-
-        <PopoverContent className="w-64" align="start">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Speakers by Party</h4>
-            <div className="space-y-1.5">
-              {Object.entries(sortedParties).map(([party, { count, color }]) => {
-                const percentage = ((count / totalCount) * 100).toFixed(1);
-                return (
-                  <div 
-                    key={party}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="text-sm">{party}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium">
-                        {count}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({percentage}%)
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
     </div>
   );
 }

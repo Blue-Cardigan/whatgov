@@ -7,9 +7,6 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 
 #Optimizations
 - Reduce middleware build size for edge runtime
-- Split Auth hook into more focused hooks
-- Shared auth layout
-
 
 ### Political Monitoring:
 ## Search
@@ -17,19 +14,17 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 [/] Metadata from match in search results
 [ ] Full report generation with Vector search/assistant
 
-API to request ai content for a debate
+Unique page for each debate, implement saving/favourites
 
 MP Office data (stakeholder mapping)
 "Register of interests of members' secretaries and research assistants"
 + spending
 
-Unique page for each debate, implement saving/favourites
-
-Add every major paper's front page to feed
-
 Add RSS feed links
 
 MP position tracking
+
+API to request ai content for a debate
 
 Daily (live) whatsapp channel - every bill reading. Results of debate on X
 

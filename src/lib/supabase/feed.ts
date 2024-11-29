@@ -78,7 +78,7 @@ function parseCommentThread(value: unknown): CommentThread[] {
   }).filter((comment): comment is CommentThread => comment !== null);
 }
 
-function processDebates(
+export function processDebates(
   debates: Database['public']['Functions']['get_unvoted_debates']['Returns'],
   pageSize: number,
 ): { items: FeedItem[]; nextCursor?: FeedCursor } {
@@ -236,6 +236,28 @@ export async function getFeedItems(
     }
   } catch (error) {
     console.error('getFeedItems error:', error);
+    throw error;
+  }
+}
+
+export async function getDebateByExtId(extId: string): Promise<FeedItem | null> {
+  const supabase = createClient();
+  
+  try {
+    // Use the same function but with ext_id parameter
+    const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
+      p_ext_id: extId
+    });
+
+    if (error) throw error;
+    if (!debates || debates.length === 0) return null;
+
+    // Process the debate using existing processDebates function
+    const { items } = processDebates(debates, 1);
+    return items[0] || null;
+
+  } catch (error) {
+    console.error('getDebateByExtId error:', error);
     throw error;
   }
 }
