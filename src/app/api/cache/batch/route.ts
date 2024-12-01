@@ -21,10 +21,15 @@ export async function POST(request: NextRequest) {
     const pipeline = redis.pipeline();
     
     operations.forEach(({ key, value, ttl }) => {
+      // Skip if key or value is missing
+      if (!key || value === undefined) return;
+
+      const serializedValue = JSON.stringify(value);
+      
       if (ttl) {
-        pipeline.set(key, value, { ex: ttl });
+        pipeline.set(key, serializedValue, { ex: ttl });
       } else {
-        pipeline.set(key, value);
+        pipeline.set(key, serializedValue);
       }
     });
 

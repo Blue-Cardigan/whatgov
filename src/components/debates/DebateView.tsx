@@ -203,11 +203,11 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
                         isQuestion && "bg-muted/30"
                       )}
                     >
-                      <div className="flex gap-6">
-                        {/* Speaker info */}
-                        <div className="flex-shrink-0 min-w-[10%] max-w-[30%] border-r pr-6">
+                      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                        {/* Speaker info - Reduce minimum width */}
+                        <div className="flex-shrink-0 sm:min-w-[8%] sm:max-w-[30%] sm:border-r sm:pr-6">
                           {contribution.AttributedTo && (
-                            <div className="space-y-2">
+                            <div className="flex sm:block items-center justify-between gap-2">
                               <div>
                                 <div className="font-medium">
                                   {contribution.AttributedTo.split('(')[0].trim()}
@@ -267,12 +267,12 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
         </Card>
 
         {/* Navigation links */}
-        <div className="flex items-center justify-between pt-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-4">
           {hansardData.Overview.PreviousDebateTitle && (
             <Button
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-2 text-sm"
               asChild
             >
               <Link href={`/debate/${hansardData.Overview.PreviousDebateExtId}`}>
@@ -284,7 +284,7 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 ml-auto"
+              className="gap-2 text-sm sm:ml-auto"
               asChild
             >
               <Link href={`/debate/${hansardData.Overview.NextDebateExtId}`}>
@@ -458,24 +458,27 @@ function MetaInformation({ item }: { item: FeedItem }) {
   
   const formattedDate = useMemo(() => {
     const date = new Date(item.date);
-    return format(date, 'dd MMMM yyyy');
+    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
+    return format(date, `dd MMM${isCurrentYear ? '' : ' yyyy'}`);
   }, [item.date]);
   
   return (
-    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-      <div className="flex items-center gap-1.5">
-        <CalendarIcon className="h-4 w-4" />
-        {formattedDate}
-      </div>
+    <div className="flex items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+      <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-4">
+        <div className="flex items-center gap-1.5">
+          <CalendarIcon className="hidden sm:inline h-4 w-4" />
+          {formattedDate}
+        </div>
 
-      {debateType && (
-        <Badge 
-          variant="secondary"
-          className="text-xs font-normal"
-        >
-          {debateType.label}
-        </Badge>
-      )}
+        {debateType && (
+          <Badge 
+            variant="secondary"
+            className="text-xs font-normal"
+          >
+            {debateType.label}
+          </Badge>
+        )}
+      </div>
 
       <PartyDistribution partyCount={partyCount} />
     </div>

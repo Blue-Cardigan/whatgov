@@ -12,6 +12,7 @@ export default {
   		screens: {
   			lg: '1280px',
   			xl: '1536px',
+			xs: '300px',
 			'firefox': { raw: '(-moz-box-flex: 0)' }
   		},
   		colors: {

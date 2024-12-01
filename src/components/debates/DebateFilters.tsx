@@ -134,6 +134,7 @@ export function DebateFilters({
   const [isMobile] = useState(true);
   const { user, profile, loading } = useAuth();
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [showDivisionsPrompt, setShowDivisionsPrompt] = useState(false);
 
   // Show skeletons while loading auth state
   if (loading) {
@@ -210,31 +211,26 @@ export function DebateFilters({
         <div className={cn(
           "w-full px-4 md:px-0",
           "py-3 md:pt-6",
-          
           "flex md:block",
-          
           "overflow-x-auto md:overflow-visible",
           "snap-x snap-mandatory md:snap-none",
-          
           "scrollbar-thin",
           "scrollbar-track-transparent",
           "scrollbar-thumb-muted-foreground/20",
           "hover:scrollbar-thumb-muted-foreground/30",
-          
           "pb-2 md:pb-0",
-          
           "firefox:scrollbar-none",
-          
           "touch-pan-x",
-          "-webkit-overflow-scrolling-touch"
+          "-webkit-overflow-scrolling-touch",
+          "overflow-y-hidden",
+          "max-h-[100px] md:max-h-none"
         )}>
           <div className={cn(
             "flex gap-6",
             "md:flex md:flex-col md:gap-6",
-            
             "px-4 md:px-0",
-            
-            "ml-[-16px] md:ml-0"
+            "ml-[-16px] md:ml-0",
+            "min-h-[84px] md:min-h-0"
           )}>
             <div className="snap-start">
               <button
@@ -290,7 +286,7 @@ export function DebateFilters({
                 )}
                 onClick={() => {
                   if (!user) {
-                    setShowSignInPrompt(true);
+                    setShowDivisionsPrompt(true);
                   } else {
                     handleFilterChange('divisionsOnly', !filters.divisionsOnly);
                   }
@@ -708,6 +704,21 @@ export function DebateFilters({
           </div>
         </div>
       </div>
+
+      <Dialog open={showDivisionsPrompt} onOpenChange={setShowDivisionsPrompt}>
+        <DialogContent className="sm:max-w-[425px] p-0">
+          <DialogTitle className="sr-only">
+            Sign in to filter by divisions
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Create an account or sign in to filter debates by divisions.
+          </DialogDescription>
+          <SignInPrompt
+            title="Sign in to filter by divisions"
+            description="Create an account or sign in to filter debates by divisions."
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSignInPrompt} onOpenChange={setShowSignInPrompt}>
         <DialogContent className="sm:max-w-[425px] p-0">

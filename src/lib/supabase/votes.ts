@@ -28,6 +28,13 @@ export async function submitVote({ debate_id, vote }: DebateVote) {
       throw new Error(error.message || 'Failed to submit vote');
     }
 
+    // Pre-fetch the data before cache warming
+    const [topicStats, userStats, demographicStats] = await Promise.all([
+      getTopicVoteStats(),
+      getUserTopicVotes(),
+      getDemographicVoteStats()
+    ]);
+
     // Batch warm the caches with fresh data
     await fetch('/api/cache/batch', {
       method: 'POST',
@@ -36,17 +43,17 @@ export async function submitVote({ debate_id, vote }: DebateVote) {
         operations: [
           {
             key: CACHE_KEYS.topicVoteStats.key(),
-            fetcher: getTopicVoteStats,
+            value: topicStats,
             ttl: CACHE_KEYS.topicVoteStats.ttl
           },
           {
             key: CACHE_KEYS.userTopicVotes.key(user.id),
-            fetcher: getUserTopicVotes,
+            value: userStats,
             ttl: CACHE_KEYS.userTopicVotes.ttl
           },
           {
             key: CACHE_KEYS.demographicStats.key(),
-            fetcher: getDemographicVoteStats,
+            value: demographicStats,
             ttl: CACHE_KEYS.demographicStats.ttl
           }
         ]
@@ -91,11 +98,11 @@ export const migrateAnonymousVotes = async (
     // Process each batch
     for (const batch of batches) {
       const { error } = await supabase.rpc('migrate_anonymous_votes', {
-        p_user_id: authenticatedUserId,
         p_votes: batch.map(vote => ({
           debate_id: vote.debate_id,
           vote: vote.vote,
-          created_at: vote.timestamp
+          created_at: vote.timestamp,
+          // The user_id will be handled by the SQL function using auth.uid()
         }))
       });
 

@@ -28,11 +28,37 @@ RETURNS TABLE (
   type TEXT,
   engagement_count FLOAT,
   ai_comment_thread JSONB,
-  speakers JSONB
+  speakers JSONB,
+  divisions JSONB
 ) AS $$
 BEGIN
   RETURN QUERY
-  WITH base_debates AS (
+  WITH debate_divisions AS (
+    SELECT 
+      d.debate_section_ext_id,
+      jsonb_agg(
+        jsonb_build_object(
+          'division_id', d.division_id,
+          'external_id', d.external_id,
+          'date', d.date,
+          'time', d.time,
+          'ayes_count', d.ayes_count,
+          'noes_count', d.noes_count,
+          'aye_members', d.aye_members,
+          'noe_members', d.noe_members,
+          'division_number', d.division_number,
+          'text_before_vote', d.text_before_vote,
+          'text_after_vote', d.text_after_vote,
+          'ai_question', d.ai_question,
+          'ai_topic', d.ai_topic,
+          'ai_context', d.ai_context,
+          'ai_key_arguments', d.ai_key_arguments
+        )
+      ) as divisions_data
+    FROM divisions d
+    GROUP BY d.debate_section_ext_id
+  ),
+  base_debates AS (
     SELECT 
       d.id,
       d.ai_key_points::text,
@@ -68,7 +94,8 @@ BEGIN
       (
         COALESCE(d.ai_question_ayes, 0) + 
         COALESCE(d.ai_question_noes, 0)
-      )::float AS total_votes
+      )::float AS total_votes,
+      COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
     FROM debates d
     LEFT JOIN LATERAL jsonb_array_elements(
       CASE 
@@ -76,6 +103,7 @@ BEGIN
         ELSE d.speakers
       END
     ) as speaker ON true
+    LEFT JOIN debate_divisions dd ON d.ext_id = dd.debate_section_ext_id
     WHERE (p_ext_id IS NULL OR d.ext_id = p_ext_id)
     GROUP BY 
       d.id,
@@ -98,7 +126,8 @@ BEGIN
       d.speaker_count,
       d.title,
       d.type,
-      d.ai_comment_thread
+      d.ai_comment_thread,
+      dd.divisions_data
   ),
   scored_debates AS (
     SELECT *
@@ -135,7 +164,8 @@ BEGIN
     scored_debates.type,
     scored_debates.total_votes as engagement_count,
     COALESCE(scored_debates.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
-    scored_debates.speakers
+    scored_debates.speakers,
+    scored_debates.divisions
   FROM scored_debates
   ORDER BY 
     scored_debates.debate_date DESC NULLS LAST,

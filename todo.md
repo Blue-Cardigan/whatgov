@@ -6,9 +6,13 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 4) Hover hints for first time users
 
 #Optimizations
+- Show divisions in feed for unauth users
 - Use speakers object to add images to comment
 - Generate Nameid to avoid ugly /debate urls
 - Reduce middleware build size for edge runtime
+
+Link to debate page from MP key profile key points and user votes list
+Redesign user votes/demographic view
 
 ### Political Monitoring:
 ## Search
@@ -16,15 +20,16 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 [/] Metadata from match in search results
 [ ] Full report generation with Vector search/assistant
 
-Unique page for each debate, implement saving/favourites
+[/] Unique page for each debate
+[ ] Implement bookmarking
+[ ] MP position tracking
+
+Add RSS feed links
 
 MP Office data (stakeholder mapping)
 "Register of interests of members' secretaries and research assistants"
 + spending
 
-Add RSS feed links
-
-MP position tracking
 
 API to request ai content for a debate
 

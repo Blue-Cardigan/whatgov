@@ -26,7 +26,7 @@ export function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
   if (totalCount === 0) return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 ml-auto">
       <div className="flex items-center gap-1">
         <Users2 className="h-4 w-4" />
         <span className="text-xs font-medium">{totalCount}</span>
@@ -36,7 +36,7 @@ export function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
         <PopoverTrigger asChild>
           <button className="flex items-center hover:opacity-80 transition-opacity">
             {/* Party distribution bar */}
-            <div className="flex h-2 w-24 rounded-full overflow-hidden">
+            <div className="flex h-2 w-full min-w-[4rem] max-w-24 rounded-full overflow-hidden">
               {Object.entries(sortedParties).map(([party, { count, color }]) => {
                 const width = (count / totalCount) * 100;
                 return (
