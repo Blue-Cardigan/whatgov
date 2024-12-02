@@ -11,10 +11,8 @@ export function cn(...inputs: ClassValue[]) {
 
 // Helper function to safely parse JSON fields
 export function parseKeyPoints(json: Json): KeyPoint[] {
-  // If json is null or undefined, return empty array
   if (!json) return [];
   
-  // If json is a string, try to parse it
   let parsedJson = json;
   if (typeof json === 'string') {
     try {
@@ -25,7 +23,6 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
     }
   }
   
-  // Ensure we have an array to work with
   if (!Array.isArray(parsedJson)) {
     console.error('Key points data is not an array:', parsedJson);
     return [];
@@ -33,32 +30,31 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
   
   return parsedJson
     .map(item => {
-      // Basic type check for item
       if (!item || typeof item !== 'object') {
         console.error('Invalid key point item:', item);
         return null;
       }
 
-      // Type assertion after basic check
       const keyPoint = item as Record<string, unknown>;
       
-      // Validate required fields
+      // Ensure support and opposition are always arrays
+      const support = Array.isArray(keyPoint.support) ? keyPoint.support : [];
+      const opposition = Array.isArray(keyPoint.opposition) ? keyPoint.opposition : [];
+
+      // Only validate point and speaker as required
       if (
         typeof keyPoint.point !== 'string' ||
-        typeof keyPoint.speaker !== 'string' ||
-        !Array.isArray(keyPoint.support) ||
-        !Array.isArray(keyPoint.opposition)
+        typeof keyPoint.speaker !== 'string'
       ) {
         console.error('Invalid key point structure:', keyPoint);
         return null;
       }
 
-      // Return properly typed key point
       return {
         point: keyPoint.point,
         speaker: keyPoint.speaker,
-        support: keyPoint.support.filter((s): s is string => typeof s === 'string'),
-        opposition: keyPoint.opposition.filter((o): o is string => typeof o === 'string')
+        support: support.filter((s): s is string => typeof s === 'string'),
+        opposition: opposition.filter((o): o is string => typeof o === 'string')
       };
     })
     .filter((item): item is KeyPoint => item !== null);

@@ -72,39 +72,47 @@ export async function getMPKeyPoints(
 
   if (error) throw error;
 
-  // Transform the data to ensure ai_topics is properly typed
+  // Transform and validate the data
   return (data || []).map((item: unknown) => {
-    if (typeof item !== 'object' || !item) return {
-      debate_id: '',
-      debate_title: '',
-      debate_date: '',
-      point: '',
-      point_type: 'made' as const,
-      original_speaker: null,
-      ai_topics: []
-    };
+    // Basic validation of the item
+    if (!item || typeof item !== 'object') {
+      console.error('Invalid key point item:', item);
+      return createEmptyKeyPoint();
+    }
 
-    const mpPoint = item as Record<string, unknown>;
+    const keyPoint = item as Record<string, unknown>;
+
+    // Validate required string fields
+    const requiredStrings = ['debate_id', 'ext_id', 'debate_title', 'point', 'point_type'] as const;
+    for (const field of requiredStrings) {
+      if (typeof keyPoint[field] !== 'string') {
+        console.error(`Invalid ${field} in key point:`, keyPoint);
+        return createEmptyKeyPoint();
+      }
+    }
+
+    // Validate date
+    if (!(keyPoint.debate_date instanceof Date) && typeof keyPoint.debate_date !== 'string') {
+      console.error('Invalid debate_date in key point:', keyPoint);
+      return createEmptyKeyPoint();
+    }
+
+    // Transform AI topics
+    const aiTopics = Array.isArray(keyPoint.ai_topics) 
+      ? keyPoint.ai_topics.map(transformTopic).filter(Boolean)
+      : [];
+
     return {
-      ...mpPoint,
-      ai_topics: Array.isArray(mpPoint.ai_topics) 
-        ? mpPoint.ai_topics.map((topic: unknown) => {
-            if (typeof topic !== 'object' || !topic) return {
-              name: '',
-              speakers: [],
-              frequency: 1,
-              subtopics: []
-            };
-            
-            const t = topic as Record<string, unknown>;
-            return {
-              name: typeof t.name === 'string' ? t.name : '',
-              speakers: Array.isArray(t.speakers) ? t.speakers : [],
-              frequency: typeof t.frequency === 'number' ? t.frequency : 1,
-              subtopics: Array.isArray(t.subtopics) ? t.subtopics : []
-            };
-          })
-        : []
+      debate_id: keyPoint.debate_id as string,
+      ext_id: keyPoint.ext_id as string,
+      debate_title: keyPoint.debate_title as string,
+      debate_date: keyPoint.debate_date as string,
+      point: keyPoint.point as string,
+      point_type: keyPoint.point_type as 'made' | 'supported' | 'opposed',
+      original_speaker: typeof keyPoint.original_speaker === 'string' 
+        ? keyPoint.original_speaker 
+        : null,
+      ai_topics: aiTopics
     };
   });
 }
@@ -155,3 +163,32 @@ function transformMPData(data: RawMPData): MPData {
       : null
   };
 } 
+
+// Helper functions
+function createEmptyKeyPoint(): MPKeyPoint {
+  return {
+    debate_id: '',
+    ext_id: '',
+    debate_title: '',
+    debate_date: new Date().toISOString(),
+    point: '',
+    point_type: 'made',
+    original_speaker: null,
+    ai_topics: []
+  };
+}
+
+function transformTopic(topic: unknown) {
+  if (!topic || typeof topic !== 'object') {
+    return null;
+  }
+
+  const t = topic as Record<string, unknown>;
+  
+  return {
+    name: typeof t.name === 'string' ? t.name : '',
+    speakers: Array.isArray(t.speakers) ? t.speakers : [],
+    frequency: typeof t.frequency === 'number' ? t.frequency : 1,
+    subtopics: Array.isArray(t.subtopics) ? t.subtopics : []
+  };
+}

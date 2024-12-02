@@ -77,7 +77,7 @@ export function PartyDistribution({ partyCount }: { partyCount: PartyCount }) {
           </button>
         </PopoverTrigger>
 
-        <PopoverContent className="w-64 bg-popover p-4 rounded-md shadow-md" align="start">
+        <PopoverContent className="w-64 z-50 bg-popover p-4 rounded-md shadow-md" align="start">
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Speakers by Party</h4>
             <div className="space-y-1.5">

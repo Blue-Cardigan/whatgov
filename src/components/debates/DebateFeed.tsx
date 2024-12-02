@@ -132,6 +132,10 @@ export function DebateFeed() {
     );
   }, [data?.pages]);
 
+  const handleFilterChange = (newFilters: FeedFilters) => {
+    setFilters(newFilters);
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex flex-col md:pr-20">

@@ -151,8 +151,10 @@ export const PostCard = memo(function PostCard({
     try {
       await submitVote({ debate_id: debateId, vote });
       onVote?.(debateId, vote);
+      return true;
     } catch (error) {
       console.error('Failed to submit vote:', error);
+      throw error; // Re-throw to let DebateContent handle the error UI
     }
   }, [submitVote, onVote]);
 

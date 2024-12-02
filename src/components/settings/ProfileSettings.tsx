@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ import type { UserProfile } from '@/types/supabase';
 import createClient from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useBeforeUnload } from '@/hooks/use-before-unload';
 
 export function ProfileSettings() {
   const { user, profile: originalProfile, updateProfile } = useAuth();
@@ -28,6 +29,9 @@ export function ProfileSettings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal');
+
   // Initialize profile from useAuth
   useEffect(() => {
     if (originalProfile) {
@@ -49,34 +53,60 @@ export function ProfileSettings() {
     setHasChanges(hasProfileChanges);
   }, [profile, originalProfile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile || !user || !hasChanges) return;
+  // Save changes when user leaves the page
+  useBeforeUnload(
+    useCallback(async () => {
+      if (hasChanges && profile) {
+        try {
+          await updateProfile({
+            name: profile.name,
+            postcode: profile.postcode,
+            constituency: profile.constituency,
+            mp: profile.mp,
+            gender: profile.gender,
+            age: profile.age,
+            selected_topics: profile.selected_topics,
+            newsletter: profile.newsletter,
+          });
+        } catch (error) {
+          console.error('Error saving changes:', error);
+        }
+      }
+    }, [hasChanges, profile, updateProfile])
+  );
 
-    try {
-      await updateProfile({
-        name: profile.name,
-        postcode: profile.postcode,
-        constituency: profile.constituency,
-        mp: profile.mp,
-        gender: profile.gender,
-        age: profile.age,
-        selected_topics: profile.selected_topics,
-        newsletter: profile.newsletter,
-      });
+  // Save changes when changing tabs
+  const handleTabChange = async (newTab: string) => {
+    if (hasChanges && profile) {
+      setIsSaving(true);
+      try {
+        await updateProfile({
+          name: profile.name,
+          postcode: profile.postcode,
+          constituency: profile.constituency,
+          mp: profile.mp,
+          gender: profile.gender,
+          age: profile.age,
+          selected_topics: profile.selected_topics,
+          newsletter: profile.newsletter,
+        });
 
-      toast({
-        title: "Success",
-        description: "Your profile has been updated.",
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
+        toast({
+          title: "Changes saved",
+          description: "Your profile has been updated.",
+        });
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save changes. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
     }
+    setActiveTab(newTab);
   };
 
   const handlePostcodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +220,11 @@ export function ProfileSettings() {
   }
 
   return (
-    <Tabs defaultValue="personal" className="space-y-6">
+    <Tabs 
+      value={activeTab} 
+      onValueChange={handleTabChange}
+      className="space-y-6"
+    >
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="personal">Personal Info</TabsTrigger>
         <TabsTrigger value="constituency">Constituency</TabsTrigger>
@@ -198,7 +232,7 @@ export function ProfileSettings() {
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
 
-      <form onSubmit={handleSubmit}>
+      <form>
         <TabsContent value="personal" className="space-y-6">
           <Card>
             <CardHeader>
@@ -507,6 +541,20 @@ export function ProfileSettings() {
           )}
         </div>
       </CardContent>
+
+      {isSaving && (
+        <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg flex items-center gap-2 z-50">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Saving changes...
+        </div>
+      )}
+
+      {hasChanges && !isSaving && (
+        <div className="fixed bottom-4 right-4 bg-muted px-4 py-2 rounded-md shadow-lg flex items-center gap-2 z-50">
+          <AlertCircle className="h-4 w-4" />
+          Unsaved changes
+        </div>
+      )}
     </Tabs>
   );
 } 

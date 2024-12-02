@@ -1,18 +1,24 @@
 Key value: Quick and simple search of simple debates - no trawling through thousands of words of copy
 
-1) Send welcome email 
-2) Implement newsletter sending from backend
-3) Implement sponsorship tier
-4) Hover hints for first time users
+1) Feedback form in site
+2) Send personal welcome email 
+3) Mobile push notifs
+4) Implement newsletter sending from backend
+   1) (Automatically) Identify most interesting debates for newsletter content
+5) Implement sponsorship tier with free price entry
+6) Hover hints for first time users
+
+UI/UX
+1) Solid fill for speaker distribution dropdown
+2) Restructure Voter Stats for clarity
+3) Commons/Lords/Both toggle for auth unsubscribed
 
 #Optimizations
-- Show divisions in feed for unauth users
-- Use speakers object to add images to comment
 - Generate Nameid to avoid ugly /debate urls
+- Add speaker metadata to mp profile view
 - Reduce middleware build size for edge runtime
-
-Link to debate page from MP key profile key points and user votes list
-Redesign user votes/demographic view
+- Callback to previous url when user signs in
+- Restrict state updates to feed only when filters change
 
 ### Political Monitoring:
 ## Search
@@ -22,6 +28,7 @@ Redesign user votes/demographic view
 
 [/] Unique page for each debate
 [ ] Implement bookmarking
+    Link to debate page from MP key profile key points and user votes list
 [ ] MP position tracking
 
 Add RSS feed links
@@ -29,7 +36,6 @@ Add RSS feed links
 MP Office data (stakeholder mapping)
 "Register of interests of members' secretaries and research assistants"
 + spending
-
 
 API to request ai content for a debate
 

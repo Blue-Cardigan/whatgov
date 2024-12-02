@@ -101,6 +101,14 @@ export const booleanFilters = [
 export function TopBar({ filters, onChange, className }: TopBarProps) {
   const { isEngagedCitizen, user, profile, loading } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  
+  // Maintain local state of filters
+  const [localFilters, setLocalFilters] = useState(filters);
+
+  // Update local state when props change
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
 
   // Show available filters immediately based on current auth state
   const availableFilters = useMemo(() => {
@@ -112,19 +120,17 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
     // Don't process filter changes while loading
     if (loading) return;
 
-    // If user is not authenticated or doesn't have an MP, ignore mpOnly filter
+    let newFilters = { ...filters };
+
+    // Apply filter logic
     if (!user || !profile?.mp_id) {
-      onChange({
+      newFilters = {
         ...filters,
         ...updatedFilters,
         mpOnly: false
-      });
-      return;
-    }
-
-    // If user is not subscribed, only allow mpOnly and divisionsOnly filters
-    if (!isEngagedCitizen) {
-      onChange({
+      };
+    } else if (!isEngagedCitizen) {
+      newFilters = {
         ...filters,
         mpOnly: updatedFilters.mpOnly,
         divisionsOnly: updatedFilters.divisionsOnly,
@@ -132,15 +138,18 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         location: [],
         days: [],
         topics: []
-      });
-      return;
+      };
+    } else {
+      newFilters = {
+        ...filters,
+        ...updatedFilters
+      };
     }
 
-    // Otherwise apply all filters
-    onChange({
-      ...filters,
-      ...updatedFilters
-    });
+    // Update local state immediately
+    setLocalFilters(newFilters);
+    // Propagate changes to parent
+    onChange(newFilters);
   };
 
   // Initialize filters based on auth state
@@ -182,7 +191,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         className
       )}>
         <DebateFilters 
-          filters={omitHouse(filters)}
+          filters={omitHouse(localFilters)}
           onChange={handleFilterChange} 
           filterItems={[...availableFilters, ...booleanFilters]}
           isEnabled={true}
@@ -200,7 +209,7 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         className
       )}>
         <DebateFilters 
-          filters={omitHouse(filters)}
+          filters={omitHouse(localFilters)}
           onChange={handleFilterChange} 
           filterItems={[...availableFilters, ...booleanFilters]}
           isEnabled={isEngagedCitizen}

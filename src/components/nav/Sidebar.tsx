@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   ScrollText, Search, BookOpen, Settings, 
-  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles 
+  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -102,6 +102,17 @@ export function Sidebar({ className }: SidebarProps) {
               </DropdownMenuItem>
             </>
           )}
+
+          <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
+            <Link href="/feedback" className="flex items-center space-x-3">
+              <div className="bg-secondary rounded-lg p-2">
+                <MessageSquare className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">Feedback</p>
+              </div>
+            </Link>
+          </DropdownMenuItem>
 
           <DropdownMenuItem asChild className="p-1 focus:bg-accent rounded-lg cursor-pointer">
             <Link href="/about" className="flex items-center space-x-3">

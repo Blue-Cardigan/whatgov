@@ -24,6 +24,13 @@ interface VirtualizedFeedState {
   expandedStates: Map<string, boolean>;
 }
 
+// Create a global measurements cache
+const globalMeasurements = new Map<string, {
+  compact: number;
+  expanded: number;
+  current: number;
+}>();
+
 export function useFeed({ 
   votedOnly = false, 
   pageSize = 8,
@@ -151,15 +158,20 @@ export function useFeed({
 export function useVirtualizedFeed(items: FeedItem[]) {
   const parentRef = useRef<HTMLDivElement>(null);
   
-  // Consolidated state management
+  // Initialize from global cache
   const feedState = useRef<VirtualizedFeedState>({
-    measurements: new Map(),
+    measurements: new Map(globalMeasurements), // Clone global measurements
     expandedStates: new Map()
   });
 
   const estimateSize = useCallback((index: number) => {
     const item = items[index];
-    if (!item) return 300; // Default height
+    if (!item) return 300;
+    
+    const globalMeasurement = globalMeasurements.get(item.id);
+    if (globalMeasurement) {
+      return globalMeasurement.current;
+    }
     
     const measurement = feedState.current.measurements.get(item.id);
     if (measurement) {
@@ -202,19 +214,20 @@ export function useVirtualizedFeed(items: FeedItem[]) {
         measurement.current = height;
         
         feedState.current.measurements.set(debateId, measurement);
+        globalMeasurements.set(debateId, measurement); // Update global cache
       }
       
       return height;
     }, [])
   });
 
-  // Expose a clean API for state updates
   const updateItemState = useCallback((itemId: string, isExpanded: boolean) => {
     feedState.current.expandedStates.set(itemId, isExpanded);
     
     const measurement = feedState.current.measurements.get(itemId);
     if (measurement) {
       measurement.current = isExpanded ? measurement.expanded : measurement.compact;
+      globalMeasurements.set(itemId, measurement);
       virtualizer.measure();
     }
   }, [virtualizer]);

@@ -24,7 +24,6 @@ begin
       dv.debate_id,
       dv.vote,
       dv.created_at,
-      d.ai_tags,
       d.ai_topics,
       d.ai_question,
       d.ai_question_topic,
@@ -51,7 +50,6 @@ begin
       topic->>'name' as topic_name,
       topic->'subtopics' as subtopics,
       topic->'frequency' as frequency,
-      uv.ai_tags,
       uv.ai_question,
       uv.ai_question_topic,
       uv.ai_question_ayes,
@@ -64,7 +62,6 @@ begin
     select
       topic_name,
       jsonb_build_object(
-        'tags', ai_tags,
         'question', jsonb_build_object(
           'text', ai_question,
           'topic', ai_question_topic,

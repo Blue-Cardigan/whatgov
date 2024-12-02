@@ -73,6 +73,7 @@ export type MPData = {
 
 export type MPKeyPoint = {
   debate_id: string;
+  ext_id: string;
   debate_title: string;
   debate_date: string;
   point: string;
@@ -107,6 +108,13 @@ export interface AiTopic {
   speakers: string[];
   frequency: number;
   subtopics: string[];
+  debates?: {
+    id: string;
+    ext_id: string;
+    title: string;
+    date: string;
+    subtopics?: string[];
+  }[];
 }
 
 export type AiTopics = AiTopic[];

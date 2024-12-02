@@ -59,7 +59,14 @@ export function MPProfile() {
                     name: topic.name,
                     speakers: Array.from(new Set([...topic.speakers])),
                     frequency: 1,
-                    subtopics: Array.from(new Set([...topic.subtopics]))
+                    subtopics: Array.from(new Set([...topic.subtopics])),
+                    debates: [{
+                      id: point.debate_id,
+                      ext_id: point.ext_id,
+                      title: point.debate_title,
+                      date: point.debate_date,
+                      subtopics: topic.subtopics || []
+                    }]
                   });
                 } else {
                   existingTopic.frequency += 1;
@@ -71,6 +78,15 @@ export function MPProfile() {
                     ...existingTopic.subtopics,
                     ...topic.subtopics
                   ]));
+                  if (existingTopic.debates) {
+                    existingTopic.debates.push({
+                      id: point.debate_id,
+                      ext_id: point.ext_id,
+                      title: point.debate_title,
+                      date: point.debate_date,
+                      subtopics: topic.subtopics || []
+                    });
+                  }
                   topicsMap.set(topic.name, existingTopic);
                 }
               });
