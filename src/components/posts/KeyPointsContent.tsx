@@ -42,8 +42,6 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
       {keyPoints.map((point, index) => {
         const isUserMp = userMp && point?.speaker === userMp;
         const matchingSpeaker = findMatchingSpeaker(point?.speaker, speakers);
-
-        console.log(matchingSpeaker);
         
         return (
           <div key={index} className="flex gap-3">

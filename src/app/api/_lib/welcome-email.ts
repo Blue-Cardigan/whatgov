@@ -108,34 +108,6 @@ export async function sendWelcomeEmail(email: string, name: string, newsletter: 
               What happens in Parliament matters. Understanding it shouldn't be hard.
             </p>
 
-            <!-- What's New Section -->
-            <div style="background-color: ${colors.background}; border: 1px solid ${colors.border}; padding: 24px; border-radius: 8px; margin: 32px 0;">
-              <h2 style="color: ${colors.badge.text}; font-size: 18px; margin: 0 0 16px 0;">
-                What's New?
-              </h2>
-              <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
-                The site may look very different to those who visited a while ago. Instead of Whatsapp, the app now resembles Instagram, putting all of Hansard in a feed with a summary and key points.
-              </p>
-              
-              <!-- Feed Scroll GIF -->
-              <div style="margin: 24px 0;">
-                <img src="${process.env.NEXT_PUBLIC_SITE_URL}/emails/feed_scroll.gif" 
-                     alt="Demo of the feed scrolling interface" 
-                     style="width: 100%; max-width: 500px; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
-              </div>
-
-              <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
-                The app is smoother, debates are easier to search, and you've got a bunch of extra features to let you track your MP.
-              </p>
-
-              <!-- Features Image -->
-              <div style="margin: 24px 0;">
-                <img src="${process.env.NEXT_PUBLIC_SITE_URL}/emails/features.png" 
-                     alt="Available features overview" 
-                     style="width: 100%; max-width: 500px; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
-              </div>
-            </div>
-
             <!-- Next Steps Section -->
             <div style="background-color: ${colors.background}; border: 1px solid ${colors.border}; padding: 24px; border-radius: 8px; margin: 32px 0;">
               <h2 style="color: ${colors.badge.text}; font-size: 18px; margin: 0 0 16px 0; font-weight: 600;">

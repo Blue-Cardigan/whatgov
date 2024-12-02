@@ -62,15 +62,18 @@ export async function sendFeedbackEmail(email: string, name: string) {
     throw new Error('SENDGRID_WELCOME_EMAIL_SENDER is not set');
   }
 
-  // Use the blue theme for feedback emails
-  const colors = colorSchemes[0];
+  // Use the emerald theme for feedback emails
+  const colors = colorSchemes[1];
+
+  // Use 'stranger' if name is empty or null
+  const greeting = name?.trim() ? name : 'stranger';
 
   const msg = {
     to: email,
     from: EMAIL_CONFIG.from,
     replyTo: EMAIL_CONFIG.replyTo,
-    subject: 'Your feedback matters - Help shape WhatGov',
-    text: `Hi ${name}, I'm Jethro - thanks for trying out WhatGov. Your feedback is crucial to making political monitoring accessible to everyone.`,
+    subject: 'You\'re an early user - Shape WhatGov',
+    text: `Hi ${greeting}, I'm Jethro - thanks for trying out WhatGov. Your feedback is crucial to making political monitoring accessible to everyone.`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -83,7 +86,7 @@ export async function sendFeedbackEmail(email: string, name: string) {
             <!-- Personal Intro -->
             <div style="margin-bottom: 32px;">
               <h1 style="color: #18181b; margin-bottom: 24px; font-size: 28px;">
-                Hi ${name},
+                Hi ${greeting},
               </h1>
               <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
                 I'm Jethro - you put your email in my site whatgov.co.uk (Previously, whatsard.co.uk) because you were interested in more readable Hansard. Now it's time for me to say thank you... and welcome to accessible political monitoring!
@@ -98,8 +101,27 @@ export async function sendFeedbackEmail(email: string, name: string) {
               <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
                 The site may look very different to those who visited a while ago. Instead of Whatsapp, the app now resembles Instagram, putting all of Hansard in a feed with a summary and key points.
               </p>
+               <!-- Feed Scroll GIF -->
+              <div style="margin: 24px 0;">
+                <img src="${process.env.NEXT_PUBLIC_SITE_URL}/emails/feed_scroll.gif" 
+                     alt="Demo of the feed scrolling interface" 
+                     style="width: 100%; max-width: 500px; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
+              </div>
+
               <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
-                The app is smoother, debates are easier to search, and you've got a bunch of extra features to let you track your MP (Or whichever one you add in your profile 😉).
+                The app is smoother, debates are easier to search, and you've got a bunch of extra features to let you track your MP.
+              </p>
+
+              <!-- Features Image -->
+              <div style="margin: 24px 0;">
+                <img src="${process.env.NEXT_PUBLIC_SITE_URL}/emails/features.png" 
+                     alt="Available features overview" 
+                     style="width: 100%; max-width: 500px; height: auto; border-radius: 8px; display: block; margin: 0 auto;">
+              </div>
+
+              <!-- Subtext below features image -->
+              <p style="color: #71717a; font-size: 14px; line-height: 1.6; text-align: center; margin-top: 8px;">
+                Does your company or NGO need special features? Get in touch <a href="mailto:enterprise@whatgov.co.uk" style="color: ${colors.primary}; text-decoration: underline;">enterprise@whatgov.co.uk</a>
               </p>
             </div>
 

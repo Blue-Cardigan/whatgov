@@ -22,16 +22,6 @@ const EMAIL_CONFIG = {
 // Define the three color schemes from DebateCard
 const colorSchemes = [
   {
-    // Blue theme
-    border: 'hsl(213, 93%, 85%)',
-    background: 'hsl(213, 100%, 96%)',
-    badge: {
-      text: 'hsl(213, 76%, 56%)',
-      border: 'hsl(213, 70%, 80%)',
-      background: 'hsl(213, 100%, 98%)'
-    }
-  },
-  {
     // Emerald theme
     border: 'hsl(160, 93%, 85%)',
     background: 'hsl(160, 100%, 96%)',

@@ -13,6 +13,8 @@ UI/UX
 2) Commons/Lords/Both toggle for auth unsubscribed
 
 #Optimizations
+- Identify speakerlist process - some lords debates have empty but key points have real names
+- Use key points names for images
 - Generate Nameid to avoid ugly /debate urls
 - Add speaker metadata to mp profile view
 - Reduce middleware build size for edge runtime
