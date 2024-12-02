@@ -3,7 +3,7 @@
 import { processDebates } from '@/lib/supabase/feed';
 import type { Database } from '@/types/supabase';
 import { DebateView } from './DebateView';
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import type { HansardDebateResponse } from '@/types/hansard';
 
 interface ProcessDebateClientProps {

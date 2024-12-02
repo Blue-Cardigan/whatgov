@@ -218,7 +218,7 @@ export const PostCard = memo(function PostCard({
     }
     
     isFirstMount.current = false;
-  }, [hasDivisions]);
+  }, [hasDivisions, isFirstMount]);
 
   return (
     <>

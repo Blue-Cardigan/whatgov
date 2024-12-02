@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBeforeUnload } from '@/hooks/use-before-unload';
 
 export function ProfileSettings() {
-  const { user, profile: originalProfile, updateProfile } = useAuth();
+  const { profile: originalProfile, updateProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
   const [postcodeError, setPostcodeError] = useState("");

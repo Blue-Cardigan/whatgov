@@ -1,5 +1,4 @@
 import sgMail from '@sendgrid/mail';
-import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 // Initialize SendGrid with your API key
 if (!process.env.SENDGRID_API_KEY) {
