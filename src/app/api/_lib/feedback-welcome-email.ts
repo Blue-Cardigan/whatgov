@@ -164,7 +164,7 @@ export async function sendFeedbackEmail(email: string, name: string) {
             <!-- Footer -->
             <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #e4e4e7;">
               <p style="color: #71717a; font-size: 14px;">
-                Questions? Just reply to this email - we're here to help!
+                Questions? Want a chat? Just reply to this email - I'm here to help!
               </p>
             </div>
           </div>
