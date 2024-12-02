@@ -70,16 +70,11 @@ const plans = [
     price: "£2.49/month",
     description: "For engaged citizens who want deeper insights",
     features: [
-      { icon: <BarChart2 />, title: "Better Understanding", items: [
-        "See how MPs voted in Parliamentary Divisions",
-        "See key points made by MPs (as well as the comments section)",
-        "Track what your MP says in Parliament",
-        "View your voting analytics",
-      ]},
       { icon: <Search />, title: "Deeper Access", items: [
-        "Filter your feed by House, day, session type, and topics covered",
-        "Advanced Hansard search capabilities",
-        "See what's coming up in Parliament",
+        "Filter your feed by House, day, divisions, session type, and topics covered",
+        "Unlimited Advanced Hansard search to include our summary and key points",
+        "Track everything your MP says in Parliament",
+        "See how your votes stack up against the rest of the country"
       ]}
     ],
     cta: { text: "Start Engaged Citizen Trial", href: "/pricing" }
@@ -90,20 +85,19 @@ const plans = [
     description: "Advanced research and analysis tools for policy professionals",
     comingSoon: true,
     features: [
-      { icon: <Database />, title: "Research Power", items: [
+      { icon: <Search />, title: "Research Power", items: [
         "Everything in Engaged Citizen, plus:",
+        "Subscribe to searches",
+        "Extra information about MPs and their offices",
+        "Track all MPs, not just your own",
         "AI research assistant with Hansard-wide analysis capabilities",
-        "Sophisticated Hansard search",
+        "Turn your research into a report",
       ]},
-      { icon: <Search />, title: "Smart Tools", items: [
+      { icon: <Database />, title: "Smart Tools", items: [
         "Track bills and their progress",
-        "Feed subscriptions for your site",
-        "Data export in multiple formats",
-      ]},
-      { icon: <BarChart2 />, title: "Integration", items: [
-        "Basic API access",
         "Access constituency-wide trends",
-        "Access parliamentary documents",
+        "Add your RSS feeds to the app",
+        "API access",
       ]}
     ],
     cta: { text: "Coming Soon", href: "#" }

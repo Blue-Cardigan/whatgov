@@ -1,17 +1,16 @@
 Key value: Quick and simple search of simple debates - no trawling through thousands of words of copy
 
-1) Feedback form in site
-2) Send personal welcome email 
-3) Mobile push notifs
+1) Send personal welcome email 
+2) Mobile push notifs
+3) Implement MP voting record
 4) Implement newsletter sending from backend
    1) (Automatically) Identify most interesting debates for newsletter content
 5) Implement sponsorship tier with free price entry
 6) Hover hints for first time users
 
 UI/UX
-1) Solid fill for speaker distribution dropdown
-2) Restructure Voter Stats for clarity
-3) Commons/Lords/Both toggle for auth unsubscribed
+1) Restructure Voter Stats for clarity
+2) Commons/Lords/Both toggle for auth unsubscribed
 
 #Optimizations
 - Generate Nameid to avoid ugly /debate urls
