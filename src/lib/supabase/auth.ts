@@ -17,9 +17,9 @@ export const signUpWithEmail = async (
       .from('user_profiles')
       .select('email_verified')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (checkError) {
+    if (checkError && checkError.code !== 'PGRST116') {
       throw checkError;
     }
 
@@ -51,7 +51,7 @@ export const signUpWithEmail = async (
     );
 
     if (error) throw error;
-    if (!data.success) throw new Error(data.error || 'User creation failed');
+    if (!data?.success) throw new Error(data?.error || 'User creation failed');
 
     const encodedToken = encodeURIComponent(data.confirmation_token);
     const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify?token=${encodedToken}`;

@@ -112,14 +112,12 @@ export default function SignUp() {
         throw new Error(response.error);
       }
 
-      if (user?.id) {
-        const migrationSuccess = await migrateVotes(user.id);
-        if (!migrationSuccess) {
-          console.warn('Vote migration failed - votes will remain in localStorage');
-        }
-        
+      if (response.status === 'verify_email') {
         localStorage.setItem('verification_email', formData.email);
         router.push('/accounts/verify');
+      } else {
+        // Redirect to home page on successful signup
+        router.push('/');
       }
     } catch (err) {
       console.error('Signup error:', err);

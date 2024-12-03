@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types/supabase';
 import type { Subscription } from '@/lib/supabase/subscription';
 import { isSubscriptionActive } from '@/lib/supabase/subscription';
-import { signInWithEmail } from '@/lib/supabase/auth';
+import { signInWithEmail, signUpWithEmail } from '@/lib/supabase/auth';
 import { 
   getSubscriptionFromCache, 
   setSubscriptionCache 
@@ -218,10 +218,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const signUp = async (email: string, password: string, userData: UserSignUpData) => {
+      try {
+        const response = await signUpWithEmail(email, password, {
+          email,
+          name: userData.name || '',
+          gender: userData.gender || '',
+          age: userData.age || '',
+          postcode: userData.postcode || '',
+          constituency: userData.constituency || '',
+          mp: userData.mp || '',
+          selected_topics: userData.selected_topics || [],
+          newsletter: userData.newsletter || false
+        });
+
+        if (response.error) {
+          return { error: response.error, status: 'error' };
+        }
+
+        if (response.status === 'verify_email') {
+          return { status: 'verify_email' };
+        }
+
+        return { status: 'success' };
+      } catch (error) {
+        console.error('Sign up error:', error);
+        return { 
+          error: error instanceof Error ? error.message : 'An unexpected error occurred',
+          status: 'error'
+        };
+      }
+    };
+
     return {
       ...state,
       signIn,
-      signUp: async () => ({}),
+      signUp,
       signOut,
       updateProfile,
       resetPassword: async () => ({ success: false }),

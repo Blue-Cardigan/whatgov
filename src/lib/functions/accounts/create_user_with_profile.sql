@@ -38,8 +38,6 @@ BEGIN
   -- If we found a verified user, return error
   ELSIF EXISTS (
     SELECT 1 FROM auth.users WHERE email = user_email
-    UNION
-    SELECT 1 FROM public.user_profiles WHERE email = user_email
   ) THEN
     RETURN json_build_object(
       'success', false,
