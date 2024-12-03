@@ -32,9 +32,18 @@ interface UserSignUpData {
   newsletter?: boolean;
 }
 
+interface SignUpResponse {
+  error?: string;
+  status?: 'verify_email' | 'success' | 'error';
+  user?: {
+    id: string;
+    email: string;
+  };
+}
+
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, userData: UserSignUpData) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, userData: UserSignUpData) => Promise<SignUpResponse>;
   signOut: () => Promise<void>;
   updateProfile: (userData: Partial<UserProfile>) => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -218,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const signUp = async (email: string, password: string, userData: UserSignUpData) => {
+    const signUp = async (email: string, password: string, userData: UserSignUpData): Promise<SignUpResponse> => {
       try {
         const response = await signUpWithEmail(email, password, {
           email,
@@ -237,10 +246,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (response.status === 'verify_email') {
-          return { status: 'verify_email' };
+          return { 
+            status: 'verify_email',
+            user: {
+              id: response.user?.id || '',
+              email: email
+            }
+          };
         }
 
-        return { status: 'success' };
+        return { 
+          status: 'success',
+          user: {
+            id: response.user?.id || '',
+            email: email
+          }
+        };
       } catch (error) {
         console.error('Sign up error:', error);
         return { 
