@@ -1,7 +1,7 @@
 'use client'
 
 import createClient from './client'
-import type { FeedItem, FeedFilters, CommentThread, PartyCount, Division, Speaker, AiTopics, InterestFactors } from '@/types'
+import type { FeedItem, FeedFilters, CommentThread, PartyCount, Division, Speaker, AiTopics, InterestFactors, CommentSpeaker } from '@/types'
 import type { Database, Json } from '@/types/supabase'
 import { parseKeyPoints } from '../utils'
 
@@ -53,25 +53,59 @@ function parseCommentThread(value: unknown): CommentThread[] {
     
     const votes = typeof comment.votes === 'object' && comment.votes 
       ? comment.votes 
-      : { upvotes: 0, downvotes: 0, upvotes_speakers: [], downvotes_speakers: [] };
+      : { 
+          upvotes: 0, 
+          downvotes: 0, 
+          upvotes_speakers: [], 
+          downvotes_speakers: [] 
+        };
+
+    // Parse author data
+    const author = typeof comment.author === 'object' && comment.author
+      ? {
+          name: String(comment.author.name || ''),
+          party: String(comment.author.party || ''),
+          memberId: String(comment.author.memberId || ''),
+          constituency: String(comment.author.constituency || '')
+        }
+      : {
+          name: String(comment.author || ''),
+          party: '',
+          memberId: '',
+          constituency: ''
+        };
+
+    // Parse speaker arrays
+    const parseSpeakers = (speakers: unknown[]): CommentSpeaker[] => {
+      return speakers.map(speaker => {
+        if (typeof speaker !== 'object' || !speaker) return null;
+        const s = speaker as Record<string, unknown>;
+        
+        return {
+          name: typeof s.name === 'string' ? s.name : '',
+          party: typeof s.party === 'string' ? s.party : '',
+          memberId: typeof s.memberId === 'string' ? s.memberId : '',
+          constituency: typeof s.constituency === 'string' ? s.constituency : ''
+        };
+      }).filter((s): s is CommentSpeaker => s !== null);
+    };
 
     return {
       id: String(comment.id || ''),
       tags: Array.isArray(comment.tags) 
-        ? comment.tags.filter((tag: string): tag is string => typeof tag === 'string')
+        ? comment.tags.filter((tag: unknown): tag is string => typeof tag === 'string')
         : [],
-      party: String(comment.party || ''),
       votes: {
         upvotes: Number(votes.upvotes) || 0,
         downvotes: Number(votes.downvotes) || 0,
         upvotes_speakers: Array.isArray(votes.upvotes_speakers)
-          ? votes.upvotes_speakers.filter((s: string): s is string => typeof s === 'string')
+          ? parseSpeakers(votes.upvotes_speakers)
           : [],
         downvotes_speakers: Array.isArray(votes.downvotes_speakers)
-          ? votes.downvotes_speakers.filter((s: string): s is string => typeof s === 'string')
+          ? parseSpeakers(votes.downvotes_speakers)
           : []
       },
-      author: String(comment.author || ''),
+      author,
       content: String(comment.content || ''),
       parent_id: comment.parent_id ? String(comment.parent_id) : null
     };

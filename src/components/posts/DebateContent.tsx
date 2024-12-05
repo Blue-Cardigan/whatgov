@@ -71,11 +71,7 @@ export function DebateContent({
       : firstPoint;
 
     const formattedSummary = summaryPoints
-      .map((point) => {
-        const randomSpacing = Math.random() > 0.5 ? '\n\n' : '\n\n\n\n';
-        return point + randomSpacing;
-      })
-      .join('')
+      .join('\n\n')
       .trim();
 
     return {
@@ -89,7 +85,13 @@ export function DebateContent({
     <CardContent className={cn("relative space-y-4", className)}>
       <motion.div className="relative" {...fadeIn}>
         <div className="text-sm text-muted-foreground leading-relaxed text-justify">
-          {isExpanded ? content.fullText : content.truncatedText}
+          {(isExpanded ? content.fullText : content.truncatedText)
+            .split('\n\n')
+            .map((paragraph, index) => (
+              <p key={index} className="mb-4 last:mb-0">
+                {paragraph}
+              </p>
+            ))}
         </div>
         
         {content.hasMore && (

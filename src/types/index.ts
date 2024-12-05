@@ -84,17 +84,16 @@ export type MPKeyPoint = {
 
 export type KeyPoint = {
   point: string;
-  speaker: string;
+  context: string | null;
+  speaker: {
+    memberId: string | null;
+    name: string;
+    party: string | null;
+    constituency: string | null;
+  };
   support: string[];
   opposition: string[];
-  speaker_details?: {
-    member_id: number;
-    display_as: string;
-    party: string;
-    constituency: string;
-    image_url: string | null;
-  };
-}
+};
 
 export interface InterestFactors {
   diversity: number;
@@ -167,19 +166,32 @@ export interface VoteHandlers {
   onSkip: (num: number) => void;
 }
 
+interface CommentAuthor {
+  name: string;
+  party: string;
+  memberId: string;
+  constituency: string;
+}
+
+export interface CommentSpeaker {
+  name: string;
+  party: string;
+  memberId: string;
+  constituency: string;
+}
+
 export interface CommentVotes {
   upvotes: number;
   downvotes: number;
-  upvotes_speakers: string[];
-  downvotes_speakers: string[];
+  upvotes_speakers: CommentSpeaker[];
+  downvotes_speakers: CommentSpeaker[];
 }
 
 export interface CommentThread {
   id: string;
   tags: string[];
-  party: string;
   votes: CommentVotes;
-  author: string;
+  author: CommentAuthor;
   content: string;
   parent_id: string | null;
 }

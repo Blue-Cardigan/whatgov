@@ -2,14 +2,10 @@ import { User, ThumbsUp, ThumbsDown, UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import Image from 'next/image';
+import { KeyPoint } from '@/types';
 
 interface KeyPointsContentProps {
-  keyPoints?: Array<{
-    point: string;
-    speaker: string;
-    support: string[];
-    opposition: string[];
-  }> | null;
+  keyPoints?: KeyPoint[] | null;
   isActive: boolean;
   userMp?: string | null;
   speakers?: Array<{ display_as: string; member_id?: number }> | null;
@@ -40,8 +36,8 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
       !isActive && "hidden"
     )}>
       {keyPoints.map((point, index) => {
-        const isUserMp = userMp && point?.speaker === userMp;
-        const matchingSpeaker = findMatchingSpeaker(point?.speaker, speakers);
+        const isUserMp = userMp && point.speaker.name === userMp;
+        const matchingSpeaker = findMatchingSpeaker(point.speaker.name, speakers);
         
         return (
           <div key={index} className="flex gap-3">
@@ -51,7 +47,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
                 <div className="relative h-6 w-6 rounded-full overflow-hidden">
                   <Image
                     src={getPortraitUrl(matchingSpeaker.member_id)}
-                    alt={point?.speaker}
+                    alt={point.speaker.name}
                     sizes="(max-width: 768px) 32px, 32px"
                     fill
                     className="object-cover"
@@ -85,7 +81,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
                   "font-semibold",
                   isUserMp && "text-primary"
                 )}>
-                  {point?.speaker}
+                  {point.speaker.name}
                 </span>
                 {isUserMp && (
                   <Badge 
@@ -101,11 +97,11 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {point?.point}
+                {point.point}
               </p>
-              {(point?.support.length > 0 || point?.opposition.length > 0) && (
+              {(point.support.length > 0 || point.opposition.length > 0) && (
                 <div className="flex flex-wrap gap-2">
-                  {point?.support.length > 0 && (
+                  {point.support.length > 0 && (
                     <Badge 
                       variant="outline" 
                       className="flex items-center gap-1.5 bg-success/10 text-success hover:bg-success/20 border-success/20"
@@ -116,7 +112,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
                       </span>
                     </Badge>
                   )}
-                  {point?.opposition.length > 0 && (
+                  {point.opposition.length > 0 && (
                     <Badge 
                       variant="outline"
                       className="flex items-center gap-1.5 bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20"

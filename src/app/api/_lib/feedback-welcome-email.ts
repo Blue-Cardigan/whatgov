@@ -72,7 +72,7 @@ export async function sendFeedbackEmail(email: string, name: string) {
     to: email,
     from: EMAIL_CONFIG.from,
     replyTo: EMAIL_CONFIG.replyTo,
-    subject: 'You\'re an early user - Shape WhatGov',
+    subject: 'Accessible Political Monitoring | Shape WhatGov',
     text: `Hi ${greeting}, I'm Jethro - thanks for trying out WhatGov. Your feedback is crucial to making political monitoring accessible to everyone.`,
     html: `
       <!DOCTYPE html>
@@ -131,18 +131,20 @@ export async function sendFeedbackEmail(email: string, name: string) {
                 Your Feedback Matters
               </h2>
               <p style="color: #71717a; font-size: 16px; line-height: 1.6;">
-                WhatGov is about making Political Monitoring available to everybody. But to do that, I need to know what that 'everybody' needs. This makes feedback from you - yes YOU - absolutely critical.
+                WhatGov is about making Political Monitoring available to everybody who needs it. To do that, I need to know what you need.
               </p>
               <ul style="color: #71717a; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-                <li style="margin-bottom: 12px;">Remember that time you had to find a really niche piece of information on Hansard, and it took ages? What do you wish was easier?</li>
-                <li style="margin-bottom: 12px;">What should the public see that always gets missed in the news coverage?</li>
+                <li style="margin-bottom: 12px;">What do you want in a weekly Hansard digest?</li>
+                <li style="margin-bottom: 12px;">What do you track on Hansard? What do you wish was easier?</li>
                 <li>What's unclear about the features? What would need to be there for you to want to come back?</li>
               </ul>
+
+              If you want to get in touch, you can reply to this email or book a call with me using this big shiny button below.
             </div>
 
             <!-- CTA Button -->
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${process.env.NEXT_PUBLIC_SITE_URL}/feedback" 
+              <a href="https://calendly.com/jethro-reeve/whatgov-feedback-development" 
                  style="background-color: ${colors.primary}; 
                         color: #ffffff; 
                         padding: 16px 32px; 
@@ -150,14 +152,20 @@ export async function sendFeedbackEmail(email: string, name: string) {
                         border-radius: 6px;
                         font-weight: 500;
                         display: inline-block;">
-                Share Your Feedback
+                Book a call with me
               </a>
             </div>
 
             <!-- Thank You Note -->
             <div style="background-color: ${colors.background}; border: 1px solid ${colors.border}; padding: 24px; border-radius: 8px; text-align: center; margin: 32px 0;">
               <p style="color: #71717a; font-size: 14px; font-style: italic; margin: 0;">
-                Special thanks to the Campaign Lab, Democracy Club, and Newspeak House communities for their support up to this stage.
+                Special thanks to the <a href="https://www.campaignlab.uk/" style="color: ${colors.primary}; text-decoration: underline;">Campaign Lab</a>, <a href="https://democracyclub.org.uk/" style="color: ${colors.primary}; text-decoration: underline;">Democracy Club</a>, and <a href="https://newspeak.house/" style="color: ${colors.primary}; text-decoration: underline;">Newspeak House</a> communities for their support up to this stage.
+              </p>
+              <p style="color: #71717a; font-size: 14px; margin: 0;">
+                All the best,
+              </p>
+              <p style="color: #71717a; font-size: 14px; margin: 0;">
+                Jethro
               </p>
             </div>
 

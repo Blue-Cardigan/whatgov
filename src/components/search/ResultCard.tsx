@@ -148,8 +148,8 @@ export function ResultCard({
     
     contributions.forEach(contribution => {
       const matchingPoints = aiContent?.ai_key_points?.filter(point => 
-        namesMatch(point.speaker, contribution.AttributedTo) ||
-        (contribution.MemberName && namesMatch(point.speaker, contribution.MemberName))
+        namesMatch(point.speaker.name, contribution.AttributedTo) ||
+        (contribution.MemberName && namesMatch(point.speaker.name, contribution.MemberName))
       );
       
       if (matchingPoints && matchingPoints.length > 0) {
@@ -223,7 +223,7 @@ export function ResultCard({
               <div className="flex gap-2">
                 <LightbulbIcon className="h-4 w-4 text-primary/60 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium mb-1">{point.speaker}</div>
+                  <div className="text-sm font-medium mb-1">{point.speaker.name}</div>
                   <p className="text-sm text-muted-foreground">{point.point}</p>
                 </div>
               </div>
@@ -687,7 +687,7 @@ export function ResultCard({
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">
-                                    {point.speaker}
+                                    {point.speaker.name}
                                   </span>
                                   <div className="flex gap-1">
                                     {point.support.length > 0 && (

@@ -41,18 +41,40 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
       const support = Array.isArray(keyPoint.support) ? keyPoint.support : [];
       const opposition = Array.isArray(keyPoint.opposition) ? keyPoint.opposition : [];
 
-      // Only validate point and speaker as required
-      if (
-        typeof keyPoint.point !== 'string' ||
-        typeof keyPoint.speaker !== 'string'
-      ) {
-        console.error('Invalid key point structure:', keyPoint);
+      // Handle both old and new speaker formats
+      let speaker;
+      if (typeof keyPoint.speaker === 'string') {
+        // Parse old format (string with party in parentheses)
+        const name = keyPoint.speaker.replace(/\s*\([^)]*\)\s*$/, '');
+        const party = (keyPoint.speaker.match(/\(([^)]+)\)$/) || [])[1] || null;
+        speaker = {
+          name,
+          party,
+          memberId: null,
+          constituency: null
+        };
+      } else if (typeof keyPoint.speaker === 'object' && keyPoint.speaker) {
+        // Use new format
+        speaker = keyPoint.speaker as {
+          name: string;
+          party: string | null;
+          memberId: string | null;
+          constituency: string | null;
+        };
+      } else {
+        console.error('Invalid speaker format:', keyPoint.speaker);
+        return null;
+      }
+
+      if (typeof keyPoint.point !== 'string') {
+        console.error('Invalid point format:', keyPoint);
         return null;
       }
 
       return {
         point: keyPoint.point,
-        speaker: keyPoint.speaker,
+        context: typeof keyPoint.context === 'string' ? keyPoint.context : null,
+        speaker,
         support: support.filter((s): s is string => typeof s === 'string'),
         opposition: opposition.filter((o): o is string => typeof o === 'string')
       };

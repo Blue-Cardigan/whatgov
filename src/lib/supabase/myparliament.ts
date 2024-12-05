@@ -59,62 +59,185 @@ export async function getMPData(mpId: number): Promise<MPData | null> {
   return transformMPData(data);
 }
 
-export async function getMPKeyPoints(
-  mpName: string, 
-  limit: number = 10
-): Promise<MPKeyPoint[]> {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase.rpc('get_mp_key_points', {
-    p_mp_name: mpName,
-    p_limit: limit
-  });
+// The shape of the speaker object in the JSONB
+export interface KeyPointSpeaker {
+  memberId: string;
+  name: string;
+  party: string;
+  constituency: string;
+  imageUrl?: string;
+}
 
-  if (error) throw error;
+// The shape of each key point in the ai_key_points JSONB array
+export interface KeyPoint {
+  point: string;
+  context?: string;
+  speaker: KeyPointSpeaker;
+  support: string[];
+  opposition: string[];
+}
 
-  // Transform and validate the data
-  return (data || []).map((item: unknown) => {
-    // Basic validation of the item
-    if (!item || typeof item !== 'object') {
-      console.error('Invalid key point item:', item);
-      return createEmptyKeyPoint();
-    }
+// The shape of a grouped speaker with their points
+export interface SpeakerPoints {
+  speaker: {
+    id: string;
+    name: string;
+    party: string;
+    constituency: string;
+    imageUrl?: string;
+  };
+  points: KeyPoint[];
+}
 
-    const keyPoint = item as Record<string, unknown>;
-
-    // Validate required string fields
-    const requiredStrings = ['debate_id', 'ext_id', 'debate_title', 'point', 'point_type'] as const;
-    for (const field of requiredStrings) {
-      if (typeof keyPoint[field] !== 'string') {
-        console.error(`Invalid ${field} in key point:`, keyPoint);
-        return createEmptyKeyPoint();
-      }
-    }
-
-    // Validate date
-    if (!(keyPoint.debate_date instanceof Date) && typeof keyPoint.debate_date !== 'string') {
-      console.error('Invalid debate_date in key point:', keyPoint);
-      return createEmptyKeyPoint();
-    }
-
-    // Transform AI topics
-    const aiTopics = Array.isArray(keyPoint.ai_topics) 
-      ? keyPoint.ai_topics.map(transformTopic).filter(Boolean)
-      : [];
-
-    return {
-      debate_id: keyPoint.debate_id as string,
-      ext_id: keyPoint.ext_id as string,
-      debate_title: keyPoint.debate_title as string,
-      debate_date: keyPoint.debate_date as string,
-      point: keyPoint.point as string,
-      point_type: keyPoint.point_type as 'made' | 'supported' | 'opposed',
-      original_speaker: typeof keyPoint.original_speaker === 'string' 
-        ? keyPoint.original_speaker 
-        : null,
-      ai_topics: aiTopics
+// The shape of the materialized view row
+export interface MPKeyPointDetails {
+  debate_id: string;
+  debate_ext_id: string;
+  debate_title: string;
+  debate_date: string;
+  debate_type: string;
+  debate_house: string;
+  debate_location: string;
+  parent_ext_id: string;
+  parent_title: string;
+  all_key_points: {
+    point: string;
+    context?: string;
+    speaker: {
+      memberId: string;
+      name: string;
+      party: string;
+      constituency: string;
+      imageUrl?: string;
     };
-  });
+    support: string[];
+    opposition: string[];
+  }[];
+  point: string;
+  context: string | null;
+  member_id: string;
+  speaker_name: string;
+  speaker_party: string;
+  speaker_constituency: string;
+  speaker_house: string;
+  speaker_image_url: string | null;
+  speaker_full_title: string;
+  support: string[];
+  opposition: string[];
+  ai_topics: any[];
+  ai_summary: string | null;
+  interest_score: number;
+}
+
+export async function getMPKeyPointsById(
+  mpId: number,
+  options: {
+    limit?: number;
+    offset?: number;
+    startDate?: Date;
+    endDate?: Date;
+  } = {}
+): Promise<{ data: MPKeyPointDetails[]; count: number }> {
+  const supabase = createClient();
+  const {
+    limit = 50,
+    offset = 0,
+    startDate,
+    endDate = new Date(),
+  } = options;
+
+  // Build query
+  let query = supabase
+    .from('mp_key_points')
+    .select('*', { count: 'exact' })
+    .eq('member_id', mpId.toString())
+    .order('debate_date', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  // Add date filters if provided
+  if (startDate) {
+    query = query.gte('debate_date', startDate.toISOString());
+  }
+  if (endDate) {
+    query = query.lte('debate_date', endDate.toISOString());
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('Error fetching MP key points:', error);
+    return { data: [], count: 0 };
+  }
+
+  return {
+    data: data as MPKeyPointDetails[],
+    count: count || 0
+  };
+}
+
+// Add a function to get key points by topic
+export async function getMPKeyPointsByTopic(
+  mpId: number,
+  topic: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<{ data: MPKeyPointDetails[]; count: number }> {
+  const supabase = createClient();
+  const { limit = 50, offset = 0 } = options;
+
+  const { data, error, count } = await supabase
+    .from('mp_key_points')
+    .select('*', { count: 'exact' })
+    .eq('member_id', mpId.toString())
+    .containedBy('ai_topics', [{ name: topic }])
+    .order('debate_date', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching MP key points by topic:', error);
+    return { data: [], count: 0 };
+  }
+
+  return {
+    data: data as MPKeyPointDetails[],
+    count: count || 0
+  };
+}
+
+// Add a function to get recent key points across all MPs
+export async function getRecentKeyPoints(
+  options: {
+    limit?: number;
+    offset?: number;
+    party?: string;
+  } = {}
+): Promise<{ data: MPKeyPointDetails[]; count: number }> {
+  const supabase = createClient();
+  const { limit = 50, offset = 0, party } = options;
+
+  let query = supabase
+    .from('mp_key_points')
+    .select('*', { count: 'exact' })
+    .order('debate_date', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (party) {
+    query = query.eq('speaker_party', party);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('Error fetching recent key points:', error);
+    return { data: [], count: 0 };
+  }
+
+  return {
+    data: data as MPKeyPointDetails[],
+    count: count || 0
+  };
 }
 
 export const getDemographicVoteStats = async (
@@ -164,31 +287,113 @@ function transformMPData(data: RawMPData): MPData {
   };
 } 
 
-// Helper functions
-function createEmptyKeyPoint(): MPKeyPoint {
-  return {
-    debate_id: '',
-    ext_id: '',
-    debate_title: '',
-    debate_date: new Date().toISOString(),
-    point: '',
-    point_type: 'made',
-    original_speaker: null,
-    ai_topics: []
-  };
-}
 
-function transformTopic(topic: unknown) {
-  if (!topic || typeof topic !== 'object') {
-    return null;
+// Add this new function to search MPs by name
+export async function getMPKeyPointsByName(
+  name: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<{ data: MPKeyPointDetails[]; count: number }> {
+  const supabase = createClient();
+  const { limit = 50, offset = 0 } = options;
+
+  // Clean and normalize the search input
+  // Remove extra spaces, handle quotes properly
+  const cleanName = name
+    .trim()
+    .toLowerCase()
+    // Handle quoted strings by temporarily replacing spaces
+    .replace(/"([^"]+)"/g, (match, group) => group.replace(/\s+/g, '_SPACE_'))
+    // Remove any remaining quotes
+    .replace(/["']/g, '')
+    // Normalize spaces
+    .replace(/\s+/g, ' ')
+    // Restore spaces in quoted sections
+    .replace(/_SPACE_/g, ' ');
+
+  if (!cleanName) {
+    return { data: [], count: 0 };
   }
 
-  const t = topic as Record<string, unknown>;
+  // Split into parts, preserving quoted phrases as single terms
+  const nameParts = cleanName.split(' ').filter(Boolean);
   
+  let query = supabase
+    .from('mp_key_points')
+    .select('*', { count: 'exact' })
+    .order('debate_date', { ascending: false })
+    .order('speaker_name')
+    .range(offset, offset + limit - 1);
+
+  // Build search conditions
+  if (nameParts.length > 1) {
+    // Search for exact phrase and individual terms
+    const searchConditions = [
+      `speaker_name.ilike.%${cleanName}%`,
+      ...nameParts.map(part => `speaker_name.ilike.%${part}%`)
+    ];
+    
+    // Handle special titles like "ms", "mr", "dr" etc.
+    const titleParts = nameParts.filter(part => 
+      ['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
+    );
+    const nonTitleParts = nameParts.filter(part => 
+      !['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
+    );
+    
+    if (titleParts.length > 0 && nonTitleParts.length > 0) {
+      // Add combination of title + next part
+      titleParts.forEach(title => {
+        nonTitleParts.forEach(part => {
+          searchConditions.push(`speaker_name.ilike.%${title} ${part}%`);
+        });
+      });
+    }
+
+    query = query.or(searchConditions.join(','));
+  } else {
+    query = query.ilike('speaker_name', `%${cleanName}%`);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('Error fetching MP key points by name:', error);
+    return { data: [], count: 0 };
+  }
+
+  // Enhanced result sorting
+  if (nameParts.length > 1) {
+    const sortedData = data?.sort((a, b) => {
+      const aName = a.speaker_name.toLowerCase();
+      const bName = b.speaker_name.toLowerCase();
+      
+      // Exact matches first
+      const aExact = aName.includes(cleanName);
+      const bExact = bName.includes(cleanName);
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      
+      // Then matches with all parts
+      const aAllParts = nameParts.every(part => aName.includes(part));
+      const bAllParts = nameParts.every(part => bName.includes(part));
+      if (aAllParts && !bAllParts) return -1;
+      if (!aAllParts && bAllParts) return 1;
+      
+      // Finally sort by date
+      return new Date(b.debate_date).getTime() - new Date(a.debate_date).getTime();
+    });
+
+    return {
+      data: sortedData as MPKeyPointDetails[],
+      count: count || 0
+    };
+  }
+
   return {
-    name: typeof t.name === 'string' ? t.name : '',
-    speakers: Array.isArray(t.speakers) ? t.speakers : [],
-    frequency: typeof t.frequency === 'number' ? t.frequency : 1,
-    subtopics: Array.isArray(t.subtopics) ? t.subtopics : []
+    data: data as MPKeyPointDetails[],
+    count: count || 0
   };
 }

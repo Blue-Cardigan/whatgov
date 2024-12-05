@@ -91,7 +91,7 @@ export function QueryPartInput({
             <p className="text-xs text-muted-foreground">
               {searchType?.description}
             </p>
-            {part.value && (
+            {part.value && searchType?.example && (
               <p className="text-xs text-muted-foreground italic">
                 Example: {searchType?.example}
               </p>

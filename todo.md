@@ -1,16 +1,22 @@
 Key value: Quick and simple search of simple debates - no trawling through thousands of words of copy
 
-1) Send personal welcome email 
-2) Mobile push notifs
-3) Implement MP voting record
-4) Implement newsletter sending from backend
-   1) (Automatically) Identify most interesting debates for newsletter content
-5) Implement sponsorship tier with free price entry
-6) Hover hints for first time users
+Professionals
+[ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)
+[-] MP key points search
+[ ] Weekly assistant research using stored questions, display in dashboard
+   1) Specific Mp(s) position on X
+   2) Mentions of X topic
+[ ] Additional features incl 
+[ ] Newsletter sending from backend
+   1) Identify hot debates for newsletter content
+[ ] More detailed 'upcoming' using bills api
 
-UI/UX
-1) Restructure Voter Stats for clarity
-2) Commons/Lords/Both toggle for auth unsubscribed
+Engaged Citizen
+1) Bookmark debates
+2) MP voting record
+3) Restructure Voter Stats for clarity
+4) Commons/Lords/Both toggle for auth unsubscribed
+5) Hover hints for first time users
 
 #Optimizations
 - Identify speakerlist process - some lords debates have empty but key points have real names
@@ -28,8 +34,6 @@ UI/UX
 [ ] Full report generation with Vector search/assistant
 
 [/] Unique page for each debate
-[ ] Implement bookmarking
-    Link to debate page from MP key profile key points and user votes list
 [ ] MP position tracking
 
 Add RSS feed links
