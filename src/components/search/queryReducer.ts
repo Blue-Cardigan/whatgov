@@ -1,5 +1,5 @@
 export interface QueryPart {
-  type: 'text' | 'spokenby' | 'debate' | 'words';
+  type: 'text' | 'spokenby' | 'title' | 'words';
   value: string;
   isValid: boolean;
 }
@@ -20,7 +20,7 @@ interface QueryState {
 const getMinLength = (type: QueryPart['type']): number => {
   return {
     spokenby: 2,
-    debate: 2,
+    title: 2,
     words: 1,
     text: 1
   }[type];

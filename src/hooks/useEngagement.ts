@@ -1,24 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ANON_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
-import { isSubscriptionActive } from '@/lib/supabase/subscription';
+import { startOfWeek, startOfMonth } from 'date-fns';
 
 const STORAGE_KEY = 'whatgov_engagement';
 const RESET_HOUR = 0; // Reset at midnight UTC
 
-// Add AI search limit to the constants
-export const MONTHLY_AI_SEARCH_LIMIT = 12
+// AI search limits per tier
+const AI_SEARCH_LIMITS = {
+  FREE: 5,        // 5 per month
+  ENGAGED: 5,     // 5 per week
+  PRO: Infinity   // Unlimited
+} as const;
 
 interface EngagementStats {
   votes: number;
   lastResetDate: string;
   shownPrompts: number[];
-  aiSearches: number;  // Add this field
-  aiSearchLastReset: string;  // Add this field for monthly reset
+  aiSearches: number;
+  aiSearchLastReset: string;
 }
 
 export function useEngagement() {
-  const { user, subscription } = useAuth();
+  const { user, subscription, isEngagedCitizen, isPremium } = useAuth();
   const [stats, setStats] = useState<EngagementStats>(() => {
     if (typeof window === 'undefined') return initializeStats();
     
@@ -111,17 +115,25 @@ export function useEngagement() {
     return getRemainingVotes() <= 0;
   }, [user, getRemainingVotes]);
 
-  // Add function to check if we should reset monthly counters
-  const shouldResetMonthly = useCallback((lastReset: Date): boolean => {
+  // Add function to check if we should reset AI search count
+  const shouldResetAISearches = useCallback((): boolean => {
     const now = new Date();
-    const resetTime = new Date(lastReset);
-    return now.getMonth() !== resetTime.getMonth() || 
-           now.getFullYear() !== resetTime.getFullYear();
-  }, []);
+    const lastReset = new Date(stats.aiSearchLastReset);
 
-  // Add function to check and reset monthly stats
-  const checkAndResetMonthly = useCallback(() => {
-    if (shouldResetMonthly(new Date(stats.aiSearchLastReset))) {
+    if (isEngagedCitizen) {
+      // Weekly reset for Engaged Citizen tier
+      const weekStart = startOfWeek(now);
+      return lastReset < weekStart;
+    } else {
+      // Monthly reset for free tier
+      const monthStart = startOfMonth(now);
+      return lastReset < monthStart;
+    }
+  }, [stats.aiSearchLastReset, isEngagedCitizen]);
+
+  // Add function to check and reset AI search stats
+  const checkAndResetAISearches = useCallback(() => {
+    if (shouldResetAISearches()) {
       setStats(prev => ({
         ...prev,
         aiSearches: 0,
@@ -130,32 +142,35 @@ export function useEngagement() {
       return true;
     }
     return false;
-  }, [stats.aiSearchLastReset, shouldResetMonthly]);
+  }, [shouldResetAISearches]);
 
   // Add function to record AI search
   const recordAISearch = useCallback(() => {
-    if (!checkAndResetMonthly()) {
+    if (!checkAndResetAISearches()) {
       setStats(prev => ({
         ...prev,
         aiSearches: prev.aiSearches + 1
       }));
     }
-  }, [checkAndResetMonthly]);
+  }, [checkAndResetAISearches]);
 
   // Add function to get remaining AI searches
   const getRemainingAISearches = useCallback((): number => {
-    if (user?.id && isSubscriptionActive(subscription)) return Infinity;
+    if (!user) return 0;
+    if (isPremium) return Infinity;
     
-    checkAndResetMonthly();
-    return Math.max(0, MONTHLY_AI_SEARCH_LIMIT - stats.aiSearches);
-  }, [user, stats.aiSearches, checkAndResetMonthly, subscription]);
+    checkAndResetAISearches();
+    const limit = isEngagedCitizen ? AI_SEARCH_LIMITS.ENGAGED : AI_SEARCH_LIMITS.FREE;
+    return Math.max(0, limit - stats.aiSearches);
+  }, [user, isPremium, isEngagedCitizen, stats.aiSearches, checkAndResetAISearches]);
 
   // Add function to check if user has reached AI search limit
   const hasReachedAISearchLimit = useCallback((): boolean => {
-    if (user?.id && isSubscriptionActive(subscription)) return false;
+    if (!user) return true;
+    if (isPremium) return false;
     
     return getRemainingAISearches() <= 0;
-  }, [user, getRemainingAISearches, subscription]);
+  }, [user, isPremium, getRemainingAISearches]);
 
   return {
     recordVote,

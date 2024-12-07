@@ -426,7 +426,6 @@ export const PostCard = memo(function PostCard({
                       keyPoints={item.ai_key_points}
                       isActive={true}
                       userMp={userMp}
-                      speakers={item.speakers}
                     />
                   )
                 ) : (
@@ -434,7 +433,6 @@ export const PostCard = memo(function PostCard({
                     <CommentsContent 
                       comments={item.ai_comment_thread}
                       isActive={true}
-                      speakers={item.speakers}
                     />
                   )
                 )}

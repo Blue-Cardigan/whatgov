@@ -6,6 +6,7 @@ import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Playfair_Display } from 'next/font/google'
+import { SearchProvider } from '@/contexts/SearchContext';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -71,15 +72,17 @@ export default function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: criticalStyles }} />
       </head> 
       <body>
-        <ThemeProvider>
-          <SupabaseProvider>
-            <AuthProvider>
-              <QueryProvider>
-                {children}
-              </QueryProvider>
-            </AuthProvider>
-          </SupabaseProvider>
-        </ThemeProvider>
+        <SearchProvider>
+          <ThemeProvider>
+            <SupabaseProvider>
+              <AuthProvider>
+                <QueryProvider>
+                  {children}
+                </QueryProvider>
+              </AuthProvider>
+            </SupabaseProvider>
+          </ThemeProvider>
+        </SearchProvider>
         <Toaster />
         <Analytics />
       </body>

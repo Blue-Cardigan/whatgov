@@ -28,6 +28,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 interface Feature {
   icon: React.ReactNode;
@@ -170,6 +171,7 @@ export default function FeaturesPage() {
           </div>
         </div>
       </motion.div>
+      <SimpleFooter />
     </div>
   );
 }

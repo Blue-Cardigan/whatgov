@@ -1,171 +1,196 @@
 import { format } from "date-fns";
-import type { MPKeyPoint } from "@/types";
+import { useState, useMemo } from "react";
+import { Badge } from "@/components/ui/badge";
+import { MPKeyPointDetails } from "@/lib/supabase/myparliament";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getOneOnePortraitUrl } from "@/lib/utils";
 
 interface MPKeyPointsProps {
-  keyPoints: MPKeyPoint[];
+  keyPoints: MPKeyPointDetails[];
 }
 
-const getContributionSummary = (point: MPKeyPoint): { text: string; color: string } => {
-  switch (point.point_type) {
-    case 'made':
-      return {
-        text: `Made a point during debate`,
-        color: 'bg-blue-100 text-blue-800'
-      };
-    case 'supported':
-      return {
-        text: point.original_speaker 
-          ? `Agreed with ${point.original_speaker}'s point`
-          : 'Supported this point',
-        color: 'bg-emerald-100 text-emerald-800'
-      };
-    case 'opposed':
-      return {
-        text: point.original_speaker 
-          ? `Disagreed with ${point.original_speaker}'s point`
-          : 'Opposed this point',
-        color: 'bg-rose-100 text-rose-800'
-      };
-    default:
-      return {
-        text: 'Contributed to debate',
-        color: 'bg-gray-100 text-gray-800'
-      };
-  }
-};
-
-const groupPointsByMonth = (points: MPKeyPoint[]) => {
-  return points.reduce((groups, point) => {
-    const date = new Date(point.debate_date);
-    const key = format(date, 'MMMM yyyy');
-    if (!groups[key]) {
-      groups[key] = [];
-    }
-    groups[key].push(point);
-    return groups;
-  }, {} as Record<string, MPKeyPoint[]>);
-};
-
 export function MPKeyPoints({ keyPoints }: MPKeyPointsProps) {
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
-  
-  // Sort and group points
-  const sortedPoints = [...keyPoints].sort(
-    (a, b) => new Date(b.debate_date).getTime() - new Date(a.debate_date).getTime()
-  );
-  
-  const years = Array.from(new Set(
-    sortedPoints.map(point => format(new Date(point.debate_date), 'yyyy'))
-  ));
-  
-  const filteredPoints = selectedYear
-    ? sortedPoints.filter(point => format(new Date(point.debate_date), 'yyyy') === selectedYear)
-    : sortedPoints;
-    
-  const groupedPoints = groupPointsByMonth(filteredPoints);
+  const [sortOption, setSortOption] = useState<'recent' | 'supported' | 'opposed'>('recent');
+  const [groupByTopic, setGroupByTopic] = useState(false);
+  const [expandedDebates, setExpandedDebates] = useState<Set<string>>(new Set());
+
+  // Sort key points based on the selected option
+  const sortedKeyPoints = useMemo(() => {
+    const pointsCopy = [...keyPoints];
+    switch (sortOption) {
+      case 'supported':
+        return pointsCopy.sort((a, b) => b.support.length - a.support.length);
+      case 'opposed':
+        return pointsCopy.sort((a, b) => b.opposition.length - a.opposition.length);
+      default:
+        return pointsCopy.sort((a, b) => new Date(b.debate_date).getTime() - new Date(a.debate_date).getTime());
+    }
+  }, [keyPoints, sortOption]);
+
+  // Group key points by topic if enabled
+  const groupedKeyPoints = useMemo(() => {
+    if (!groupByTopic) return { 'All Topics': sortedKeyPoints };
+
+    return sortedKeyPoints.reduce((groups, point) => {
+      point.ai_topics.forEach(topic => {
+        if (!groups[topic.name]) {
+          groups[topic.name] = [];
+        }
+        groups[topic.name].push(point);
+      });
+      return groups;
+    }, {} as Record<string, MPKeyPointDetails[]>);
+  }, [sortedKeyPoints, groupByTopic]);
+
+  const toggleSpeakerPoints = (debateId: string) => {
+    setExpandedDebates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(debateId)) {
+        newSet.delete(debateId);
+      } else {
+        newSet.add(debateId);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Parliamentary Timeline</h3>
+        <h3 className="text-lg font-semibold">Parliamentary Key Points</h3>
         
-        {/* Year filter */}
+        {/* Sort and Group Options */}
         <div className="flex gap-2">
-          {years.map(year => (
-            <button
-              key={year}
-              onClick={() => setSelectedYear(year === selectedYear ? null : year)}
-              className={`px-2 py-1 text-sm rounded ${
-                year === selectedYear 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted hover:bg-muted/80'
-              }`}
-            >
-              {year}
-            </button>
-          ))}
+          <button
+            onClick={() => setSortOption('recent')}
+            className={`px-2 py-1 text-sm rounded ${sortOption === 'recent' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            Most Recent
+          </button>
+          <button
+            onClick={() => setSortOption('supported')}
+            className={`px-2 py-1 text-sm rounded ${sortOption === 'supported' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            Most Supported
+          </button>
+          <button
+            onClick={() => setSortOption('opposed')}
+            className={`px-2 py-1 text-sm rounded ${sortOption === 'opposed' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            Most Opposed
+          </button>
+          <button
+            onClick={() => setGroupByTopic(!groupByTopic)}
+            className={`px-2 py-1 text-sm rounded ${groupByTopic ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            {groupByTopic ? 'Ungroup by Topic' : 'Group by Topic'}
+          </button>
         </div>
       </div>
 
-      <div className="relative">
-        <div className="absolute left-3 top-4 bottom-4 w-0.5 bg-muted" />
+      <div className="space-y-8">
+        {Object.entries(groupedKeyPoints).map(([topic, points]) => (
+          <div key={topic} className="space-y-6">
+            {groupByTopic && <h4 className="text-sm font-medium text-muted-foreground">{topic}</h4>}
+            {points.map((point, index) => (
+              <div key={`${point.debate_id}-${index}`} className="relative pl-10">
+                {/* Timeline content */}
+                <div className="space-y-3 bg-muted/5 rounded-lg p-4 hover:bg-muted/10 transition-colors">
+                  {/* Header */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <Badge variant="outline">
+                      {format(new Date(point.debate_date), 'EEEE, d MMM yyyy')}
+                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="secondary" className="bg-success/10 text-success">
+                        {point.support.length} Supporters
+                      </Badge>
+                      <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                        {point.opposition.length} Opposers
+                      </Badge>
+                    </div>
+                  </div>
 
-        <div className="space-y-8 relative">
-          {Object.entries(groupedPoints).map(([month, points]) => (
-            <div key={month} className="space-y-6">
-              <h4 className="text-sm font-medium text-muted-foreground pl-10">{month}</h4>
-              
-              {points.map((point, index) => {
-                const contribution = getContributionSummary(point);
-                
-                return (
-                  <div key={`${point.ext_id}-${index}`} className="relative pl-10">
-                    {/* Timeline dot */}
-                    <div
-                      className={`absolute left-2 w-3 h-3 rounded-full -translate-x-1/2 ${
-                        point.point_type === 'made' ? 'bg-blue-500' :
-                        point.point_type === 'supported' ? 'bg-emerald-500' :
-                        point.point_type === 'opposed' ? 'bg-rose-500' :
-                        'bg-gray-500'
-                      } ring-4 ring-background`}
-                    />
+                  {/* Main content */}
+                  <p className="text-sm">{point.point}</p>
 
-                    {/* Timeline content */}
-                    <div className="space-y-3 bg-muted/5 rounded-lg p-4 hover:bg-muted/10 transition-colors">
-                      {/* Header */}
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <Badge variant="outline">
-                          {format(new Date(point.debate_date), 'EEEE, d MMM yyyy')}
-                        </Badge>
+                  {/* Add context if available */}
+                  {point.context && (
+                    <p className="text-sm text-muted-foreground mt-2">{point.context}</p>
+                  )}
+
+                  {/* Debate info */}
+                  <div className="bg-muted/50 p-3 rounded-md text-sm space-y-2">
+                    <Link 
+                      href={`/debate/${point.debate_ext_id}`}
+                      className="group flex items-start gap-1.5 font-medium hover:text-primary transition-colors"
+                    >
+                      {point.debate_title}
+                      <ArrowUpRight className="h-4 w-4 opacity-50 shrink-0 group-hover:opacity-100" />
+                    </Link>
+                  </div>
+
+                  {/* Topics */}
+                  {point.ai_topics && point.ai_topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {point.ai_topics.map((topic, i) => (
                         <Badge 
+                          key={`${topic.name}-${i}`}
                           variant="secondary"
-                          className={contribution.color}
+                          className="text-xs"
                         >
-                          {contribution.text}
+                          {topic.name}
                         </Badge>
-                      </div>
+                      ))}
+                    </div>
+                  )}
 
-                      {/* Main content */}
-                      <p className="text-sm">{point.point}</p>
-
-                      {/* Debate info */}
-                      <div className="bg-muted/50 p-3 rounded-md text-sm space-y-2">
-                        <Link 
-                          href={`/debate/${point.ext_id}`}
-                          className="group flex items-start gap-1.5 font-medium hover:text-primary transition-colors"
+                  {point.all_key_points && point.all_key_points.length > 1 && (
+                    <div className="mt-4 space-y-4 pt-4 border-t">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Other Contributors</span>
+                        <button
+                          onClick={() => toggleSpeakerPoints(point.debate_id)}
+                          className="text-sm text-primary hover:underline"
                         >
-                          {point.debate_title}
-                          <ArrowUpRight className="h-4 w-4 opacity-50 shrink-0 group-hover:opacity-100" />
-                        </Link>
+                          {expandedDebates.has(point.debate_id) ? "Hide" : "Show"} {point.all_key_points.length - 1} other points
+                        </button>
                       </div>
-
-                      {/* Topics */}
-                      {point.ai_topics && point.ai_topics.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {point.ai_topics.flatMap(topic => 
-                            topic.subtopics?.map((subtopic, i) => (
-                              <Badge 
-                                key={`${topic.name}-${i}`}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {subtopic}
-                              </Badge>
-                            ))
-                          )}
+                      
+                      {expandedDebates.has(point.debate_id) && (
+                        <div className="space-y-4">
+                          {point.all_key_points
+                            .filter(kp => kp.speaker.memberId !== point.member_id)
+                            .map((kp, idx) => (
+                              <div key={idx} className="flex gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={getOneOnePortraitUrl(parseInt(kp.speaker.memberId))} />
+                                  <AvatarFallback>{kp.speaker.name.slice(0, 2)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <Link href={`/member/${kp.speaker.memberId}`} className="text-sm font-medium hover:text-primary">
+                                      {kp.speaker.name}
+                                    </Link>
+                                    <span className="text-xs text-muted-foreground">
+                                      {kp.speaker.party} • {kp.speaker.constituency}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">{kp.point}</p>
+                                </div>
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );

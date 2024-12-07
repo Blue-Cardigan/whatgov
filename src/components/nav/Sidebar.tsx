@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   ScrollText, Search, BookOpen, Settings, 
-  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare 
+  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare, Bookmark 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -184,6 +184,11 @@ export function Sidebar({ className }: SidebarProps) {
       title: "Search",
       href: "/search",
       icon: Search
+    },
+    {
+      title: "Saved Searches",
+      href: "/saved",
+      icon: Bookmark
     },
     {
       title: "My Parliament",

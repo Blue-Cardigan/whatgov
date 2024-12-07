@@ -1,24 +1,54 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { getMPData, getMPKeyPoints } from "@/lib/supabase/myparliament";
+import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/myparliament";
+import type { MPKeyPointDetails } from "@/lib/supabase/myparliament";
 import { useAuth } from "@/contexts/AuthContext";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
 import { MPTopics } from "./MPTopics";
-import { AiTopic, MPData, MPKeyPoint } from "@/types";
+import { AiTopic, MPData } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { MPSearch } from './MPSearch';
 
 export function MPProfile() {
   const { user, profile, loading, isEngagedCitizen } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Add search-related state
+  const [searchedMpId, setSearchedMpId] = useState<string | null>(null);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
+  // Get current search params
+  const currentSearchTerm = searchParams.get('mp') || '';
+
+  // Handle search updates
+  const handleSearch = useCallback((searchTerm: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    if (searchTerm) {
+      newParams.set('mp', searchTerm);
+      setSearchedMpId(searchTerm);
+    } else {
+      newParams.delete('mp');
+      setSearchedMpId(null);
+    }
+
+    // Update URL with search params
+    router.push(`${pathname}?${newParams.toString()}`);
+  }, [pathname, router, searchParams]);
+
   const [mpData, setMPData] = useState<MPData | null>(null);
-  const [keyPoints, setKeyPoints] = useState<MPKeyPoint[]>([]);
+  const [keyPoints, setKeyPoints] = useState<MPKeyPointDetails[]>([]);
   const [topics, setTopics] = useState<AiTopic[]>([]);
   const [totalMentions, setTotalMentions] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +56,21 @@ export function MPProfile() {
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [keyPointsLoading, setKeyPointsLoading] = useState(true);
 
+  // Effect to handle URL search param changes
+  useEffect(() => {
+    if (currentSearchTerm) {
+      setSearchedMpId(currentSearchTerm);
+    } else {
+      setSearchedMpId(null);
+    }
+  }, [currentSearchTerm]);
+
+  // Effect to fetch MP data
   useEffect(() => {
     async function fetchData() {
-      if (!profile?.mp_id) {
+      const mpNameToFetch = searchedMpId || profile?.mp;
+      
+      if (!mpNameToFetch) {
         setProfileLoading(false);
         setTopicsLoading(false);
         setKeyPointsLoading(false);
@@ -36,77 +78,76 @@ export function MPProfile() {
       }
       
       try {
-        // Load MP profile data
+        // Reset states
+        setError(null);
         setProfileLoading(true);
-        const mpData = await getMPData(profile.mp_id);
-        setMPData(mpData);
-        setProfileLoading(false);
-
-        // Load key points and topics
         setKeyPointsLoading(true);
         setTopicsLoading(true);
-        const points = await getMPKeyPoints(profile.mp.toString());
+
+        // Load MP profile data
+        const mpData = await getMPData(mpNameToFetch);
         
-        if (mpData && points) {
+        if (!mpData) {
+          setError(`No MP found matching "${mpNameToFetch}"`);
+          setMPData(null);
+          setKeyPoints([]);
+          setTopics([]);
+          return;
+        }
+
+        setMPData(mpData);
+        
+        // Load key points and topics
+        const { data: points } = await getMPKeyPointsByName(mpData.member_id);
+        
+        if (points) {
+          setKeyPoints(points);
+          
           // Process topics
           const topicsMap = new Map<string, AiTopic>();
+          let mentionsCount = 0;
+          
           points.forEach(point => {
+            mentionsCount++;
             if (Array.isArray(point.ai_topics)) {
               point.ai_topics.forEach(topic => {
                 const existingTopic = topicsMap.get(topic.name);
                 if (!existingTopic) {
                   topicsMap.set(topic.name, {
                     name: topic.name,
-                    speakers: Array.from(new Set([...topic.speakers])),
+                    speakers: topic.speakers.map(s => s.name),
                     frequency: 1,
-                    subtopics: Array.from(new Set([...topic.subtopics])),
+                    subtopics: Array.from(new Set(topic.speakers.flatMap(s => s.subtopics))),
                     debates: [{
                       id: point.debate_id,
-                      ext_id: point.ext_id,
+                      ext_id: point.debate_ext_id,
                       title: point.debate_title,
                       date: point.debate_date,
-                      subtopics: topic.subtopics || []
+                      subtopics: topic.speakers.flatMap(s => s.subtopics)
                     }]
                   });
                 } else {
-                  existingTopic.frequency += 1;
-                  existingTopic.speakers = Array.from(new Set([
-                    ...existingTopic.speakers,
-                    ...topic.speakers
-                  ]));
-                  existingTopic.subtopics = Array.from(new Set([
-                    ...existingTopic.subtopics,
-                    ...topic.subtopics
-                  ]));
+                  existingTopic.frequency++;
                   if (existingTopic.debates) {
                     existingTopic.debates.push({
                       id: point.debate_id,
-                      ext_id: point.ext_id,
+                      ext_id: point.debate_ext_id,
                       title: point.debate_title,
                       date: point.debate_date,
-                      subtopics: topic.subtopics || []
+                      subtopics: topic.speakers.flatMap(s => s.subtopics)
                     });
                   }
-                  topicsMap.set(topic.name, existingTopic);
                 }
               });
             }
           });
-          
-          const sortedTopics = Array.from(topicsMap.values())
-            .sort((a, b) => b.frequency - a.frequency);
-          
-          const total = sortedTopics.reduce((sum, topic) => sum + topic.frequency, 0);
-          
-          setTopics(sortedTopics);
-          setTotalMentions(total);
-          setKeyPoints(points);
+
+          setTopics(Array.from(topicsMap.values()));
+          setTotalMentions(mentionsCount);
         }
-        
-        setError(null);
       } catch (e) {
+        console.error('Error fetching MP data:', e);
         setError('Error loading MP data');
-        console.error(e);
       } finally {
         setProfileLoading(false);
         setTopicsLoading(false);
@@ -115,7 +156,7 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [profile?.mp_id, profile?.mp]);
+  }, [searchedMpId, profile?.mp]);
 
   if (loading) {
     return <Card className="p-3 sm:p-4">
@@ -154,6 +195,35 @@ export function MPProfile() {
   return (
     <Card className="p-3 sm:p-4">
       <div className="space-y-5 sm:space-y-6">
+        {/* Add Search Section */}
+        <div className="border-b pb-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">MP Profile</h2>
+              {profile?.mp && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchedMpId(null);
+                    handleSearch('');
+                  }}
+                  className={cn(
+                    "gap-2",
+                    !searchedMpId && "hidden"
+                  )}
+                >
+                  Back to My MP
+                </Button>
+              )}
+            </div>
+            <MPSearch
+              initialValue={currentSearchTerm}
+              onSearch={handleSearch}
+            />
+          </div>
+        </div>
+
         {error ? (
           <div className="text-red-500 text-center py-4">
             {error}

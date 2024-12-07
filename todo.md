@@ -2,23 +2,37 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 
 Professionals
 [ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)
-[-] MP key points search
-[ ] Weekly assistant research using stored questions, display in dashboard
-   1) Specific Mp(s) position on X
-   2) Mentions of X topic
-[ ] Additional features incl 
+[-] Member profile search (Make it EC exclusive)
+[/] Make search page wider (on desktop)
+[/] Assistant to ask questions
+[/] Save searches to dashboard
+[ ] AI assistant and query (prompt) builder
+[ ] Export saved searches
+[ ] Save hansard searches
+[ ] Term frequency tracking in hansard search
+[ ] Add divisions to assistant
+[ ] Add full voting history of each MP
+[ ] Add bill progress/schedule
+[ ] Automatically re-ask questions every week
+[ ] Generate reports/ data structures
 [ ] Newsletter sending from backend
-   1) Identify hot debates for newsletter content
+   1) Generate a 'this week' intro from summaries
 [ ] More detailed 'upcoming' using bills api
+
+Next
+[ ] Align key points and topics with individual contributions
+[ ] Enhanced search using precomputed context from embeddings
 
 Engaged Citizen
 1) Bookmark debates
-2) MP voting record
-3) Restructure Voter Stats for clarity
-4) Commons/Lords/Both toggle for auth unsubscribed
-5) Hover hints for first time users
+2) pgvector search in debate transcript
+3) MP voting record
+4) Restructure Voter Stats for clarity
+5) Commons/Lords/Both toggle for auth unsubscribed
+6) Hover hints for first time users
 
 #Optimizations
+- 'Upgrade for unlimited' popover shows when deselecting AI Enhanced in search, even for paid users
 - Identify speakerlist process - some lords debates have empty but key points have real names
 - Use key points names for images
 - Generate Nameid to avoid ugly /debate urls

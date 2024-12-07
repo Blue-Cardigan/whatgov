@@ -410,7 +410,6 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
                     <CommentsContent 
                       comments={debate.ai_comment_thread}
                       isActive={true}
-                      speakers={debate.speakers}
                     />
                   </div>
                 </TabsContent>
@@ -423,7 +422,6 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
                       keyPoints={debate.ai_key_points}
                       isActive={true}
                       userMp={userMp}
-                      speakers={debate.speakers}
                     />
                   </div>
                 </TabsContent>

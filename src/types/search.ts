@@ -67,6 +67,7 @@ export interface SearchState {
     Debates: SearchDebateItem[];
     Divisions: DivisionOverview[];
     Committees: SearchCommitteeItem[];
+    aiContent?: Record<string, SearchResultAIContent>;
   }
 
 

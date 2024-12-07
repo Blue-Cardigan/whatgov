@@ -36,11 +36,14 @@ export interface FeedItem {
     divisions?: Division[];
   }
 
-export type Speaker = {
+export interface Speaker {
+  name: string;
   party: string;
-  member_id: number;
   display_as: string;
-};
+  member_id: number;
+  memberId?: string;
+  constituency?: string;
+}
 
 export interface PartyCount {
   Conservative?: number;
@@ -85,14 +88,9 @@ export type MPKeyPoint = {
 export type KeyPoint = {
   point: string;
   context: string | null;
-  speaker: {
-    memberId: string | null;
-    name: string;
-    party: string | null;
-    constituency: string | null;
-  };
-  support: string[];
-  opposition: string[];
+  speaker: Speaker;
+  support: Speaker[];
+  opposition: Speaker[];
 };
 
 export interface InterestFactors {
@@ -166,32 +164,18 @@ export interface VoteHandlers {
   onSkip: (num: number) => void;
 }
 
-interface CommentAuthor {
-  name: string;
-  party: string;
-  memberId: string;
-  constituency: string;
-}
-
-export interface CommentSpeaker {
-  name: string;
-  party: string;
-  memberId: string;
-  constituency: string;
-}
-
 export interface CommentVotes {
   upvotes: number;
   downvotes: number;
-  upvotes_speakers: CommentSpeaker[];
-  downvotes_speakers: CommentSpeaker[];
+  upvotes_speakers: Speaker[];
+  downvotes_speakers: Speaker[];
 }
 
 export interface CommentThread {
   id: string;
   tags: string[];
   votes: CommentVotes;
-  author: CommentAuthor;
+  author: Speaker;
   content: string;
   parent_id: string | null;
 }

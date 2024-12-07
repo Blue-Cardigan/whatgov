@@ -3,7 +3,7 @@ import { Search, Quote, User, MessageSquare } from "lucide-react";
 export const searchTypes = [
     {
       id: 'text',
-      label: 'General Search',
+      label: 'Flexible text search',
       description: 'Search across all content with flexible matching',
       icon: <Search className="h-4 w-4" />,
       placeholder: 'e.g., climate change, healthcare',
@@ -29,12 +29,12 @@ export const searchTypes = [
       tooltip: 'Search for contributions by specific members. Use quotes for full names.'
     },
     {
-      id: 'debate',
-      label: 'Debate Topic',
-      description: 'Search within specific debate subjects',
+      id: 'title',
+      label: 'Debate Title',
+      description: 'Search within debate titles',
       icon: <MessageSquare className="h-4 w-4" />,
       placeholder: 'e.g., net zero, NHS funding',
-      example: 'debate:"net zero" AND emissions',
-      tooltip: 'Search within specific debate subjects. Use quotes for full subject names.'
+      example: 'title:"net zero" AND emissions',
+      tooltip: 'Search within debate titles. Use quotes for exact titles.'
     }
   ];

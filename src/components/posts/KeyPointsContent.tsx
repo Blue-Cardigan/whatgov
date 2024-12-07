@@ -3,31 +3,17 @@ import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 import Image from 'next/image';
 import { KeyPoint } from '@/types';
+import { getOneOnePortraitUrl } from '@/lib/utils';
+import { PortraitFallback } from "@/components/ui/portrait-fallback";
+import { createRoot } from 'react-dom/client';
 
 interface KeyPointsContentProps {
   keyPoints?: KeyPoint[] | null;
   isActive: boolean;
   userMp?: string | null;
-  speakers?: Array<{ display_as: string; member_id?: number }> | null;
 }
 
-// Helper function to get portrait URL
-const getPortraitUrl = (memberId: number) => 
-  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=oneone&webversion=true`;
-
-// Helper function to find matching speaker
-const findMatchingSpeaker = (
-  speakerName: string | null | undefined, 
-  speakers?: Array<{ display_as: string; member_id?: number }> | null
-) => {
-  if (!speakerName || !speakers) return undefined;
-  
-  return speakers.find(speaker => 
-    speaker?.display_as?.toLowerCase() === speakerName.toLowerCase()
-  );
-};
-
-export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyPointsContentProps) {
+export function KeyPointsContent({ keyPoints, isActive, userMp }: KeyPointsContentProps) {
   if (!keyPoints?.length) return null;
 
   return (
@@ -37,41 +23,50 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
     )}>
       {keyPoints.map((point, index) => {
         const isUserMp = userMp && point.speaker.name === userMp;
-        const matchingSpeaker = findMatchingSpeaker(point.speaker.name, speakers);
+        const speaker = point.speaker;
         
         return (
           <div key={index} className="flex gap-3">
             {/* Avatar with portrait support */}
             <div className="flex-shrink-0">
-              {matchingSpeaker?.member_id ? (
+              {speaker.memberId ? (
                 <div className="relative h-6 w-6 rounded-full overflow-hidden">
                   <Image
-                    src={getPortraitUrl(matchingSpeaker.member_id)}
-                    alt={point.speaker.name}
+                    src={getOneOnePortraitUrl(Number(speaker.memberId))}
+                    alt={speaker.name}
                     sizes="(max-width: 768px) 32px, 32px"
                     fill
                     className="object-cover"
                     onError={(e) => {
-                      // Fallback to User icon if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = `
-                        <div class="h-full w-full flex items-center justify-center ${
-                          isUserMp ? "bg-primary/10" : "bg-muted"
-                        }">
-                          <svg class="h-4 w-4" viewBox="0 0 24 24">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
-                        </div>
-                      `;
+                      const imgElement = e.currentTarget;
+                      const parentElement = imgElement.parentElement;
+                      
+                      if (parentElement) {
+                        // Replace with PortraitFallback
+                        imgElement.style.display = 'none';
+                        const fallbackElement = document.createElement('div');
+                        fallbackElement.className = 'h-full w-full';
+                        parentElement.appendChild(fallbackElement);
+                        
+                        // Render PortraitFallback
+                        const root = createRoot(fallbackElement);
+                        root.render(
+                          <PortraitFallback 
+                            name={speaker.name}
+                            size="sm"
+                            className={isUserMp ? "bg-primary/10" : undefined}
+                          />
+                        );
+                      }
                     }}
                   />
                 </div>
               ) : (
-                <User className={cn(
-                  "h-6 w-6 p-1 rounded-full shrink-0",
-                  isUserMp ? "bg-primary/10" : "bg-muted"
-                )} />
+                <PortraitFallback 
+                  name={speaker.name}
+                  size="sm"
+                  className={isUserMp ? "bg-primary/10" : undefined}
+                />
               )}
             </div>
 
@@ -81,7 +76,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp, speakers }: KeyP
                   "font-semibold",
                   isUserMp && "text-primary"
                 )}>
-                  {point.speaker.name}
+                  {speaker.name}
                 </span>
                 {isUserMp && (
                   <Badge 

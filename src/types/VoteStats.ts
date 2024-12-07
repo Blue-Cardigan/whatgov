@@ -170,9 +170,7 @@ export interface RawUserVotingStats {
     subtopics: unknown[];
     details: Array<{
       tags: string[];
-      question_1: { text: string; topic: string; ayes: number; noes: number; };
-      question_2: { text: string; topic: string; ayes: number; noes: number; };
-      question_3: { text: string; topic: string; ayes: number; noes: number; };
+      question: { text: string; topic: string; ayes: number; noes: number; };
       speakers: string[];
     }>;
     frequency: number[];

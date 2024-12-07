@@ -1,6 +1,7 @@
 import { Session } from "@supabase/supabase-js";
 import { User } from "@supabase/supabase-js";
 import { Division } from "."
+import { Speaker } from "./index";
 
 export type AuthError = {
   message: string;
@@ -586,8 +587,11 @@ export type CompositeTypes<
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-type Speaker = {
-  party: string;
-  member_id: number;
-  display_as: string;
-};
+export interface AISearch {
+  id: string;
+  user_id: string;
+  query: string;
+  response: string;
+  citations: string[];
+  created_at: string;
+}

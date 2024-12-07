@@ -1,7 +1,7 @@
 'use client'
 
 import createClient from './client'
-import type { FeedItem, FeedFilters, CommentThread, PartyCount, Division, Speaker, AiTopics, InterestFactors, CommentSpeaker } from '@/types'
+import type { FeedItem, FeedFilters, CommentThread, PartyCount, Division, Speaker, AiTopics, InterestFactors } from '@/types'
 import type { Database, Json } from '@/types/supabase'
 import { parseKeyPoints } from '../utils'
 
@@ -30,6 +30,79 @@ function parseInterestFactors(json: Json): InterestFactors {
     participation: typeof factors.participation === 'number' ? factors.participation : 0
   };
 }
+
+// Define intermediate types for parsing
+type ParsedSpeaker = {
+  name: string;
+  display_as: string;
+  party: string;
+  member_id: number;
+  memberId: string;
+  constituency: string;
+};
+
+// Define intermediate type for parsed comment thread
+type ParsedCommentThread = {
+  id: string;
+  tags: string[];
+  votes: {
+    upvotes: number;
+    downvotes: number;
+    upvotes_speakers: ParsedSpeaker[];
+    downvotes_speakers: ParsedSpeaker[];
+  };
+  author: ParsedSpeaker;
+  content: string;
+  parent_id: string | null;
+};
+
+// Parse speaker arrays using intermediate type
+const parseSpeakerArray = (speakers: unknown[]): ParsedSpeaker[] => {
+  return speakers.map(speaker => {
+    if (typeof speaker !== 'object' || !speaker) return null;
+    const s = speaker as Record<string, unknown>;
+    
+    const name = typeof s.name === 'string' ? s.name : '';
+    const member_id = typeof s.member_id === 'number' ? s.member_id :
+                     typeof s.memberId === 'string' ? parseInt(s.memberId, 10) : 0;
+    
+    return {
+      name,
+      display_as: typeof s.display_as === 'string' ? s.display_as : name,
+      party: typeof s.party === 'string' ? s.party : '',
+      member_id,
+      memberId: String(s.memberId || s.member_id || ''),
+      constituency: typeof s.constituency === 'string' ? s.constituency : ''
+    };
+  }).filter((s): s is ParsedSpeaker => s !== null);
+};
+
+// Parse author data using intermediate type
+const parseAuthor = (author: unknown): ParsedSpeaker => {
+  if (typeof author === 'object' && author) {
+    const a = author as Record<string, unknown>;
+    const name = String(a.name || '');
+    const member_id = typeof a.member_id === 'number' ? a.member_id :
+                     typeof a.memberId === 'string' ? parseInt(a.memberId, 10) : 0;
+
+    return {
+      name,
+      display_as: String(a.display_as || name),
+      party: String(a.party || ''),
+      member_id,
+      memberId: String(a.memberId || a.member_id || ''),
+      constituency: String(a.constituency || '')
+    };
+  }
+  return {
+    name: String(author || ''),
+    display_as: String(author || ''),
+    party: '',
+    member_id: 0,
+    memberId: '',
+    constituency: ''
+  };
+};
 
 function parseCommentThread(value: unknown): CommentThread[] {
   if (!value) return [];
@@ -60,36 +133,6 @@ function parseCommentThread(value: unknown): CommentThread[] {
           downvotes_speakers: [] 
         };
 
-    // Parse author data
-    const author = typeof comment.author === 'object' && comment.author
-      ? {
-          name: String(comment.author.name || ''),
-          party: String(comment.author.party || ''),
-          memberId: String(comment.author.memberId || ''),
-          constituency: String(comment.author.constituency || '')
-        }
-      : {
-          name: String(comment.author || ''),
-          party: '',
-          memberId: '',
-          constituency: ''
-        };
-
-    // Parse speaker arrays
-    const parseSpeakers = (speakers: unknown[]): CommentSpeaker[] => {
-      return speakers.map(speaker => {
-        if (typeof speaker !== 'object' || !speaker) return null;
-        const s = speaker as Record<string, unknown>;
-        
-        return {
-          name: typeof s.name === 'string' ? s.name : '',
-          party: typeof s.party === 'string' ? s.party : '',
-          memberId: typeof s.memberId === 'string' ? s.memberId : '',
-          constituency: typeof s.constituency === 'string' ? s.constituency : ''
-        };
-      }).filter((s): s is CommentSpeaker => s !== null);
-    };
-
     return {
       id: String(comment.id || ''),
       tags: Array.isArray(comment.tags) 
@@ -99,17 +142,27 @@ function parseCommentThread(value: unknown): CommentThread[] {
         upvotes: Number(votes.upvotes) || 0,
         downvotes: Number(votes.downvotes) || 0,
         upvotes_speakers: Array.isArray(votes.upvotes_speakers)
-          ? parseSpeakers(votes.upvotes_speakers)
+          ? parseSpeakerArray(votes.upvotes_speakers)
           : [],
         downvotes_speakers: Array.isArray(votes.downvotes_speakers)
-          ? parseSpeakers(votes.downvotes_speakers)
+          ? parseSpeakerArray(votes.downvotes_speakers)
           : []
       },
-      author,
+      author: parseAuthor(comment.author),
       content: String(comment.content || ''),
       parent_id: comment.parent_id ? String(comment.parent_id) : null
     };
-  }).filter((comment): comment is CommentThread => comment !== null);
+  })
+  .filter((comment): comment is ParsedCommentThread => comment !== null)
+  .map(parsed => ({
+    ...parsed,
+    votes: {
+      ...parsed.votes,
+      upvotes_speakers: parsed.votes.upvotes_speakers as Speaker[],
+      downvotes_speakers: parsed.votes.downvotes_speakers as Speaker[]
+    },
+    author: parsed.author as Speaker
+  }));
 }
 
 export function processDebates(
@@ -185,7 +238,14 @@ export function processDebates(
         ? debate.divisions as Division[]
         : [],
       speakers: Array.isArray(debate.speakers) 
-        ? debate.speakers.filter((speaker): speaker is Speaker => typeof speaker === 'object')
+        ? debate.speakers.map(speaker => ({
+            name: speaker.display_as || '',
+            display_as: speaker.display_as || '',
+            party: speaker.party || '',
+            member_id: typeof speaker.member_id === 'number' ? speaker.member_id : 0,
+            memberId: String(speaker.member_id),
+            constituency: undefined  // Database speakers don't include constituency
+          }))
         : [],
     };
   });

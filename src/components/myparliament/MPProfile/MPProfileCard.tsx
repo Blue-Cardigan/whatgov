@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { MPData } from "@/types";
-import { partyColours } from "@/lib/utils";
+import { getThreeFourPortraitUrl, partyColours } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { MapPin, Calendar, User } from "lucide-react";
@@ -86,9 +86,6 @@ function MinisterialBadge({ rank }: { rank: string }) {
   );
 }
 
-const getPortraitUrl = (memberId: number) => 
-  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=threefour&webversion=true`;
-
 function MPProfileSkeleton() {
   return (
     <div className="flex flex-col sm:flex-row gap-5 sm:gap-6">
@@ -151,7 +148,7 @@ export function MPProfileCard({ mpData, loading }: MPProfileCardProps) {
         {mpData.member_id ? (
           <div className="relative w-full h-full">
             <Image
-              src={getPortraitUrl(mpData.member_id)}
+              src={getThreeFourPortraitUrl(mpData.member_id)}
               alt={mpData.display_as}
               fill
               className="object-cover rounded-xl shadow-md"

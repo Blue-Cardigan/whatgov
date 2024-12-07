@@ -1,21 +1,20 @@
-import type { CommentThread, CommentSpeaker } from '@/types';
+import type { CommentThread, Speaker } from '@/types';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { CircleDot, CircleSlash, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
+import { getOneOnePortraitUrl } from '@/lib/utils';
+import { PortraitFallback } from "@/components/ui/portrait-fallback";
+import { createRoot } from 'react-dom/client';
 
 interface CommentsContentProps {
   comments: CommentThread[];
   isActive: boolean;
-  speakers?: Array<{ display_as: string; member_id?: number }>;
 }
 
 // Helper function to get portrait URL
-const getPortraitUrl = (memberId: string) => 
-  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=oneone&webversion=true`;
-
 // Helper function to normalize names for comparison
 const normalizeName = (name: string | null | undefined): string => {
   if (!name) return '';
@@ -44,109 +43,115 @@ const findMatchingSpeaker = (
   );
 };
 
-export function CommentsContent({ comments, speakers }: CommentsContentProps) {
+export function CommentsContent({ comments, isActive }: CommentsContentProps) {
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
 
   return (
     <div className="divide-y">
-      {comments.map((comment) => (
-        <div key={comment.id} className="p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex gap-3",
-              !comment.author.party.includes("Labour") && "flex-row-reverse"
-            )}
-          >
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              {comment.author.memberId ? (
-                <div className="relative h-8 w-8 rounded-full overflow-hidden">
-                  <Image
-                    src={getPortraitUrl(comment.author.memberId)}
-                    alt={comment.author.name}
-                    fill
-                    sizes="(max-width: 768px) 32px, 32px"
-                    className="object-cover"
-                    onError={(e) => {
-                      // Fallback to UserIcon if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML = `
-                        <div class="h-full w-full flex items-center justify-center ${
-                          comment.author.party === "Conservative" 
-                            ? "bg-blue-500/10" 
-                            : "bg-muted"
-                        }">
-                          <svg class="h-5 w-5" viewBox="0 0 24 24">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
-                        </div>
-                      `;
-                    }}
-                  />
-                </div>
-              ) : (
-                <User className={cn(
-                  "h-8 w-8 p-1.5 rounded-full",
-                  comment.author.party === "Conservative" 
-                    ? "bg-blue-500/10" 
-                    : "bg-muted"
-                )} />
+      {comments.map((comment) => {
+        // Use author data directly from the comment
+        const author = comment.author;
+        
+        return (
+          <div key={comment.id} className="p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "flex gap-3",
+                !author.party?.includes("Labour") && "flex-row-reverse"
               )}
-            </div>
-
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {comment.author.name}
-                </span>
-                {comment.author.party && (
-                  <span className="text-xs text-muted-foreground">
-                    {comment.author.party}
-                  </span>
-                )}
-                {comment.author.constituency && (
-                  <span className="text-xs text-muted-foreground">
-                    ({comment.author.constituency})
-                  </span>
+            >
+              {/* Avatar */}
+              <div className="flex-shrink-0">
+                {author.memberId ? (
+                  <div className="relative h-8 w-8 rounded-full overflow-hidden">
+                    <Image
+                      src={getOneOnePortraitUrl(Number(author.memberId))}
+                      alt={author.name}
+                      sizes="(max-width: 768px) 32px, 32px"
+                      fill
+                      className="object-cover"
+                      onError={(e) => {
+                        const imgElement = e.currentTarget;
+                        const parentElement = imgElement.parentElement;
+                        
+                        if (parentElement) {
+                          imgElement.style.display = 'none';
+                          const fallbackElement = document.createElement('div');
+                          fallbackElement.className = 'h-full w-full';
+                          parentElement.appendChild(fallbackElement);
+                          
+                          const root = createRoot(fallbackElement);
+                          root.render(
+                            <PortraitFallback 
+                              name={author.name} 
+                              className={author.party === "Conservative" ? "bg-blue-500/10" : undefined}
+                            />
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <PortraitFallback 
+                    name={author.name}
+                    className={author.party === "Conservative" ? "bg-blue-500/10" : undefined}
+                  />
                 )}
               </div>
 
-              <div className="text-sm">{comment.content}</div>
-
-              {comment.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {comment.tags.map((tag) => (
-                    <span 
-                      key={tag} 
-                      className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full"
-                    >
-                      {tag}
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {author.name}
+                  </span>
+                  {author.party && (
+                    <span className="text-xs text-muted-foreground">
+                      {author.party}
                     </span>
-                  ))}
+                  )}
+                  {author.constituency && (
+                    <span className="text-xs text-muted-foreground">
+                      ({author.constituency})
+                    </span>
+                  )}
                 </div>
-              )}
 
-              <ResponseCounts
-                upvotes={comment.votes.upvotes}
-                downvotes={comment.votes.downvotes}
-                onToggle={() => setExpandedComment(expandedComment === comment.id ? null : comment.id)}
-                align={comment.author.party === "Conservative" ? "right" : "left"}
-              />
+                <div className="text-sm">{comment.content}</div>
 
-              {expandedComment === comment.id && (
-                <CompactResponseDetails 
-                  upvotes_speakers={comment.votes.upvotes_speakers}
-                  downvotes_speakers={comment.votes.downvotes_speakers}
-                  className="mt-2"
+                {comment.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {comment.tags.map((tag) => (
+                      <span 
+                        key={tag} 
+                        className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <ResponseCounts
+                  upvotes={comment.votes.upvotes}
+                  downvotes={comment.votes.downvotes}
+                  onToggle={() => setExpandedComment(expandedComment === comment.id ? null : comment.id)}
+                  align={author.party === "Conservative" ? "right" : "left"}
                 />
-              )}
-            </div>
-          </motion.div>
-        </div>
-      ))}
+
+                {expandedComment === comment.id && (
+                  <CompactResponseDetails 
+                    upvotes_speakers={comment.votes.upvotes_speakers}
+                    downvotes_speakers={comment.votes.downvotes_speakers}
+                    className="mt-2"
+                  />
+                )}
+              </div>
+            </motion.div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -199,8 +204,8 @@ function CompactResponseDetails({
   downvotes_speakers,
   className
 }: { 
-  upvotes_speakers: CommentSpeaker[];
-  downvotes_speakers: CommentSpeaker[];
+  upvotes_speakers: Speaker[];
+  downvotes_speakers: Speaker[];
   className?: string;
 }) {
   return (

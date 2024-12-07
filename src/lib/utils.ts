@@ -1,4 +1,4 @@
-import { KeyPoint } from "@/types";
+import { KeyPoint, Speaker } from "@/types";
 import { Json } from "@/types/supabase";
 import { clsx, type ClassValue } from "clsx"
 import { Leaf, Heart, Building2, Microscope, Scale, Globe2, LandPlot, GraduationCap, type LucideIcon } from "lucide-react";
@@ -8,6 +8,12 @@ import { Contribution } from "@/types/search";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+export const getThreeFourPortraitUrl = (memberId: number) => 
+  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=threefour&webversion=true`;
+
+export const getOneOnePortraitUrl = (memberId: number) => 
+  `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=oneone&webversion=true`;
 
 // Helper function to safely parse JSON fields
 export function parseKeyPoints(json: Json): KeyPoint[] {
@@ -37,33 +43,51 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
 
       const keyPoint = item as Record<string, unknown>;
       
-      // Ensure support and opposition are always arrays
-      const support = Array.isArray(keyPoint.support) ? keyPoint.support : [];
-      const opposition = Array.isArray(keyPoint.opposition) ? keyPoint.opposition : [];
+      // Ensure support and opposition are arrays of Speaker objects
+      const support = Array.isArray(keyPoint.support) 
+        ? keyPoint.support.map(s => parseSpeaker(s))
+        : [];
+      const opposition = Array.isArray(keyPoint.opposition)
+        ? keyPoint.opposition.map(s => parseSpeaker(s))
+        : [];
 
-      // Handle both old and new speaker formats
+      // Handle speaker parsing with standardized Speaker fields
       let speaker;
       if (typeof keyPoint.speaker === 'string') {
         // Parse old format (string with party in parentheses)
         const name = keyPoint.speaker.replace(/\s*\([^)]*\)\s*$/, '');
-        const party = (keyPoint.speaker.match(/\(([^)]+)\)$/) || [])[1] || null;
+        const party = (keyPoint.speaker.match(/\(([^)]+)\)$/) || [])[1] || '';
         speaker = {
           name,
           party,
-          memberId: null,
-          constituency: null
-        };
+          display_as: name,
+          member_id: 0,
+          memberId: '0',
+          constituency: ''
+        } as Speaker;
       } else if (typeof keyPoint.speaker === 'object' && keyPoint.speaker) {
-        // Use new format
-        speaker = keyPoint.speaker as {
-          name: string;
-          party: string | null;
-          memberId: string | null;
-          constituency: string | null;
-        };
+        const spk = keyPoint.speaker as Record<string, unknown>;
+        const member_id = typeof spk.member_id === 'number' ? spk.member_id :
+                         typeof spk.memberId === 'string' ? parseInt(spk.memberId, 10) : 0;
+        
+        speaker = {
+          name: String(spk.name || ''),
+          party: String(spk.party || ''),
+          display_as: String(spk.display_as || spk.name || ''),
+          member_id,
+          memberId: String(spk.memberId || spk.member_id || '0'),
+          constituency: String(spk.constituency || '')
+        } as Speaker;
       } else {
-        console.error('Invalid speaker format:', keyPoint.speaker);
-        return null;
+        // Default speaker for invalid data
+        speaker = {
+          name: 'Unknown',
+          party: '',
+          display_as: 'Unknown',
+          member_id: 0,
+          memberId: '0',
+          constituency: ''
+        } as Speaker;
       }
 
       if (typeof keyPoint.point !== 'string') {
@@ -71,15 +95,64 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
         return null;
       }
 
-      return {
+      const result: KeyPoint = {
         point: keyPoint.point,
         context: typeof keyPoint.context === 'string' ? keyPoint.context : null,
         speaker,
-        support: support.filter((s): s is string => typeof s === 'string'),
-        opposition: opposition.filter((o): o is string => typeof o === 'string')
+        support,
+        opposition
       };
+
+      return result;
     })
-    .filter((item): item is KeyPoint => item !== null);
+    .filter((item): item is KeyPoint => 
+      item !== null && 
+      typeof item.point === 'string' &&
+      item.speaker &&
+      typeof item.speaker.memberId === 'string' &&
+      Array.isArray(item.support) &&
+      Array.isArray(item.opposition)
+    );
+}
+
+// Helper function to parse speaker data
+function parseSpeaker(data: unknown): Speaker {
+  if (typeof data === 'string') {
+    // Handle string format (name with optional party in parentheses)
+    const name = data.replace(/\s*\([^)]*\)\s*$/, '');
+    const party = (data.match(/\(([^)]+)\)$/) || [])[1] || '';
+    return {
+      name,
+      party,
+      display_as: name,
+      member_id: 0,
+      memberId: '0',
+      constituency: ''
+    };
+  } else if (typeof data === 'object' && data) {
+    const spk = data as Record<string, unknown>;
+    const member_id = typeof spk.member_id === 'number' ? spk.member_id :
+                     typeof spk.memberId === 'string' ? parseInt(spk.memberId, 10) : 0;
+    
+    return {
+      name: String(spk.name || ''),
+      party: String(spk.party || ''),
+      display_as: String(spk.display_as || spk.name || ''),
+      member_id,
+      memberId: String(spk.memberId || spk.member_id || '0'),
+      constituency: String(spk.constituency || '')
+    };
+  }
+  
+  // Default speaker for invalid data
+  return {
+    name: 'Unknown',
+    party: '',
+    display_as: 'Unknown',
+    member_id: 0,
+    memberId: '0',
+    constituency: ''
+  };
 }
 
 export function constructHansardUrl(result: Contribution, searchTerm?: string) {
@@ -274,6 +347,179 @@ export const DEBATE_TYPES = {
   ]
 } as const;
 
+export const DISTINCT_TYPE_LOCATION_HOUSE_GROUPS = [
+  {
+    "location": "Westminster Hall",
+    "type": "Debated Motion",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Prime Minister's Questions",
+    "house": "Commons"
+  },
+  {
+    "location": "Written Corrections",
+    "type": "Main",
+    "house": "Commons"
+  },
+  {
+    "location": "Written Corrections",
+    "type": "Department",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Opposition Day",
+    "house": "Commons"
+  },
+  {
+    "location": "Westminster Hall",
+    "type": "Westminster Hall",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Business Without Debate",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Statement",
+    "house": "Commons"
+  },
+  {
+    "location": "Lords Chamber",
+    "type": "Lords Chamber",
+    "house": "Lords"
+  },
+  {
+    "location": "Petitions",
+    "type": "Main",
+    "house": "Commons"
+  },
+  {
+    "location": "Grand Committee",
+    "type": "Grand Committee",
+    "house": "Lords"
+  },
+  {
+    "location": "Written Statements",
+    "type": "Main",
+    "house": "Commons"
+  },
+  {
+    "location": "Lords Chamber",
+    "type": "New Debate",
+    "house": "Lords"
+  },
+  {
+    "location": "Grand Committee",
+    "type": "New Debate",
+    "house": "Lords"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Department Questions",
+    "house": "Commons"
+  },
+  {
+    "location": "Westminster Hall",
+    "type": "Debated Bill",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Question",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Department",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Urgent Question",
+    "house": "Commons"
+  },
+  {
+    "location": "Westminster Hall",
+    "type": "Bill Procedure",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Petition",
+    "house": "Commons"
+  },
+  {
+    "location": "Written Corrections",
+    "type": "Generic",
+    "house": "Commons"
+  },
+  {
+    "location": "Written Statements",
+    "type": "Statement",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Generic",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Main",
+    "house": "Commons"
+  },
+  {
+    "location": "Public Bill Committees",
+    "type": "Public Bill Committees",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Debated Motion",
+    "house": "Commons"
+  },
+  {
+    "location": "General Committees",
+    "type": "General Committees",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Bill Procedure",
+    "house": "Commons"
+  },
+  {
+    "location": "Petitions",
+    "type": "Petition",
+    "house": "Commons"
+  },
+  {
+    "location": "Written Corrections",
+    "type": "Department Questions",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Debated Bill",
+    "house": "Commons"
+  },
+  {
+    "location": "Westminster Hall",
+    "type": "Main",
+    "house": "Commons"
+  },
+  {
+    "location": "Commons Chamber",
+    "type": "Delegated Legislation",
+    "house": "Commons"
+  }
+] as const;
+
 export function getDebateType(type: string): DebateType {
   // Check Commons types
   const commonsType = DEBATE_TYPES.Commons.find(t => t.type === type);
@@ -321,4 +567,103 @@ export const LOCATION_GROUPS = {
     'Written Statements',
     'Written Corrections',
   ],
+} as const;
+
+export const TOPIC_DEFINITIONS = {
+  'Environment and Natural Resources': [
+    'Climate Change and Emissions Policy',
+    'Environmental Protection and Conservation',
+    'Energy Policy and Renewable Resources',
+    'Agriculture and Land Management',
+    'Waste Management and Recycling',
+    'Marine and Coastal Protection',
+    'Air Quality and Pollution Control',
+    'Biodiversity and Wildlife Protection',
+    'Flood Management and Water Resources',
+    'Green Infrastructure and Urban Planning'
+  ],
+  'Healthcare and Social Welfare': [
+    'National Health Service (NHS)',
+    'Social Care and Support Services',
+    'Mental Health Services',
+    'Public Health Policy',
+    'Disability and Accessibility',
+    'Healthcare Workforce and Training',
+    'Pharmaceutical Policy and Drug Pricing',
+    'Child and Family Services',
+    'Elder Care Services',
+    'Health Insurance and Private Healthcare'
+  ],
+  'Economy, Business, and Infrastructure': [
+    'Fiscal Policy and Public Spending',
+    'Trade and Industry',
+    'Transport and Infrastructure Development',
+    'Employment and Labour Markets',
+    'Regional Development',
+    'Banking and Financial Services',
+    'Small Business Support',
+    'Competition Policy',
+    'Housing and Property Markets',
+    'Digital Economy and Innovation'
+  ],
+  'Science, Technology, and Innovation': [
+    'Research and Development Policy',
+    'Digital Infrastructure and Cybersecurity',
+    'Data Protection and Privacy',
+    'Space and Defense Technology',
+    'Artificial Intelligence and Automation',
+    'Biotechnology and Life Sciences',
+    'Technology Education and Skills',
+    'Innovation Funding and Support',
+    'Scientific Research Ethics',
+    'Telecommunications Policy'
+  ],
+  'Legal Affairs and Public Safety': [
+    'Criminal Justice System',
+    'National Security',
+    'Police and Emergency Services',
+    'Civil Rights and Liberties',
+    'Immigration and Border Control',
+    'Court System and Legal Aid',
+    'Prison Reform and Rehabilitation',
+    'Anti-terrorism and Security Measures',
+    'Data Privacy and Surveillance',
+    'Consumer Protection Law'
+  ],
+  'International Relations and Diplomacy': [
+    'Foreign Policy and Treaties',
+    'International Development',
+    'Defense and Military Cooperation',
+    'Trade Agreements',
+    'International Organizations',
+    'Human Rights and Democracy Promotion',
+    'Diplomatic Relations',
+    'International Security Cooperation',
+    'Global Economic Relations',
+    'Cross-border Environmental Cooperation'
+  ],
+  'Parliamentary Affairs and Governance': [
+    'Constitutional Matters',
+    'Electoral Reform',
+    'Devolution and Local Government',
+    'Parliamentary Standards',
+    'Legislative Process',
+    'Ministerial Accountability',
+    'Civil Service Reform',
+    'Public Consultation Processes',
+    'Parliamentary Committees',
+    'Inter-governmental Relations'
+  ],
+  'Education, Culture, and Society': [
+    'Primary and Secondary Education',
+    'Higher Education and Skills',
+    'Arts and Heritage',
+    'Media and Broadcasting',
+    'Sports and Recreation',
+    'Religious Affairs and Faith Communities',
+    'Youth Services and Development',
+    'Adult Education and Lifelong Learning',
+    'Cultural Industries and Creative Sector',
+    'Community Cohesion and Integration'
+  ]
 } as const;

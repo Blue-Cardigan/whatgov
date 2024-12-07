@@ -2,7 +2,7 @@ import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
 import getSupabase from '@/lib/supabase/client';
 import { parseKeyPoints } from '@/lib/utils';
-import type { FetchOptions } from '@/types';
+import type { FetchOptions, KeyPoint } from '@/types';
 import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
 import type { HansardDebateResponse } from '@/types/hansard';
@@ -135,7 +135,8 @@ export class HansardAPI {
       if (error) throw error;
 
       data?.forEach((item: SearchResultAIContent) => {
-        const keyPoints = item.ai_key_points ? parseKeyPoints(item.ai_key_points) : undefined;
+        // Convert KeyPoint[] to Json before parsing
+        const keyPoints = item.ai_key_points ? parseKeyPoints(JSON.parse(JSON.stringify(item.ai_key_points))) : undefined;
         
         results[item.ext_id] = {
           id: item.id,
@@ -274,14 +275,32 @@ export class HansardAPI {
         headers: {
           'Accept': 'application/json',
         },
-        next: { revalidate: 3600 } // Cache for 1 hour
+        next: { revalidate: 3600 }
       });
 
       if (!response.ok) {
         throw new Error(`Hansard API returned ${response.status}`);
       }
 
-      return await response.json();
+      // Ensure we properly consume the stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No readable stream available');
+      }
+
+      // Read all chunks
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      // Concatenate chunks and decode
+      const decoder = new TextDecoder();
+      const text = decoder.decode(new Uint8Array(Buffer.concat(chunks)));
+      
+      return JSON.parse(text);
     } catch (error) {
       console.error('Failed to fetch debate transcript:', error);
       return undefined;

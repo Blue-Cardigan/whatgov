@@ -1,7 +1,7 @@
 'use client'
 
 import createClient from './client'
-import type { MPData, MPKeyPoint } from '@/types'
+import type { MPData } from '@/types'
 import type { DemographicStats } from '@/types/VoteStats'
 
 type RawMPData = {
@@ -19,6 +19,54 @@ type RawMPData = {
   department: string | null
   ministerial_ranking: number | null
   media: string | Record<string, unknown> | null
+  ai_topics: Array<{
+    name: string;
+    speakers: Array<{
+      name: string;
+      party: string;
+      memberId: string;
+      frequency: number;
+      subtopics: string[];
+      constituency: string;
+    }>;
+    frequency: number;
+  }>;
+  ai_summary: string | null;
+  interest_score: number;
+}
+
+export async function searchMembers(query: string): Promise<{
+  member_id: number;
+  display_as: string;
+  party: string;
+  constituency: string;
+  department: string | null;
+}[]> {
+  const supabase = createClient();
+  
+  // Return empty array if query is less than 2 characters
+  if (query.length < 2) return [];
+
+  const cleanQuery = query
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, '') // Remove quotes
+    .replace(/\s+/g, ' '); // Normalize whitespace
+
+  const { data, error } = await supabase
+    .from('members')
+    .select('member_id, display_as, party, constituency, department')
+    .is('house_end_date', null)
+    .or(`display_as.ilike.%${cleanQuery}%, department.ilike.%${cleanQuery}%`)
+    .order('display_as')
+    .limit(10);
+
+  if (error) {
+    console.error('Error searching members:', error);
+    return [];
+  }
+
+  return data || [];
 }
 
 export async function lookupPostcode(postcode: string) {
@@ -41,22 +89,96 @@ export async function lookupPostcode(postcode: string) {
   return data;
 }
 
-export async function getMPData(mpId: number): Promise<MPData | null> {
+export async function getMPData(identifier: string | number): Promise<MPData | null> {
   const supabase = createClient();
   
-  const { data, error } = await supabase
+  let query = supabase
     .from('members')
     .select('*')
-    .eq('member_id', mpId)
-    .is('house_end_date', null)
-    .single();
+    .is('house_end_date', null);
+
+  // If identifier is a number or looks like a number, treat as member_id
+  if (typeof identifier === 'number' || /^\d+$/.test(identifier.toString())) {
+    query = query.eq('member_id', identifier);
+  } else {
+    // Clean and normalize the name search
+    const cleanName = identifier
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/"([^"]+)"/g, (group) => group.replace(/\s+/g, '_SPACE_'))
+      .replace(/["']/g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/_SPACE_/g, ' ');
+
+    const nameParts = cleanName.split(' ').filter(Boolean);
+
+    if (nameParts.length > 1) {
+      // Search for combinations of name parts
+      const searchConditions = [
+        `display_as.ilike.%${cleanName}%`,
+        `full_title.ilike.%${cleanName}%`
+      ];
+
+      // Handle titles (Sir, Dame, Dr, etc.)
+      const titleParts = nameParts.filter(part => 
+        ['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
+      );
+      const nonTitleParts = nameParts.filter(part => 
+        !['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
+      );
+
+      if (titleParts.length > 0 && nonTitleParts.length > 0) {
+        titleParts.forEach(title => {
+          nonTitleParts.forEach(part => {
+            searchConditions.push(`display_as.ilike.%${title} ${part}%`);
+            searchConditions.push(`full_title.ilike.%${title} ${part}%`);
+          });
+        });
+      }
+
+      query = query.or(searchConditions.join(','));
+    } else {
+      query = query.or(`display_as.ilike.%${cleanName}%,full_title.ilike.%${cleanName}%`);
+    }
+  }
+
+  // Get all matching results
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching MP data:', error);
     return null;
   }
 
-  return transformMPData(data);
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  // Sort and select the best match
+  const sortedData = data.sort((a, b) => {
+    // Prefer Commons members over Lords
+    if (a.house === 'Commons' && b.house !== 'Commons') return -1;
+    if (b.house === 'Commons' && a.house !== 'Commons') return 1;
+
+    // If searching by name, prefer exact matches
+    if (typeof identifier === 'string') {
+      const cleanName = identifier.toLowerCase();
+      const aNameMatch = a.display_as.toLowerCase().includes(cleanName);
+      const bNameMatch = b.display_as.toLowerCase().includes(cleanName);
+      if (aNameMatch && !bNameMatch) return -1;
+      if (!aNameMatch && bNameMatch) return 1;
+    }
+
+    // Prefer ministers
+    if (a.ministerial_ranking && !b.ministerial_ranking) return -1;
+    if (!a.ministerial_ranking && b.ministerial_ranking) return 1;
+
+    // Sort by most recently joined
+    return new Date(b.house_start_date).getTime() - new Date(a.house_start_date).getTime();
+  });
+
+  return transformMPData(sortedData[0]);
 }
 
 // The shape of the speaker object in the JSONB
@@ -124,7 +246,18 @@ export interface MPKeyPointDetails {
   speaker_full_title: string;
   support: string[];
   opposition: string[];
-  ai_topics: any[];
+  ai_topics: Array<{
+    name: string;
+    speakers: Array<{
+      name: string;
+      party: string;
+      memberId: string;
+      frequency: number;
+      subtopics: string[];
+      constituency: string;
+    }>;
+    frequency: number;
+  }>;
   ai_summary: string | null;
   interest_score: number;
 }
@@ -278,6 +411,15 @@ function transformMPData(data: RawMPData): MPData {
     'I': 'Northern Ireland'
   };
 
+  // Example transformation for ai_topics if needed
+  const transformedTopics = data.ai_topics?.map(topic => ({
+    ...topic,
+    speakers: topic.speakers.map(speaker => ({
+      ...speaker,
+      subtopics: speaker.subtopics || [] // Ensure subtopics is an array
+    }))
+  }));
+
   return {
     ...data,
     media: parsedMedia,
@@ -290,7 +432,7 @@ function transformMPData(data: RawMPData): MPData {
 
 // Add this new function to search MPs by name
 export async function getMPKeyPointsByName(
-  name: string,
+  identifier: string | number,
   options: {
     limit?: number;
     offset?: number;
@@ -299,97 +441,34 @@ export async function getMPKeyPointsByName(
   const supabase = createClient();
   const { limit = 50, offset = 0 } = options;
 
-  // Clean and normalize the search input
-  // Remove extra spaces, handle quotes properly
-  const cleanName = name
-    .trim()
-    .toLowerCase()
-    // Handle quoted strings by temporarily replacing spaces
-    .replace(/"([^"]+)"/g, (match, group) => group.replace(/\s+/g, '_SPACE_'))
-    // Remove any remaining quotes
-    .replace(/["']/g, '')
-    // Normalize spaces
-    .replace(/\s+/g, ' ')
-    // Restore spaces in quoted sections
-    .replace(/_SPACE_/g, ' ');
-
-  if (!cleanName) {
-    return { data: [], count: 0 };
-  }
-
-  // Split into parts, preserving quoted phrases as single terms
-  const nameParts = cleanName.split(' ').filter(Boolean);
-  
   let query = supabase
     .from('mp_key_points')
     .select('*', { count: 'exact' })
-    .order('debate_date', { ascending: false })
-    .order('speaker_name')
-    .range(offset, offset + limit - 1);
+    .order('debate_date', { ascending: false });
 
-  // Build search conditions
-  if (nameParts.length > 1) {
-    // Search for exact phrase and individual terms
-    const searchConditions = [
-      `speaker_name.ilike.%${cleanName}%`,
-      ...nameParts.map(part => `speaker_name.ilike.%${part}%`)
-    ];
-    
-    // Handle special titles like "ms", "mr", "dr" etc.
-    const titleParts = nameParts.filter(part => 
-      ['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
-    );
-    const nonTitleParts = nameParts.filter(part => 
-      !['ms', 'mrs', 'mr', 'dr', 'sir', 'dame'].includes(part)
-    );
-    
-    if (titleParts.length > 0 && nonTitleParts.length > 0) {
-      // Add combination of title + next part
-      titleParts.forEach(title => {
-        nonTitleParts.forEach(part => {
-          searchConditions.push(`speaker_name.ilike.%${title} ${part}%`);
-        });
-      });
-    }
-
-    query = query.or(searchConditions.join(','));
+  // If identifier is a number or looks like a number, treat as member_id
+  if (typeof identifier === 'number' || /^\d+$/.test(identifier.toString())) {
+    query = query.eq('member_id', identifier.toString());
   } else {
+    // Clean and normalize the name search
+    const cleanName = identifier
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/["']/g, '')
+      .replace(/\s+/g, ' ');
+
     query = query.ilike('speaker_name', `%${cleanName}%`);
   }
+
+  // Add pagination
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
 
   if (error) {
-    console.error('Error fetching MP key points by name:', error);
+    console.error('Error fetching MP key points:', error);
     return { data: [], count: 0 };
-  }
-
-  // Enhanced result sorting
-  if (nameParts.length > 1) {
-    const sortedData = data?.sort((a, b) => {
-      const aName = a.speaker_name.toLowerCase();
-      const bName = b.speaker_name.toLowerCase();
-      
-      // Exact matches first
-      const aExact = aName.includes(cleanName);
-      const bExact = bName.includes(cleanName);
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      
-      // Then matches with all parts
-      const aAllParts = nameParts.every(part => aName.includes(part));
-      const bAllParts = nameParts.every(part => bName.includes(part));
-      if (aAllParts && !bAllParts) return -1;
-      if (!aAllParts && bAllParts) return 1;
-      
-      // Finally sort by date
-      return new Date(b.debate_date).getTime() - new Date(a.debate_date).getTime();
-    });
-
-    return {
-      data: sortedData as MPKeyPointDetails[],
-      count: count || 0
-    };
   }
 
   return {

@@ -195,9 +195,9 @@ export function useVotes(): UseVotesReturn {
                 .filter(vs => vs?.topicVotes?.[topic])
                 .map(vs => ({
                   vote: vs.topicVotes[topic].ayes > 0,
-                  title: stats.details?.[0]?.question_1?.text || '',
+                  title: stats.details?.[0]?.question?.text || '',
                   topic: topic,
-                  question: stats.details?.[0]?.question_1?.text || '',
+                  question: stats.details?.[0]?.question?.text || '',
                   debate_id: '', // This might need to come from somewhere else
                   created_at: vs.timestamp
                 })),

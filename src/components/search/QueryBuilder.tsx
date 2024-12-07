@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useReducer, useRef, useState, useMemo } from 'react';
+import { useEffect, useCallback, useReducer, useRef, useState, useMemo, Fragment } from 'react';
 import { QueryPartInput } from './QueryPartInput';
 import type { SearchType } from './QueryPartInput';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,22 @@ import { Lock } from 'lucide-react';
 import { LightbulbIcon } from 'lucide-react';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 interface QueryBuilderProps {
   searchParams: SearchParams;
   onSearch: (params: Partial<SearchParams>) => void;
   mode: 'hansard' | 'mp';
+}
+
+// Add this helper text component
+function QueryOperatorHint() {
+  return (
+    <div className="flex items-center gap-2 py-2 px-4 text-sm text-muted-foreground">
+      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-xs">AND</span>
+      <span>All conditions must match</span>
+    </div>
+  );
 }
 
 export function QueryBuilder({ 
@@ -83,8 +94,8 @@ export function QueryBuilder({
         switch (part.type) {
           case 'spokenby':
             return `spokenby:"${value}"`;
-          case 'debate':
-            return `debate:"${value}"`;
+          case 'title':
+            return `title:"${value}"`;
           case 'words':
             return `words:"${value}"`;
           default:
@@ -96,6 +107,12 @@ export function QueryBuilder({
 
   const handleSubmit = useCallback(() => {
     const queryString = buildQueryString(state.parts);
+    
+    // Don't submit if there are no valid search terms
+    if (!queryString.trim()) {
+      return;
+    }
+
     onSearch({ 
       ...searchParams, 
       ...localParams, 
@@ -203,19 +220,21 @@ export function QueryBuilder({
     return (
       <div className="space-y-2">
         {state.parts.map((part, index) => (
-          <QueryPartInput
-            key={`${part.type}-${index}`}
-            part={part}
-            searchType={searchTypes.find(t => t.id === part.type) as SearchType | undefined}
-            index={index}
-            isFocused={state.focusedIndex === index}
-            onFocus={() => dispatch({ type: 'SET_FOCUSED_INDEX', payload: index })}
-            onBlur={() => dispatch({ type: 'SET_FOCUSED_INDEX', payload: null })}
-            onUpdate={handleUpdatePart}
-            onRemove={handleRemovePart}
-            onTypeChange={handleTypeChange}
-            showRemove={state.parts.length > 1}
-          />
+          <Fragment key={`${part.type}-${index}`}>
+            <QueryPartInput
+              part={part}
+              searchType={searchTypes.find(t => t.id === part.type) as SearchType | undefined}
+              index={index}
+              isFocused={state.focusedIndex === index}
+              onFocus={() => dispatch({ type: 'SET_FOCUSED_INDEX', payload: index })}
+              onBlur={() => dispatch({ type: 'SET_FOCUSED_INDEX', payload: null })}
+              onUpdate={handleUpdatePart}
+              onRemove={handleRemovePart}
+              onTypeChange={handleTypeChange}
+              showRemove={state.parts.length > 1}
+            />
+            {index < state.parts.length - 1 && <QueryOperatorHint />}
+          </Fragment>
         ))}
       </div>
     );
@@ -354,145 +373,110 @@ export function QueryBuilder({
       {mode === 'hansard' && (
         <>
           {/* Search Type Buttons */}
-          <div className="flex flex-wrap gap-2">
-            {currentSearchTypes.map((type) => {
-              const isPremiumFeature = ['spokenby', 'debate', 'words'].includes(type.id);
-              
-              if (isPremiumFeature && !isEngagedCitizen) {
-                return null;
-              }
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {currentSearchTypes.map((type) => {
+                const isPremiumFeature = ['spokenby', 'title', 'words'].includes(type.id);
+                
+                if (isPremiumFeature && !isEngagedCitizen) {
+                  return null;
+                }
 
-              return (
-                <TooltipProvider key={type.id}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant={state.parts.some(p => p.type === type.id) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleAddPart(type.id as QueryPart['type'])}
-                        className="h-8 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md"
-                      >
-                        {type.icon}
-                        <span className="text-xs">{type.label}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{type.tooltip}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            })}
-
-            {/* Advanced Search Button */}
-            {!isEngagedCitizen && (
-              <Popover>
-                <PopoverTrigger asChild>
+                return (
+                  <TooltipProvider key={type.id}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={state.parts.some(p => p.type === type.id) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleAddPart(type.id as QueryPart['type'])}
+                          className="h-8 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md"
+                        >
+                          {type.icon}
+                          <span className="text-xs">{type.label}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{type.tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })}
+            </div>
+            
+            {/* AI Search Section */}
+            <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium flex items-center gap-2">
+                  <LightbulbIcon className="h-4 w-4 text-primary" />
+                  AI-Enhanced Search Results
+                </h3>
+                {user ? (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      {getRemainingAISearches() === Infinity ? (
+                        "Unlimited searches"
+                      ) : (
+                        `${getRemainingAISearches()} searches remaining`
+                      )}
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={enableAI ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (getRemainingAISearches() > 0) {
+                              setEnableAI(!enableAI);
+                            }
+                          }}
+                          className={cn(
+                            "gap-2",
+                            enableAI && getRemainingAISearches() <= 0 && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <LightbulbIcon className="h-4 w-4" />
+                          {enableAI ? "AI Enhanced" : "Enable AI"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto" align="start">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span>
+                            <Button
+                              variant="link"
+                              className="p-0 h-auto font-medium"
+                              onClick={() => router.push('/pricing')}
+                            >
+                              Upgrade
+                            </Button>
+                            {" "}to use this feature
+                          </span>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (!user) {
-                        router.push('/login');
-                      }
-                    }}
-                    className="h-8 gap-2 border-l-[6px] transition-colors shadow-sm hover:shadow-md opacity-70"
+                    onClick={() => router.push('/login')}
+                    className="text-xs"
                   >
-                    <Lock className="h-4 w-4" />
-                    <span className="text-xs">Advanced Search</span>
+                    Sign in to enable
                   </Button>
-                </PopoverTrigger>
-                {user && (
-                  <PopoverContent className="w-auto" align="start">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span>
-                        <Button
-                          variant="link"
-                          className="p-0 h-auto font-medium"
-                          onClick={() => router.push('/pricing')}
-                        >
-                          Upgrade
-                        </Button>
-                        {" "}to use this feature
-                      </span>
-                    </div>
-                  </PopoverContent>
                 )}
-              </Popover>
-            )}
-          </div>
-
-          {/* AI Search Section */}
-          <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium flex items-center gap-2">
-                <LightbulbIcon className="h-4 w-4 text-primary" />
-                AI-Enhanced Search Results
-              </h3>
-              {user ? (
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    {getRemainingAISearches() === Infinity ? (
-                      "Unlimited searches"
-                    ) : (
-                      `${getRemainingAISearches()} searches remaining`
-                    )}
-                  </span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={enableAI ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          if (getRemainingAISearches() > 0) {
-                            setEnableAI(!enableAI);
-                          }
-                        }}
-                        className={cn(
-                          "gap-2",
-                          enableAI && getRemainingAISearches() <= 0 && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <LightbulbIcon className="h-4 w-4" />
-                        {enableAI ? "AI Enhanced" : "Enable AI"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto" align="start">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span>
-                          <Button
-                            variant="link"
-                            className="p-0 h-auto font-medium"
-                            onClick={() => router.push('/pricing')}
-                          >
-                            Upgrade
-                          </Button>
-                          {" "}for unlimited
-                        </span>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push('/login')}
-                  className="text-xs"
-                >
-                  Sign in to enable
-                </Button>
-              )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {enableAI && user ? (
+                  "AI will analyze search results to provide clear summaries and key points from parliamentary debates."
+                ) : user ? (
+                  "Enable AI analysis to get summaries and key points from parliamentary debates."
+                ) : (
+                  "Get clear summaries and key points from parliamentary debates, making Hansard more accessible than ever. Sign in to access this feature."
+                )}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {enableAI && user ? (
-                "AI will analyze search results to provide clear summaries and key points from parliamentary debates."
-              ) : user ? (
-                "Enable AI analysis to get summaries and key points from parliamentary debates."
-              ) : (
-                "Get clear summaries and key points from parliamentary debates, making Hansard more accessible than ever. Sign in to access this feature."
-              )}
-            </p>
           </div>
         </>
       )}
@@ -509,6 +493,18 @@ function parseInitialValue(value: string): QueryPart[] {
       return { 
         type: 'spokenby',
         value: match.slice(9).replace(/"/g, ''),
+        isValid: true 
+      };
+    } else if (match.startsWith('title:')) {
+      return { 
+        type: 'title',
+        value: match.slice(6).replace(/"/g, ''),
+        isValid: true 
+      };
+    } else if (match.startsWith('words:')) {
+      return { 
+        type: 'words',
+        value: match.slice(6).replace(/"/g, ''),
         isValid: true 
       };
     } else {

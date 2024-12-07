@@ -39,12 +39,15 @@ export function QueryPartInput({
   onRemove,
   showRemove,
 }: QueryPartInputProps) {
+  const isEmpty = !part.value.trim();
+
   return (
     <div className="group relative">
       <div className={cn(
         "flex items-center gap-4 rounded-lg border p-4 transition-all",
         isFocused ? "ring-2 ring-primary border-primary" : "bg-card hover:bg-accent/50",
-        !part.isValid && "border-destructive"
+        !part.isValid && "border-destructive",
+        isEmpty && "border-dashed"
       )}>
         {/* Left Icon */}
         <div className="flex-shrink-0 text-muted-foreground">
@@ -73,7 +76,7 @@ export function QueryPartInput({
               onChange={(e) => onUpdate(index, e.target.value)}
               onFocus={onFocus}
               onBlur={onBlur}
-              placeholder={searchType?.placeholder}
+              placeholder={isEmpty ? `Add ${searchType?.label.toLowerCase()}...` : searchType?.placeholder}
               className={cn(
                 "border-none bg-transparent px-0 h-9 text-base pl-2",
                 !part.isValid && "text-destructive"
@@ -89,7 +92,7 @@ export function QueryPartInput({
           {/* Helper Text */}
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              {searchType?.description}
+              {isEmpty ? "Start typing to add your search term" : searchType?.description}
             </p>
             {part.value && searchType?.example && (
               <p className="text-xs text-muted-foreground italic">

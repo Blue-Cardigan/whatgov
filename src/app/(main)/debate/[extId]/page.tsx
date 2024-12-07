@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ProcessDebateClient } from '@/components/debates/ProcessDebateClient';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { HansardAPI } from '@/lib/search-api';
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 interface DebatePageProps {
   params: Promise<{
@@ -45,13 +46,16 @@ export default async function DebatePage({ params }: DebatePageProps) {
 
     return (
       <AuthProvider>
-        <div className="container max-w-4xl mx-auto py-8 px-4">
-          <Suspense fallback={<div>Loading...</div>}>
-            <ProcessDebateClient 
-              rawDebate={rawDebate} 
-              hansardData={hansardData}
-            />
-          </Suspense>
+        <div className="min-h-screen flex flex-col">
+          <div className="flex-1 container max-w-4xl mx-auto py-8 px-4">
+            <Suspense fallback={<div>Loading...</div>}>
+              <ProcessDebateClient 
+                rawDebate={rawDebate} 
+                hansardData={hansardData}
+              />
+            </Suspense>
+          </div>
+          <SimpleFooter />
         </div>
       </AuthProvider>
     );
