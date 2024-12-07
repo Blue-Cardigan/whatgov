@@ -8,6 +8,12 @@ interface SearchState {
   searchParams: SearchParams;
   aiContent?: Record<string, SearchResultAIContent>;
   isLoading: boolean;
+  aiSearch: {
+    query: string;
+    streamingText: string;
+    citations: any[];
+    isLoading: boolean;
+  };
 }
 
 type SearchAction =
@@ -15,7 +21,10 @@ type SearchAction =
   | { type: 'SET_PARAMS'; payload: SearchParams }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'APPEND_RESULTS'; payload: SearchResponse }
-  | { type: 'CLEAR_RESULTS' };
+  | { type: 'CLEAR_RESULTS' }
+  | { type: 'SET_AI_LOADING'; payload: boolean }
+  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: any[] } }
+  | { type: 'CLEAR_AI_SEARCH' };
 
 const initialState: SearchState = {
   results: null,
@@ -25,7 +34,13 @@ const initialState: SearchState = {
     take: 10,
     orderBy: 'SittingDateDesc'
   },
-  isLoading: false
+  isLoading: false,
+  aiSearch: {
+    query: '',
+    streamingText: '',
+    citations: [],
+    isLoading: false
+  }
 };
 
 const SearchContext = createContext<{
@@ -41,20 +56,42 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     const savedState = sessionStorage.getItem('searchState');
     if (savedState) {
       const parsed = JSON.parse(savedState);
+      // Restore all state including AI search
       dispatch({ type: 'SET_RESULTS', payload: parsed.results });
       dispatch({ type: 'SET_PARAMS', payload: parsed.searchParams });
+      if (parsed.aiSearch) {
+        dispatch({ 
+          type: 'SET_AI_SEARCH', 
+          payload: {
+            query: parsed.aiSearch.query,
+            streamingText: parsed.aiSearch.streamingText,
+            citations: parsed.aiSearch.citations
+          }
+        });
+      }
     }
   }, []);
 
   // Save state to sessionStorage on updates
   useEffect(() => {
-    if (state.results) {
-      sessionStorage.setItem('searchState', JSON.stringify({
-        results: state.results,
-        searchParams: state.searchParams
-      }));
-    }
-  }, [state.results, state.searchParams]);
+    sessionStorage.setItem('searchState', JSON.stringify({
+      results: state.results,
+      searchParams: state.searchParams,
+      aiSearch: {
+        query: state.aiSearch.query,
+        streamingText: state.aiSearch.streamingText,
+        citations: state.aiSearch.citations,
+        isLoading: state.aiSearch.isLoading
+      }
+    }));
+  }, [
+    state.results, 
+    state.searchParams, 
+    state.aiSearch.query,
+    state.aiSearch.streamingText,
+    state.aiSearch.citations,
+    state.aiSearch.isLoading
+  ]);
 
   return (
     <SearchContext.Provider value={{ state, dispatch }}>
@@ -101,6 +138,29 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         ...state,
         results: null,
         searchParams: initialState.searchParams
+      };
+    case 'SET_AI_LOADING':
+      return {
+        ...state,
+        aiSearch: {
+          ...state.aiSearch,
+          isLoading: action.payload
+        }
+      };
+    case 'SET_AI_SEARCH':
+      return {
+        ...state,
+        aiSearch: {
+          ...state.aiSearch,
+          query: action.payload.query,
+          streamingText: action.payload.streamingText,
+          citations: action.payload.citations
+        }
+      };
+    case 'CLEAR_AI_SEARCH':
+      return {
+        ...state,
+        aiSearch: initialState.aiSearch
       };
     default:
       return state;

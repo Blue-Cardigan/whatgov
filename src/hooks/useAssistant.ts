@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { createThread } from '@/lib/openai-api';
+import { createThread, parseStreamingResponse } from '@/lib/openai-api';
 
 export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,8 @@ export function useAssistant() {
 
   const performFileSearch = useCallback(async (
     query: string, 
-    openaiAssistantId: string | null
+    openaiAssistantId: string | null,
+    onStreamingUpdate?: (text: string, citations: string[]) => void
   ) => {
     setIsLoading(true);
     setStreamingText('');
@@ -31,63 +32,68 @@ export function useAssistant() {
     try {
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          query,
-          assistantId: openaiAssistantId 
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, assistantId: openaiAssistantId }),
       });
 
-      if (!response.ok) {
-        throw new Error('Stream request failed');
-      }
+      if (!response.ok) throw new Error('Stream request failed');
 
       const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No reader available');
-      }
+      if (!reader) throw new Error('No reader available');
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let currentText = '';
+      let currentCitations: string[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) {
-          break;
-        }
+        if (done) break;
 
-        // Append new chunks to buffer
         buffer += decoder.decode(value, { stream: true });
-        
-        // Process complete messages from buffer
-        let newlineIndex;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          const chunk = buffer.slice(0, newlineIndex);
-          buffer = buffer.slice(newlineIndex + 1);
-          
-          if (chunk.trim()) {
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim()) {
             try {
-              const data = JSON.parse(chunk);
+              const { type, content } = parseStreamingResponse(line);
               
-              if (data.type === 'text') {
-                setStreamingText(current => current + data.content);
-              } else if (data.type === 'finalText') {
-                setStreamingText(data.content);
-              } else if (data.type === 'citations') {
-                setCitations(data.content);
+              switch (type) {
+                case 'text':
+                  currentText += content;
+                  setStreamingText(currentText);
+                  onStreamingUpdate?.(currentText, currentCitations);
+                  break;
+                case 'finalText':
+                  currentText = content as string;
+                  setStreamingText(currentText);
+                  onStreamingUpdate?.(currentText, currentCitations);
+                  break;
+                case 'citations':
+                  currentCitations = content as string[];
+                  setCitations(currentCitations);
+                  onStreamingUpdate?.(currentText, currentCitations);
+                  break;
+                case 'error':
+                  throw new Error(content as string);
               }
             } catch (e) {
-              console.error('Error parsing chunk:', e);
+              console.error('Error processing line:', e);
             }
           }
         }
       }
+
+      // Ensure final state is set
+      setStreamingText(currentText);
+      setCitations(currentCitations);
+      onStreamingUpdate?.(currentText, currentCitations);
+
     } catch (error) {
       console.error('Error in file search:', error);
       setStreamingText('An error occurred while searching.');
+      onStreamingUpdate?.('An error occurred while searching.', []);
     } finally {
       setIsLoading(false);
     }

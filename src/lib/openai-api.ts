@@ -61,8 +61,8 @@ export async function streamAssistantResponse(query: string): Promise<ReadableSt
 
 // Helper function to parse streaming response
 export function parseStreamingResponse(chunk: string): {
-  type: 'start' | 'data' | 'complete' | 'error';
-  content?: string | StreamResponse;
+  type: 'text' | 'finalText' | 'citations' | 'error';
+  content?: string | string[];
 } {
   try {
     const data = JSON.parse(chunk);

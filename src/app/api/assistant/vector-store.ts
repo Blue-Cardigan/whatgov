@@ -23,11 +23,6 @@ export async function getCurrentVectorStore() {
 
     if (currentStore) {
       console.log(`Found vector store: ${currentStore.name}`);
-      console.log(`ID: ${currentStore.id}`);
-      
-      // Get file count
-      const files = await openai.beta.vectorStores.files.list(currentStore.id);
-      console.log(`Files: ${files.data.length}`);
       
       return currentStore;
     } else {

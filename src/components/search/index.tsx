@@ -43,14 +43,20 @@ export function Search() {
   useEffect(() => {
     if (!authLoading) {
       if (user && !hasReachedAISearchLimit()) {
-        setActiveTab('file');
+        setActiveTab(state.aiSearch.query ? 'ai' : 'hansard');
       } else {
         setActiveTab('hansard');
       }
     }
-  }, [user, authLoading, hasReachedAISearchLimit]);
+  }, [user, authLoading, hasReachedAISearchLimit, state.aiSearch.query]);
 
-  const [fileQuery, setFileQuery] = useState('');
+  // Update to use new state structure
+  const [fileQuery, setFileQuery] = useState(state.aiSearch.query);
+
+  // Add effect to sync fileQuery with context
+  useEffect(() => {
+    setFileQuery(state.aiSearch.query);
+  }, [state.aiSearch.query]);
 
   const performSearch = useCallback(async (newParams?: Partial<SearchParams>, loadMore = false) => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -124,7 +130,42 @@ export function Search() {
 
   const handleFileSearch = async () => {
     if (!fileQuery.trim()) return;
-    await performFileSearch(fileQuery, selectedOpenAIAssistantId);
+    
+    dispatch({ type: 'SET_AI_LOADING', payload: true });
+    dispatch({ 
+      type: 'SET_AI_SEARCH', 
+      payload: { 
+        query: fileQuery,
+        streamingText: '',
+        citations: []
+      }
+    });
+    
+    try {
+      await performFileSearch(
+        fileQuery, 
+        selectedOpenAIAssistantId,
+        (streamingText, citations) => {
+          dispatch({ 
+            type: 'SET_AI_SEARCH', 
+            payload: {
+              query: fileQuery,
+              streamingText,
+              citations
+            }
+          });
+        }
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Search failed",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      dispatch({ type: 'SET_AI_LOADING', payload: false });
+    }
   };
 
   const [isAssistantBuilderOpen, setIsAssistantBuilderOpen] = useState(false);
@@ -181,7 +222,7 @@ export function Search() {
       >
         <TabsList className="grid w-full grid-cols-2 mt-4 mb-4">
           <TabsTrigger 
-            value="file" 
+            value="ai" 
             disabled={authLoading || !user || hasReachedAISearchLimit()}
           >
             AI Search
@@ -189,7 +230,7 @@ export function Search() {
           <TabsTrigger value="hansard">Hansard Search</TabsTrigger>
         </TabsList>
 
-        {activeTab === 'file' && (
+        {activeTab === 'ai' && (
           <div className="mb-4 text-sm text-muted-foreground text-center flex items-center justify-center">
             <LightbulbIcon className="w-4 h-4 mr-2 inline" />
             <span>{getSearchLimitMessage()}</span>
@@ -220,7 +261,7 @@ export function Search() {
           />
         </TabsContent>
 
-        <TabsContent value="file">
+        <TabsContent value="ai">
           <h1 className="text-2xl font-bold mt-4">AI Search</h1>
           <p className="text-muted-foreground mb-4">
             Search through parliamentary records with AI assistance
@@ -272,10 +313,10 @@ export function Search() {
             <div className="border rounded-lg overflow-hidden">
               <div className="p-4">
                 <StreamedResponse 
-                  streamingText={streamingText}
-                  citations={citations}
-                  isLoading={aiLoading}
-                  query={fileQuery}
+                  streamingText={state.aiSearch.streamingText}
+                  citations={state.aiSearch.citations}
+                  isLoading={state.aiSearch.isLoading}
+                  query={state.aiSearch.query}
                 />
               </div>
             </div>

@@ -32,7 +32,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   }
 
   // Process the text to wrap citations in markdown links
-  const processedText = streamingText.split(/(\[\d+\])/).map((part) => {
+  const processedText = (streamingText || '').split(/(\[\d+\])/).map((part) => {
     const citationMatch = part.match(/\[(\d+)\]/);
     if (citationMatch) {
       const citationIndex = parseInt(citationMatch[1]);

@@ -15,11 +15,9 @@ export async function POST(request: Request) {
     if (!query) {
       return new Response('Query is required', { status: 400 });
     }
-    console.log('assistantId', assistantId);
 
     // If no assistantId is provided, use the default assistant
     const assistantIDToUse = assistantId || process.env.OPENAI_ASSISTANT_ID!;
-    console.log('assistantIDToUse', assistantIDToUse);
 
     // If using a custom assistant, verify it exists and belongs to the user
     if (assistantId) {
