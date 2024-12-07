@@ -35,7 +35,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   const processedText = (streamingText || '').split(/(\[\d+\])/).map((part) => {
     const citationMatch = part.match(/\[(\d+)\]/);
     if (citationMatch) {
-      const citationIndex = parseInt(citationMatch[1]);
+      const citationIndex = parseInt(citationMatch[1]) - 1;
       const citation = citations[citationIndex];
       if (citation) {
         const { url } = processCitations('', [citation]).citationLinks[0];
