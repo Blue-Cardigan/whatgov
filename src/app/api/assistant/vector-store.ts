@@ -17,7 +17,7 @@ export async function getCurrentVectorStore() {
     const vectorStores = await openai.beta.vectorStores.list();
     
     // Find store for current week
-    const currentStore = vectorStores.data.find((store: any) => 
+    const currentStore = vectorStores.data.find((store: OpenAI.Beta.VectorStore) => 
       store.name === storeName
     );
 

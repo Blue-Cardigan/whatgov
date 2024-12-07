@@ -5,6 +5,7 @@ import { SearchResults } from "./SearchResults";
 import { QueryBuilder } from './QueryBuilder';
 import { HansardAPI } from '@/lib/search-api';
 import type { SearchParams } from '@/types/search';
+import type { SearchFilterParams } from '@/types/assistant';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,56 +14,11 @@ import { Button } from '@/components/ui/button';
 import { useAssistant } from '@/hooks/useAssistant';
 import { StreamedResponse } from './StreamedResponse';
 import { useSearch } from '@/contexts/SearchContext';
-import { useSupabase } from '@/components/providers/SupabaseProvider';
-import { useRouter } from 'next/navigation';
 import { LightbulbIcon, PlusCircle } from 'lucide-react';
 import { AssistantBuilder } from './AssistantBuilder';
 import { AssistantSelect } from './AssistantSelect';
 
 const PAGE_SIZE = 10;
-
-const formatCitationLink = (citation: string) => {
-  // Extract filename from citation format like "[0] commons2024-07-23d.642.0.txt"
-  const match = citation.match(/\[\d+\]\s+(.+?)\.txt$/);
-  if (!match) return { text: citation, url: null };
-  
-  const filename = match[1];
-  return {
-    text: citation,
-    url: `/debate/${filename}`
-  };
-};
-
-const formatStreamingText = (text: string, citations: string[]) => {
-  // Split the text by citation markers [0], [1], etc.
-  const parts = text.split(/(\[\d+\])/);
-  
-  return parts.map((part, index) => {
-    // Check if this part is a citation marker
-    const citationMatch = part.match(/\[(\d+)\]/);
-    if (citationMatch) {
-      const citationIndex = parseInt(citationMatch[1]);
-      const citation = citations[citationIndex];
-      if (citation) {
-        const { url } = formatCitationLink(citation);
-        if (url) {
-          return (
-            <a
-              key={index}
-              href={url}
-              className="text-blue-600 hover:text-blue-800 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {part}
-            </a>
-          );
-        }
-      }
-    }
-    return <span key={index}>{part}</span>;
-  });
-};
 
 export function Search() {
   const { state, dispatch } = useSearch();
@@ -79,8 +35,6 @@ export function Search() {
     streamingText, 
     citations 
   } = useAssistant();
-  const supabase = useSupabase();
-  const router = useRouter();
 
   // Set initial tab based on user's access level and search limit
   const [activeTab, setActiveTab] = useState('hansard');
@@ -97,7 +51,6 @@ export function Search() {
   }, [user, authLoading, hasReachedAISearchLimit]);
 
   const [fileQuery, setFileQuery] = useState('');
-  const [activeFilters, setActiveFilters] = useState({});
 
   const performSearch = useCallback(async (newParams?: Partial<SearchParams>, loadMore = false) => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -163,11 +116,9 @@ export function Search() {
     return `${remaining} AI ${remaining === 1 ? 'search' : 'searches'} remaining this month`;
   };
 
-  const [selectedAssistantId, setSelectedAssistantId] = useState<string | null>(null);
   const [selectedOpenAIAssistantId, setSelectedOpenAIAssistantId] = useState<string | null>(null);
 
-  const handleAssistantChange = (assistantId: string | null, openaiAssistantId: string | null) => {
-    setSelectedAssistantId(assistantId);
+  const handleAssistantChange = (_assistantId: string | null, openaiAssistantId: string | null) => {
     setSelectedOpenAIAssistantId(openaiAssistantId);
   };
 
@@ -181,7 +132,7 @@ export function Search() {
   const handleAssistantCreate = async (assistant: {
     name: string;
     description: string;
-    filters: any;
+    filters: SearchFilterParams;
     keywords: string[];
     fileIds: string[];
   }) => {
@@ -204,8 +155,6 @@ export function Search() {
       if (!response.ok) {
         throw new Error('Failed to create assistant');
       }
-
-      const data = await response.json();
       
       toast({
         title: "Assistant Building",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { Badge, PlusCircle, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -22,7 +22,13 @@ import { SearchFilterParams } from "@/types/assistant";
 interface AssistantBuilderProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onAssistantCreate: (assistant: any) => Promise<void>;
+  onAssistantCreate: (assistant: {
+    name: string;
+    description: string;
+    filters: SearchFilterParams;
+    keywords: string[];
+    fileIds: string[];
+  }) => Promise<void>;
 }
 
 export function AssistantBuilder({
@@ -44,8 +50,6 @@ export function AssistantBuilder({
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [topicsFilterType, setTopicsFilterType] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [selectedHouse, setSelectedHouse] = useState<'Commons' | 'Lords' | 'Both'>('Both');
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-  const [locationsFilterType, setLocationsFilterType] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [selectedDebateTypes, setSelectedDebateTypes] = useState<string[]>([]);
   const [debateTypesFilterType, setDebateTypesFilterType] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [dateRange, setDateRange] = useState<DateRange>();
@@ -105,14 +109,6 @@ export function AssistantBuilder({
         ? `covering all of these topics: ${selectedTopics.join(', ')}`
         : `covering any of these topics: ${selectedTopics.join(', ')}`;
       parts.push(topicText);
-    }
-
-    // Locations
-    if (selectedLocations.length > 0) {
-      const locationText = locationsFilterType === 'exclusive'
-        ? `from all of these locations: ${selectedLocations.join(', ')}`
-        : `from any of these locations: ${selectedLocations.join(', ')}`;
-      parts.push(locationText);
     }
 
     // Debate Types
@@ -211,7 +207,6 @@ export function AssistantBuilder({
         subtopics: selectedTopics,
         subtopics_filter_type: topicsFilterType,
         house: selectedHouse as 'Commons' | 'Lords' | 'Both',
-        locations: selectedLocations,
         debate_types: selectedDebateTypes,
         date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
         date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
@@ -275,7 +270,7 @@ export function AssistantBuilder({
                 <div className="space-y-2">
                 <Label>Keywords</Label>
                 <p className="text-sm text-muted-foreground">
-                    Add keywords to help focus the assistant's responses. Press Enter to add each keyword.
+                    Add keywords to help focus the assistant&apos;s responses. Press Enter to add each keyword.
                 </p>
                 <Input
                     placeholder="Type a keyword and press Enter..."
@@ -327,11 +322,6 @@ export function AssistantBuilder({
               }}
               selectedHouse={selectedHouse}
               onHouseChange={setSelectedHouse}
-              selectedLocations={selectedLocations}
-              locationsFilterType={locationsFilterType}
-              onLocationsFilterTypeChange={setLocationsFilterType}
-              onLocationSelect={(location) => setSelectedLocations([...selectedLocations, location])}
-              onLocationRemove={(location) => setSelectedLocations(selectedLocations.filter(l => l !== location))}
               selectedDebateTypes={selectedDebateTypes}
               debateTypesFilterType={debateTypesFilterType}
               onDebateTypesFilterTypeChange={setDebateTypesFilterType}

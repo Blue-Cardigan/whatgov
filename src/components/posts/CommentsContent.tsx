@@ -1,7 +1,7 @@
 import type { CommentThread, Speaker } from '@/types';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { CircleDot, CircleSlash, User } from 'lucide-react';
+import { CircleDot, CircleSlash } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
@@ -14,36 +14,7 @@ interface CommentsContentProps {
   isActive: boolean;
 }
 
-// Helper function to get portrait URL
-// Helper function to normalize names for comparison
-const normalizeName = (name: string | null | undefined): string => {
-  if (!name) return '';
-  
-  return name
-    .toLowerCase()
-    // Remove titles like Sir, Dame, Dr, etc.
-    .replace(/^(sir|dame|dr|mr|mrs|ms|miss)\s+/i, '')
-    // Remove special characters and extra spaces
-    .replace(/[^a-z0-9\s]/g, '')
-    .trim();
-};
-
-// Helper function to find matching speaker
-const findMatchingSpeaker = (
-  author: string | null | undefined, 
-  speakers?: Array<{ display_as: string; member_id: number; party: string }>
-) => {
-  if (!speakers?.length || !author) return undefined;
-  
-  const normalizedAuthor = normalizeName(author);
-  if (!normalizedAuthor) return undefined;
-  
-  return speakers.find(speaker => 
-    normalizeName(speaker.display_as) === normalizedAuthor
-  );
-};
-
-export function CommentsContent({ comments, isActive }: CommentsContentProps) {
+export function CommentsContent({ comments }: CommentsContentProps) {
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
 
   return (

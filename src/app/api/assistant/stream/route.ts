@@ -43,7 +43,6 @@ export async function POST(request: Request) {
               thread.id, { assistant_id: assistantIDToUse }
             );
 
-            let currentText = '';
             let citations: string[] = [];
 
             for await (const part of runStream) {
@@ -52,7 +51,6 @@ export async function POST(request: Request) {
                 if (content && content.length > 0) {
                   const textContent = content[0].text?.value;
                   if (textContent) {
-                    currentText += textContent;
                     controller.enqueue(encoder.encode(
                       JSON.stringify({ 
                         type: 'text', 
@@ -141,7 +139,6 @@ export async function POST(request: Request) {
               }
             );
 
-            let currentText = '';
             let citations: string[] = [];
 
             for await (const part of runStream) {
@@ -150,7 +147,6 @@ export async function POST(request: Request) {
                 if (content && content.length > 0) {
                   const textContent = content[0].text?.value;
                   if (textContent) {
-                    currentText += textContent;
                     controller.enqueue(encoder.encode(
                       JSON.stringify({ 
                         type: 'text', 

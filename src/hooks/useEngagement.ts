@@ -22,7 +22,7 @@ interface EngagementStats {
 }
 
 export function useEngagement() {
-  const { user, subscription, isEngagedCitizen, isPremium } = useAuth();
+  const { user, isEngagedCitizen, isPremium } = useAuth();
   const [stats, setStats] = useState<EngagementStats>(() => {
     if (typeof window === 'undefined') return initializeStats();
     

@@ -26,7 +26,6 @@ export function MPProfile() {
   
   // Add search-related state
   const [searchedMpId, setSearchedMpId] = useState<string | null>(null);
-  const [isSearchMode, setIsSearchMode] = useState(false);
 
   // Get current search params
   const currentSearchTerm = searchParams.get('mp') || '';

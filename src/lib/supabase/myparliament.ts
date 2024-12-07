@@ -411,15 +411,6 @@ function transformMPData(data: RawMPData): MPData {
     'I': 'Northern Ireland'
   };
 
-  // Example transformation for ai_topics if needed
-  const transformedTopics = data.ai_topics?.map(topic => ({
-    ...topic,
-    speakers: topic.speakers.map(speaker => ({
-      ...speaker,
-      subtopics: speaker.subtopics || [] // Ensure subtopics is an array
-    }))
-  }));
-
   return {
     ...data,
     media: parsedMedia,

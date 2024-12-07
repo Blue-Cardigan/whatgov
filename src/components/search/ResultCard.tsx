@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarIcon, ExternalLink, Settings2, UserIcon, Users, MessageSquare, LightbulbIcon, ThumbsDown, ThumbsUp, ChevronDown } from "lucide-react";
-import { locationColors, getDebateType } from '@/lib/utils';
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { CalendarIcon, ExternalLink, Settings2, UserIcon, Users, MessageSquare, LightbulbIcon, ThumbsDown, ThumbsUp } from "lucide-react";
+import { locationColors } from '@/lib/utils';
 import { motion } from "framer-motion";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ReactNode, useState, useMemo } from "react";
@@ -39,9 +39,7 @@ export function ResultCard({
     showAllKeyPoints: false,
     showFullContent: false
   });
-
-  const debateType = useMemo(() => getDebateType(result.Section), [result.Section]);
-
+  
   const formattedDate = useMemo(() => {
     const date = new Date(result.SittingDate);
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
@@ -204,29 +202,6 @@ export function ResultCard({
       point => !matchedSpeakers.has(point.speaker.name)
     );
   }, [aiContent?.ai_key_points, keyPointsBySpeaker]);
-
-  // Add button to view all key points
-  const renderAllKeyPointsButton = () => {
-    if (!remainingKeyPoints.length) return null;
-
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className={cn(
-          "gap-2",
-          state.showAllKeyPoints ? "text-primary" : "text-primary/60 hover:text-primary"
-        )}
-        onClick={() => setState(prev => ({ ...prev, showAllKeyPoints: !prev.showAllKeyPoints }))}
-      >
-        <LightbulbIcon className="h-4 w-4" />
-        All Key Points
-        <Badge variant="secondary" className="ml-1">
-          {remainingKeyPoints.length}
-        </Badge>
-      </Button>
-    );
-  };
 
   // Add section to render remaining key points
   const renderRemainingKeyPoints = () => {

@@ -21,8 +21,6 @@ export interface AssistantCreateRequest {
     subtopics: string[];
     subtopics_filter_type: 'inclusive' | 'exclusive';
     house: 'Commons' | 'Lords' | 'Both';
-    locations: string[];
-    locations_filter_type: 'inclusive' | 'exclusive';
     debate_types: string[];
     debate_types_filter_type: 'inclusive' | 'exclusive';
     date_from: string | null;
@@ -55,7 +53,6 @@ export interface SearchFilterParams {
     subtopics: string[];
     subtopics_filter_type: 'inclusive' | 'exclusive';
     house: 'Commons' | 'Lords' | 'Both';
-    locations: string[]; // No filter type needed
     debate_types: string[]; // No filter type needed
     date_from: string | null;
     date_to: string | null;

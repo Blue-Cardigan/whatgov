@@ -2,7 +2,7 @@ import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
 import getSupabase from '@/lib/supabase/client';
 import { parseKeyPoints } from '@/lib/utils';
-import type { FetchOptions, KeyPoint } from '@/types';
+import type { FetchOptions } from '@/types';
 import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
 import type { HansardDebateResponse } from '@/types/hansard';

@@ -18,11 +18,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from '@/contexts/AuthContext';
-import { Lock } from 'lucide-react';
 import { LightbulbIcon } from 'lucide-react';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
 
 interface QueryBuilderProps {
   searchParams: SearchParams;

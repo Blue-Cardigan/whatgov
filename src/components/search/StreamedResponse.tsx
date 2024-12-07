@@ -26,7 +26,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     return (
       <div className="text-muted-foreground text-center py-8">
         <p>Enter a query to search through parliamentary records...</p>
-        <p className="text-sm mt-2">Example: "What has been said about climate change this week?"</p>
+        <p className="text-sm mt-2">Example: &ldquo;What has been said about climate change this week?&rdquo;</p>
       </div>
     );
   }

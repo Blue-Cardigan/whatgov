@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X, Search, Loader2 } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Speaker } from "@/types";
@@ -14,7 +14,7 @@ import { searchMembers } from "@/lib/supabase/myparliament";
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TOPIC_DEFINITIONS, LOCATION_GROUPS, DEBATE_TYPES, partyColours, DISTINCT_TYPE_LOCATION_HOUSE_GROUPS } from "@/lib/utils";
+import { TOPIC_DEFINITIONS, DEBATE_TYPES, partyColours } from "@/lib/utils";
 
 interface AssistantFiltersProps {
   // Members
@@ -42,13 +42,6 @@ interface AssistantFiltersProps {
   selectedHouse: 'Commons' | 'Lords' | 'Both';
   onHouseChange: (house: 'Commons' | 'Lords' | 'Both') => void;
 
-  // Locations
-  selectedLocations: string[];
-  locationsFilterType: 'inclusive' | 'exclusive';
-  onLocationsFilterTypeChange: (value: 'inclusive' | 'exclusive') => void;
-  onLocationSelect: (location: string) => void;
-  onLocationRemove: (location: string) => void;
-
   // Debate Types
   selectedDebateTypes: string[];
   debateTypesFilterType: 'inclusive' | 'exclusive';
@@ -65,17 +58,11 @@ interface AssistantFiltersProps {
   onDaySelect: (day: string) => void;
   onDayRemove: (day: string) => void;
 
-  // Data sources
-  parties: string[];
-  topics: string[];
-  locations: string[];
-  debateTypes: string[];
-  
-  // Loading states
-  partiesLoading?: boolean;
-  topicsLoading?: boolean;
-  locationsLoading?: boolean;
-  debateTypesLoading?: boolean;
+//   // Data sources
+//   parties: string[];
+//   topics: string[];
+//   locations: string[];
+//   debateTypes: string[];
 }
 
 interface FilterTypeToggleProps {
@@ -112,12 +99,6 @@ function FilterTypeToggle({
   );
 }
 
-function getDebateTypesForLocation(location: string): string[] {
-  return DISTINCT_TYPE_LOCATION_HOUSE_GROUPS
-    .filter(group => group.location === location)
-    .map(group => group.type);
-}
-
 export function AssistantFilters({
   // Destructure all props
   selectedMembers,
@@ -137,14 +118,7 @@ export function AssistantFilters({
   onTopicRemove,
   selectedHouse,
   onHouseChange,
-  selectedLocations,
-  locationsFilterType,
-  onLocationsFilterTypeChange,
-  onLocationSelect,
-  onLocationRemove,
   selectedDebateTypes,
-  debateTypesFilterType,
-  onDebateTypesFilterTypeChange,
   onDebateTypeSelect,
   onDebateTypeRemove,
   dateRange,
@@ -202,7 +176,7 @@ export function AssistantFilters({
     <div className="space-y-6">
       <div className="bg-muted p-4 rounded-lg">
         <p className="text-sm text-muted-foreground">
-          Select which parliamentary debates to include in this research assistant's knowledge base. 
+          Select which parliamentary debates to include in this research assistant&apos;s knowledge base. 
           The assistant will only be able to reference and analyze the debates that match your criteria below.
         </p>
       </div>
