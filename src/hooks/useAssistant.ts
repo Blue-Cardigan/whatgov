@@ -1,24 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
-import { createThread, parseStreamingResponse } from '@/lib/openai-api';
+import { useState, useCallback } from 'react';
+import { parseStreamingResponse } from '@/lib/openai-api';
 
 export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState<string>('');
   const [citations, setCitations] = useState<string[]>([]);
-
-  useEffect(() => {
-    const initializeThread = async () => {
-      try {
-        const { threadId } = await createThread();
-        setThreadId(threadId);
-      } catch (error) {
-        console.error('Error creating thread:', error);
-      }
-    };
-
-    initializeThread();
-  }, []);
 
   const performFileSearch = useCallback(async (
     query: string, 

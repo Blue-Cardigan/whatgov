@@ -6,15 +6,20 @@ Professionals
 [/] Make search page wider (on desktop)
 [/] Assistant to ask questions
 [/] Save searches to dashboard
-[ ] AI assistant and query (prompt) builder
-[ ] Export saved searches
+[/] AI assistant and query (prompt) builder
+[/] Store searches in context
+[ ] Select prompt/style in assistant builder
+[ ] Edit assistant filters
+[ ] Export saved searches to file
+[ ] Implement automatic updates of custom assistants
+[ ] Save query-assistant pairs to rerun
+
 [ ] Save hansard searches
 [ ] Term frequency tracking in hansard search
 [ ] Add divisions to assistant
 [ ] Add full voting history of each MP
 [ ] Add bill progress/schedule
-[ ] Automatically re-ask questions every week
-[ ] Generate reports/ data structures
+
 [ ] Newsletter sending from backend
    1) Generate a 'this week' intro from summaries
 [ ] More detailed 'upcoming' using bills api
