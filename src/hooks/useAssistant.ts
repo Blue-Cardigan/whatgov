@@ -3,7 +3,6 @@ import { parseStreamingResponse } from '@/lib/openai-api';
 
 export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState<string>('');
   const [citations, setCitations] = useState<string[]>([]);
 
@@ -88,7 +87,6 @@ export function useAssistant() {
 
   return {
     isLoading,
-    threadId,
     performFileSearch,
     streamingText,
     citations

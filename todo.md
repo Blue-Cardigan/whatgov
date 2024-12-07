@@ -2,13 +2,15 @@ Key value: Quick and simple search of simple debates - no trawling through thous
 
 Professionals
 [ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)
-[-] Member profile search (Make it EC exclusive)
+[/] Member profile search 
+[ ] Make member profile search EC exclusive
 [/] Make search page wider (on desktop)
 [/] Assistant to ask questions
 [/] Save searches to dashboard
 [/] AI assistant and query (prompt) builder
 [/] Store searches in context
-[ ] Select prompt/style in assistant builder
+[/] Select prompt/style in assistant builder
+[ ] Limit assistant usage by engagement
 [ ] Edit assistant filters
 [ ] Export saved searches to file
 [ ] Implement automatic updates of custom assistants

@@ -17,6 +17,7 @@ export async function POST(request: Request) {
 
     // If no assistantId is provided, use the default assistant
     const assistantIDToUse = assistantId || process.env.OPENAI_ASSISTANT_ID!;
+    console.log('assistantIDToUse', assistantIDToUse);
 
     // If using a custom assistant, verify it exists and belongs to the user
     const supabase = await createServerSupabaseClient();

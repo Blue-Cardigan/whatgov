@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Badge, PlusCircle, X } from "lucide-react";
+import { Badge, PlusCircle, X, InfoIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { toast } from "@/hooks/use-toast";
 import { Speaker } from "@/types";
@@ -18,6 +18,20 @@ import { AssistantFilters } from "./AssistantFilters";
 import { AssistantConfirmationDialog } from "./AssistantConfirmationDialog";
 import { AssistantQueryBuilder } from "@/lib/supabase/assistant";
 import { SearchFilterParams } from "@/types/assistant";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { promptTemplates } from "@/lib/assistant-prompts";
 
 interface AssistantBuilderProps {
   isOpen: boolean;
@@ -28,6 +42,7 @@ interface AssistantBuilderProps {
     filters: SearchFilterParams;
     keywords: string[];
     fileIds: string[];
+    promptType: keyof typeof promptTemplates;
   }) => Promise<void>;
 }
 
@@ -59,6 +74,9 @@ export function AssistantBuilder({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCountLoading, setIsCountLoading] = useState(false);
   const [debateCount, setDebateCount] = useState<number | null>(null);
+
+  // Add new state for prompt type
+  const [selectedPromptType, setSelectedPromptType] = useState<keyof typeof promptTemplates>('legislative');
 
   // Handlers
   const handleKeywordSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -133,7 +151,7 @@ export function AssistantBuilder({
     }
 
     if (parts.length === 0) {
-      return 'This assistant will include all parliamentary debates.';
+      return 'This assistant will include all parliamentary debates for the current government.';
     }
     
     // Join parts with appropriate punctuation and conjunctions
@@ -221,7 +239,8 @@ export function AssistantBuilder({
         description: assistantDescription,
         filters,
         keywords,
-        fileIds: fileIds.map((row: { file_id: string }) => row.file_id)
+        fileIds: fileIds.map((row: { file_id: string }) => row.file_id),
+        promptType: selectedPromptType
       });
 
       setShowConfirmation(false);
@@ -245,7 +264,6 @@ export function AssistantBuilder({
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Assistant Details */}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Assistant Name</Label>
@@ -256,18 +274,55 @@ export function AssistantBuilder({
                   onChange={(e) => setAssistantName(e.target.value)}
                 />
               </div>
+
+              {/* Prompt Type Selection */}
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  placeholder="'You specialise in...'"
-                  value={assistantDescription}
-                  onChange={(e) => setAssistantDescription(e.target.value)}
-                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="promptType">Assistant Type</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon 
+                          className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[350px] whitespace-pre-wrap">
+                        {promptTemplates[selectedPromptType].split('${')[0]}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Select
+                  value={selectedPromptType}
+                  onValueChange={(value: keyof typeof promptTemplates) => setSelectedPromptType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">General Purpose</SelectItem>
+                    <SelectItem value="legislative">Legislative Analysis</SelectItem>
+                    <SelectItem value="policy">Policy Impact</SelectItem>
+                    <SelectItem value="scrutiny">Parliamentary Scrutiny</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Keywords Section - Moved here */}
+              {/* Description - only show for default prompt type */}
+              {selectedPromptType === 'default' && (
                 <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    placeholder="e.g., newsletter-style analyses for an audience of campaigners"
+                    value={assistantDescription}
+                    onChange={(e) => setAssistantDescription(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Keywords Section */}
+              <div className="space-y-2">
                 <Label>Keywords</Label>
                 <p className="text-sm text-muted-foreground">
                     Add keywords to help focus the assistant&apos;s responses. Press Enter to add each keyword.

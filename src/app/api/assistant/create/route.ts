@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { promptTemplates } from '@/lib/assistant-prompts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -20,13 +21,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, description, filters, keywords, userId, fileIds } = await request.json();
+    const { name, description, filters, keywords, userId, fileIds, promptType } = await request.json();
 
     // Verify the requesting user matches the authenticated user
     if (userId !== user.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Verify promptType is valid
+    if (!promptType || !promptTemplates[promptType as keyof typeof promptTemplates]) {
+      return NextResponse.json(
+        { error: 'Invalid prompt type' },
+        { status: 400 }
       );
     }
 
@@ -39,6 +48,7 @@ export async function POST(request: Request) {
         description,
         filters,
         keywords,
+        prompt_type: promptType,
         status: 'pending'
       })
       .select()
@@ -77,15 +87,17 @@ export async function POST(request: Request) {
         file_ids: fileIds
       });
 
-      // Create the OpenAI assistant with the vector store
+      // Get the appropriate prompt template and inject keywords
+      const promptTemplate = promptTemplates[promptType as keyof typeof promptTemplates]
+        .replace('${keywords.length > 0 ? `\\nPrioritize analysis of these key areas: ${keywords.join(\', \')}` : \'\'}', 
+          keywords.length > 0 ? `\nPrioritize analysis of these key areas: ${keywords.join(', ')}` : '');
+
+      // Create the OpenAI assistant with the vector store and selected prompt
       const openaiAssistant = await openai.beta.assistants.create({
         name,
-        description,
-        instructions: `You are an expert parliamentary analyst specializing in ${description}. 
-          Use the provided debate details to answer questions accurately and cite specific debates when possible.
-          Always maintain a formal and professional tone appropriate for parliamentary discourse.` + 
-          (keywords.length > 0 ? ` Pay special attention to discussions involving these keywords: ${keywords.join(', ')}.` : ''),
-        model: "gpt-4o",
+        description: description || undefined,
+        instructions: promptTemplate,
+        model: "gpt-4",
         tools: [{ type: "file_search" }],
         tool_resources: {
           "file_search": {
@@ -106,7 +118,8 @@ export async function POST(request: Request) {
           status: 'ready',
           vector_store_id: vectorStore.id,
           openai_assistant_id: openaiAssistant.id,
-          file_ids: fileIds
+          file_ids: fileIds,
+          prompt_type: promptType
         })
         .eq('id', assistant.id)
         .eq('user_id', user.id);

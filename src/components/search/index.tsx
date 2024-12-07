@@ -17,6 +17,7 @@ import { useSearch } from '@/contexts/SearchContext';
 import { LightbulbIcon, PlusCircle } from 'lucide-react';
 import { AssistantBuilder } from './AssistantBuilder';
 import { AssistantSelect } from './AssistantSelect';
+import { promptTemplates } from '@/lib/assistant-prompts';
 
 const PAGE_SIZE = 10;
 
@@ -31,9 +32,7 @@ export function Search() {
   const { toast } = useToast();
   const { 
     performFileSearch, 
-    isLoading: aiLoading, 
-    streamingText, 
-    citations 
+    isLoading: aiLoading
   } = useAssistant();
 
   // Set initial tab based on user's access level and search limit
@@ -173,6 +172,7 @@ export function Search() {
   const handleAssistantCreate = async (assistant: {
     name: string;
     description: string;
+    promptType: keyof typeof promptTemplates;
     filters: SearchFilterParams;
     keywords: string[];
     fileIds: string[];
