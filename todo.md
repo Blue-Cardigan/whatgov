@@ -10,8 +10,9 @@ Professionals
 [/] AI assistant and query (prompt) builder
 [/] Store searches in context
 [/] Select prompt/style in assistant builder
-[ ] Limit assistant usage by engagement
-[ ] Edit assistant filters
+[/] More detailed summaries for longer debates 
+[/] Limit assistant usage by engagement
+[ ] Assistant filter editing
 [ ] Export saved searches to file
 [ ] Implement automatic updates of custom assistants
 [ ] Save query-assistant pairs to rerun
@@ -31,6 +32,7 @@ Next
 [ ] Enhanced search using precomputed context from embeddings
 
 Engaged Citizen
+Update PostCard to implement full summary view
 1) Bookmark debates
 2) pgvector search in debate transcript
 3) MP voting record

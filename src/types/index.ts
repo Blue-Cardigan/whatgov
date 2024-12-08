@@ -16,6 +16,7 @@ export interface FeedItem {
     type: string;
     ai_title: string;
     ai_summary: string;
+    ai_overview: string;
     ai_tone: 'neutral' | 'contentious' | 'collaborative';
     ai_key_points: KeyPoint[];
     ai_topics: AiTopics;
@@ -181,7 +182,7 @@ export interface CommentThread {
 }
 
 // First, let's separate the filter types
-type ArrayFilterId = 'location' | 'type' | 'days' | 'topics';
+type ArrayFilterId = 'type' | 'days' | 'topics';
 type BooleanFilterId = 'mpOnly' | 'divisionsOnly';
 
 // Create a union type for all filter IDs

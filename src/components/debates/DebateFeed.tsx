@@ -17,7 +17,6 @@ export function DebateFeed() {
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [filters, setFilters] = useState<FeedFilters>({
     house: [],
-    location: [],
     type: [],
     days: [],
     topics: [],
@@ -36,7 +35,6 @@ export function DebateFeed() {
     filters: {
       ...filters,
       type: filters.type.length ? filters.type : [],
-      location: filters.location.length ? filters.location : [],
       days: filters.days.length ? filters.days : [],
       topics: filters.topics.length ? filters.topics : [],
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, DAYS, DEBATE_TYPES, TOPICS, locationColors } from "@/lib/utils";
+import { cn, DAYS, DEBATE_TYPES, TOPICS } from "@/lib/utils";
 import type { ArrayFilterItem, BooleanFilterItem, FeedFilters } from "@/types";
 import { DebateFilters } from "../debates/DebateFilters";
 import { 
@@ -21,20 +21,22 @@ interface TopBarProps {
   className?: string;
 }
 
-// Enhanced filter items with access level information
+// Remove location from ArrayFilterId
+type ArrayFilterId = 'type' | 'days' | 'topics';
+
+// Update filterItems array to remove location and reorder type
 export const filterItems = [
   {
-    id: 'location' as const,
-    icon: MapPin,
-    label: "Location",
+    id: 'type' as const,
+    icon: LayoutList,
+    label: "Type",
     tier: 'premium' as const,
-    description: "Filter by parliamentary location",
+    description: "Filter by debate type",
     type: 'array' as const,
-    options: Object.entries(locationColors).map(([location, color]) => ({
-      value: location,
-      label: location,
-      color: color as string,
-      icon: MapPin
+    options: [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords].map(({ type, label }) => ({
+      value: type,
+      label,
+      icon: LayoutList
     }))
   },
   {
@@ -61,19 +63,6 @@ export const filterItems = [
       value: day,
       label: day,
       icon: Calendar
-    }))
-  },
-  {
-    id: 'type' as const,
-    icon: LayoutList,
-    label: "Type",
-    tier: 'premium' as const,
-    description: "Filter by debate type",
-    type: 'array' as const,
-    options: [...DEBATE_TYPES.Commons, ...DEBATE_TYPES.Lords].map(({ type, label }) => ({
-      value: type,
-      label,
-      icon: LayoutList
     }))
   }
 ] satisfies ArrayFilterItem[];
@@ -135,7 +124,6 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
         mpOnly: updatedFilters.mpOnly,
         divisionsOnly: updatedFilters.divisionsOnly,
         type: [],
-        location: [],
         days: [],
         topics: []
       };
@@ -167,14 +155,12 @@ export function TopBar({ filters, onChange, className }: TopBarProps) {
       // If user is not subscribed, reset premium filters only if they have values
       if (isEngagedCitizen === false && (
         filters.type.length > 0 ||
-        filters.location.length > 0 ||
         filters.days.length > 0 ||
         filters.topics.length > 0
       )) {
         onChange({
           ...filters,
           type: [],
-          location: [],
           days: [],
           topics: []
         });

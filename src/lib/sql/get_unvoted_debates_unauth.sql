@@ -29,7 +29,8 @@ RETURNS TABLE (
   engagement_count FLOAT,
   ai_comment_thread JSONB,
   speakers JSONB,
-  divisions JSONB
+  divisions JSONB,
+  ai_overview TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -95,7 +96,8 @@ BEGIN
         COALESCE(d.ai_question_ayes, 0) + 
         COALESCE(d.ai_question_noes, 0)
       )::float AS total_votes,
-      COALESCE(dd.divisions_data, '[]'::jsonb) as divisions
+      COALESCE(dd.divisions_data, '[]'::jsonb) as divisions,
+      d.ai_overview
     FROM debates d
     LEFT JOIN LATERAL jsonb_array_elements(
       CASE 
@@ -127,7 +129,8 @@ BEGIN
       d.title,
       d.type,
       d.ai_comment_thread,
-      dd.divisions_data
+      dd.divisions_data,
+      d.ai_overview
   ),
   scored_debates AS (
     SELECT *
@@ -165,7 +168,8 @@ BEGIN
     scored_debates.total_votes as engagement_count,
     COALESCE(scored_debates.ai_comment_thread, '[]'::jsonb) as ai_comment_thread,
     scored_debates.speakers,
-    scored_debates.divisions
+    scored_debates.divisions,
+    scored_debates.ai_overview
   FROM scored_debates
   ORDER BY 
     scored_debates.debate_date DESC NULLS LAST,

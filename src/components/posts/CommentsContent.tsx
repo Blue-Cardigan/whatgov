@@ -18,7 +18,7 @@ export function CommentsContent({ comments }: CommentsContentProps) {
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
 
   return (
-    <div className="divide-y">
+    <div className="divide-y max-h-[600px] overflow-y-auto">
       {comments.map((comment) => {
         // Use author data directly from the comment
         const author = comment.author;

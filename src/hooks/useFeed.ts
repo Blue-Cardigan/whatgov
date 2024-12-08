@@ -57,7 +57,6 @@ export function useFeed({
     return {
       ...filters,
       // Ensure filters are off for non-subscribers
-      location: isEngagedCitizen ? filters.location : [],
       type: isEngagedCitizen ? filters.type : [],
       days: isEngagedCitizen ? filters.days : [],
       topics: isEngagedCitizen ? filters.topics : [],

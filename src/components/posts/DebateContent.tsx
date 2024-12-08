@@ -1,12 +1,14 @@
 import type { FeedItem } from '@/types';
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useMemo } from 'react';
 import { cn } from "@/lib/utils";
 import { fadeIn } from './animations';
 import { useVotes } from '@/hooks/useVotes';
+import { useAuth } from "@/contexts/AuthContext";
+import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 
 interface BaseContentProps {
   isActive?: boolean;
@@ -27,10 +29,13 @@ export function DebateContent({
   onVote
 }: DebateContentProps & { className?: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showFullSummary, setShowFullSummary] = useState(false);
   const [localVoted, setLocalVoted] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { hasVoted } = useVotes();
+  const { isEngagedCitizen } = useAuth();
   
   const isVoted = localVoted || hasVoted(debate.id);
   
@@ -52,55 +57,91 @@ export function DebateContent({
   }, [debate.id, onVote]);
 
   const content = useMemo(() => {
-    if (!debate.ai_summary) {
+    const overview = debate.ai_overview || '';
+    const summary = debate.ai_summary || '';
+
+    if (!overview && !summary) {
       return {
-        fullText: '',
-        truncatedText: '',
-        hasMore: false,
+        overview: '',
+        truncatedOverview: '',
+        hasMoreOverview: false,
+        fullSummary: '',
+        hasDifferentSummary: false,
       };
     }
 
-    const summaryPoints = debate.ai_summary
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-      
-    const firstPoint = summaryPoints[0] || '';
-    const truncatedFirst = firstPoint.length > 140 
-      ? firstPoint.slice(0, 140).trim() + '...'
-      : firstPoint;
+    const truncatedOverview = overview.length > 280 
+      ? overview.slice(0, 280).trim() + '...'
+      : overview;
 
-    const formattedSummary = summaryPoints
-      .join('\n\n')
-      .trim();
+    const hasDifferentSummary = summary.length > 0 && summary.trim() !== overview.trim();
 
     return {
-      fullText: formattedSummary,
-      truncatedText: truncatedFirst,
-      hasMore: summaryPoints.length > 1 || firstPoint.length > 140,
+      overview,
+      truncatedOverview,
+      hasMoreOverview: overview.length > 280,
+      fullSummary: summary,
+      hasDifferentSummary,
     };
-  }, [debate]);
+  }, [debate.ai_overview, debate.ai_summary]);
+
+  const handleFullSummary = () => {
+    if (!isEngagedCitizen) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    setShowFullSummary(!showFullSummary);
+  };
 
   return (
     <CardContent className={cn("relative space-y-4", className)}>
       <motion.div className="relative" {...fadeIn}>
         <div className="text-sm text-muted-foreground leading-relaxed text-justify">
-          {(isExpanded ? content.fullText : content.truncatedText)
-            .split('\n\n')
-            .map((paragraph, index) => (
-              <p key={index} className="mb-4 last:mb-0">
-                {paragraph}
-              </p>
-            ))}
+          <p>{isExpanded ? content.overview : content.truncatedOverview}</p>
         </div>
         
-        {content.hasMore && (
+        {content.hasMoreOverview && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="ml-1 text-primary hover:text-primary/80 text-sm font-medium"
           >
             {isExpanded ? 'Read less' : 'Read more'}
           </button>
+        )}
+
+        {content.hasDifferentSummary && (
+          <div className="mt-4 border-t pt-4">
+            {showFullSummary ? (
+              <>
+                <div className="text-sm text-muted-foreground leading-relaxed text-justify">
+                  <p>{content.fullSummary}</p>
+                </div>
+                <button
+                  onClick={handleFullSummary}
+                  className={cn(
+                    "mt-3 flex items-center gap-1.5 text-sm font-medium w-full justify-center",
+                    "text-muted-foreground hover:text-foreground transition-colors"
+                  )}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                  Hide full analysis
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleFullSummary}
+                className={cn(
+                  "flex items-center gap-1.5 text-sm font-medium w-full justify-center",
+                  isEngagedCitizen 
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground/80 hover:text-muted-foreground"
+                )}
+              >
+                <ChevronDown className="h-4 w-4" />
+                View full analysis
+              </button>
+            )}
+          </div>
         )}
       </motion.div>
 
@@ -144,6 +185,13 @@ export function DebateContent({
           </p>
         </motion.div>
       )}
+
+      <UpgradeDialog 
+        open={showUpgradeDialog} 
+        onOpenChange={setShowUpgradeDialog}
+        title="Unlock Full Analysis"
+        description="Get instant access to complete debate analyses with an Engaged Citizen subscription."
+      />
     </CardContent>
   );
 }

@@ -18,7 +18,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp }: KeyPointsConte
 
   return (
     <div className={cn(
-      "space-y-4 px-6 pb-4 pt-4",
+      "space-y-4 px-6 pb-4 pt-4 max-h-[600px] overflow-y-auto",
       !isActive && "hidden"
     )}>
       {keyPoints.map((point, index) => {
@@ -78,6 +78,16 @@ export function KeyPointsContent({ keyPoints, isActive, userMp }: KeyPointsConte
                 )}>
                   {speaker.name}
                 </span>
+                {speaker.party && (
+                  <span className="text-xs text-muted-foreground">
+                    {speaker.party}
+                  </span>
+                )}
+                {speaker.constituency && (
+                  <span className="text-xs text-muted-foreground">
+                    ({speaker.constituency})
+                  </span>
+                )}
                 {isUserMp && (
                   <Badge 
                     variant="secondary"
@@ -103,7 +113,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp }: KeyPointsConte
                     >
                       <ThumbsUp className="h-3 w-3" />
                       <span className="text-xs">
-                        Agreed by {point.support.join(', ')}
+                        Agreed by {point.support.map(speaker => speaker.name).join(', ')}
                       </span>
                     </Badge>
                   )}
@@ -114,7 +124,7 @@ export function KeyPointsContent({ keyPoints, isActive, userMp }: KeyPointsConte
                     >
                       <ThumbsDown className="h-3 w-3" />
                       <span className="text-xs">
-                        Disagreed by {point.opposition.join(', ')}
+                        Disagreed by {point.opposition.map(speaker => speaker.name).join(', ')}
                       </span>
                     </Badge>
                   )}

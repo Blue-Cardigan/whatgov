@@ -247,6 +247,7 @@ export function processDebates(
             constituency: undefined  // Database speakers don't include constituency
           }))
         : [],
+      ai_overview: debate.ai_overview || '',
     };
   });
 
@@ -281,7 +282,6 @@ export async function getFeedItems(
       p_mp_only: filters?.mpOnly || false,
       
       p_type: filters?.type?.length ? filters.type : null,
-      p_location: filters?.location?.length ? filters.location : null,
       p_days: filters?.days?.length ? filters.days : null,
       p_topics: filters?.topics?.length ? filters.topics : null,
     } : {};

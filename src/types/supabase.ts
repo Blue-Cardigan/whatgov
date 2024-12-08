@@ -399,6 +399,7 @@ export type Database = {
           ai_question_noes: number
           ai_question_topic: string
           ai_summary: string
+          ai_overview: string
           ai_title: string | null
           ai_tone: string | null
           ai_topics: string

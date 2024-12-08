@@ -44,7 +44,8 @@ RETURNS TABLE (
   divisions JSONB,
   engagement_score FLOAT,
   ai_comment_thread JSONB,
-  speakers JSONB
+  speakers JSONB,
+  ai_overview TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -209,7 +210,8 @@ BEGIN
           'display_as', speaker->>'display_as'
         )
       )
-    END as speakers
+    END as speakers,
+    d.ai_overview
   FROM scored_debates d
   LEFT JOIN LATERAL jsonb_array_elements(
     CASE 
@@ -250,7 +252,8 @@ BEGIN
     d.divisions,
     d.engagement_score,
     d.ai_comment_thread,
-    d.speakers
+    d.speakers,
+    d.ai_overview
   ORDER BY 
     d.date::date DESC,
     d.engagement_score DESC,

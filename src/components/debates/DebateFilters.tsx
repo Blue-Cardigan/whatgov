@@ -3,8 +3,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, CheckCheck, LucideIcon } from "lucide-react";
-import { cn, locationColors } from "@/lib/utils";
+import { Check, CheckCheck, LucideIcon, LayoutList } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { UserIcon } from "lucide-react";
 import { DEBATE_TYPES } from '@/lib/utils';
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +14,6 @@ import { Vote } from "lucide-react";
 import { Lock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LOCATION_GROUPS } from '@/lib/utils';
 
 interface FiltersProps {
   filters: Omit<FeedFilters, 'house'>;
@@ -24,55 +23,8 @@ interface FiltersProps {
   onUpgrade: () => void;
 }
 
-// Define the type for a mapping entry
-type LocationTypeMapping = {
-  location: string;
-  types: readonly string[];
-};
-
-// Update the constant with the type
-const LOCATION_TYPE_MAPPINGS: readonly LocationTypeMapping[] = [
-  { location: "Written Corrections", types: ["Generic", "Department", "Main"] },
-  { location: "Commons Chamber", types: ["Debated Motion", "Statement", "Business Without Debate", "Question", "Debated Bill", "Delegated Legislation", "Generic", "Petition", "Urgent Question", "Prime Minister's Questions", "Opposition Day", "Bill Procedure", "Main", "Department"] },
-  { location: "Westminster Hall", types: ["Debated Motion", "Bill Procedure", "Debated Bill", "Westminster Hall", "Main"] },
-  { location: "Public Bill Committees", types: ["Public Bill Committees"] },
-  { location: "Lords Chamber", types: ["Lords Chamber"] },
-  { location: "Written Statements", types: ["Main", "Statement"] },
-  { location: "Grand Committee", types: ["Grand Committee"] },
-  { location: "General Committees", types: ["General Committees"] },
-  { location: "Petitions", types: ["Petition", "Main"] },
-] as const;
-
-function getAvailableTypes(selectedLocations: string[]): string[] {
-  if (selectedLocations.length === 0) return [];
-  return [...new Set(
-    selectedLocations.flatMap(location => 
-      LOCATION_TYPE_MAPPINGS.find(m => m.location === location)?.types ?? []
-    )
-  )];
-}
-
-function getAvailableLocations(selectedTypes: string[]): string[] {
-  if (selectedTypes.length === 0) return [];
-  return [...new Set(
-    selectedTypes.flatMap(type => 
-      LOCATION_TYPE_MAPPINGS
-        .filter(m => m.types.includes(type))
-        .map(m => m.location)
-    )
-  )];
-}
-
-// Then, let's fix the filter type checking
-function isArrayFilter(filter: FilterItem): filter is ArrayFilterItem {
-  return filter.type === 'array';
-}
-
-// Add type guard for array filters
-const isArrayValue = (value: boolean | string[]): value is string[] => Array.isArray(value);
-
 // First, let's separate the filter types
-type ArrayFilterId = 'location' | 'type' | 'days' | 'topics';
+type ArrayFilterId = 'type' | 'days' | 'topics';
 type BooleanFilterId = 'mpOnly' | 'divisionsOnly';
 
 // Create a union type for all filter IDs
@@ -198,7 +150,7 @@ export function DebateFilters({
 
   // Type guard functions
   function isArrayFilterId(id: FilterId): id is ArrayFilterId {
-    return ['location', 'type', 'days', 'topics'].includes(id);
+    return ['type', 'days', 'topics'].includes(id);
   }
 
   function isBooleanFilterId(id: FilterId): id is BooleanFilterId {
@@ -312,8 +264,162 @@ export function DebateFilters({
               </button>
             </div>
 
+            <div className="snap-start">
+              <Popover 
+                key="type"
+                open={open['type']}
+                onOpenChange={(isOpen) => {
+                  setOpen(prev => ({ ...prev, type: isOpen }));
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    className={cn(
+                      "group flex flex-col items-center gap-1.5",
+                      "justify-self-center relative",
+                      !isEnabled && "opacity-50 cursor-not-allowed",
+                      "after:content-[''] after:absolute after:bottom-0 after:left-1/2",
+                      "after:w-1 after:h-1 after:rounded-full after:bg-primary",
+                      "after:transform after:-translate-x-1/2 after:translate-y-3",
+                      "after:opacity-0 after:transition-opacity",
+                      isFilterActive('type') && "after:opacity-100"
+                    )}
+                    disabled={!isEnabled}
+                  >
+                    <div className={cn(
+                      "relative rounded-full p-3.5 transition-all duration-200",
+                      "border-2",
+                      isFilterActive('type') && isEnabled
+                        ? "border-primary bg-primary/5" 
+                        : "border-muted group-hover:border-muted-foreground/50 bg-background"
+                    )}>
+                      <LayoutList className={cn(
+                        "w-6 h-6 transition-colors",
+                        isFilterActive('type') && isEnabled
+                          ? "text-primary" 
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )} />
+                    </div>
+                    <span className="text-md font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                      Type
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                {isEnabled && (
+                  <PopoverContent 
+                    className="w-72 p-0" 
+                    align="center"
+                    side={isMobile ? "bottom" : "left"}
+                    sideOffset={8}
+                  >
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between p-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <LayoutList className="w-4 h-4 text-muted-foreground" />
+                          <h4 className="font-medium text-md">Type</h4>
+                          {isFilterActive('type') && (
+                            <Badge variant="secondary" className="ml-2">
+                              {filters['type'].length}
+                            </Badge>
+                          )}
+                        </div>
+                        <button
+                          className={cn(
+                            "h-8 w-8 rounded-md flex items-center justify-center",
+                            "transition-colors",
+                            isFilterActive('type') && isEnabled
+                              ? "bg-primary/10 text-primary hover:bg-primary/15" 
+                              : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                          )}
+                          onClick={() => {
+                            if (isEnabled) {
+                              // Toggle between all items and no items
+                              if (filters['type'].length === 0) {
+                                // Select all available types
+                                const allTypes = Object.values(DEBATE_TYPES)
+                                  .flatMap(types => types.map(t => t.type));
+                                handleFilterChange('type', allTypes);
+                              } else {
+                                // Clear selection
+                                handleFilterChange('type', []);
+                              }
+                            }
+                          }}
+                          title={isFilterActive('type') ? "Clear all" : "Select all"}
+                        >
+                          <CheckCheck className={cn(
+                            "w-4 h-4",
+                            isFilterActive('type') && isEnabled && "opacity-50"
+                          )} />
+                        </button>
+                      </div>
+
+                      <ScrollArea className="max-h-[320px] overflow-y-auto">
+                        <div>
+                          {Object.entries(DEBATE_TYPES).map(([house, types]) => (
+                            <div key={house}>
+                              <div className="px-3 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                                {house === 'Commons' ? 'House of Commons' : 'House of Lords'}
+                              </div>
+                              {types.map(type => (
+                                <button 
+                                  key={type.type}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 px-3 py-2.5",
+                                    "transition-all duration-200 text-md relative text-left",
+                                    "hover:bg-muted/70 active:bg-muted",
+                                    "after:absolute after:bottom-0 after:left-3 after:right-3 after:h-px",
+                                    "after:opacity-100",
+                                    house === 'Commons' && "after:bg-[rgb(0,110,70)]",
+                                    house === 'Lords' && "after:bg-[rgb(163,36,59)]",
+                                    filters['type'].includes(type.type) && [
+                                      "bg-primary/10 text-primary hover:bg-primary/15",
+                                      "after:bg-primary/20"
+                                    ]
+                                  )}
+                                  onClick={() => {
+                                    handleFilterChange(
+                                      'type',
+                                      filters['type'].includes(type.type)
+                                        ? filters['type'].filter(t => t !== type.type)
+                                        : [...filters['type'], type.type]
+                                    );
+                                  }}
+                                >
+                                  <span className="flex-1 font-medium">{type.label}</span>
+                                  {filters['type'].includes(type.type) && (
+                                    <Check className="w-4 h-4 shrink-0" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+
+                      {isFilterActive('type') && (
+                        <div className="p-2 border-t bg-muted/30">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full h-8 text-xs font-medium hover:bg-muted"
+                            onClick={() => {
+                              handleFilterChange('type', []);
+                              setOpen(prev => ({ ...prev, type: false }));
+                            }}
+                          >
+                            Clear Type
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                )}
+              </Popover>
+            </div>
+
             {isEnabled && filterItems
-              .filter(filter => filter.type === 'array')
+              .filter(filter => filter.type === 'array' && filter.id !== 'type')
               .map((filter) => (
                 <div key={filter.id} className="snap-start">
                   <Popover 
@@ -366,11 +472,11 @@ export function DebateFilters({
                         <div className="flex flex-col">
                           <div className="flex items-center justify-between p-3 border-b">
                             <div className="flex items-center gap-2">
-                              <filter.icon className="w-4 h-4 text-muted-foreground" />
-                              <h4 className="font-medium text-md">{filter.label}</h4>
-                              {isFilterActive(filter.id) && (
+                              <LayoutList className="w-4 h-4 text-muted-foreground" />
+                              <h4 className="font-medium text-md">Type</h4>
+                              {isFilterActive('type') && (
                                 <Badge variant="secondary" className="ml-2">
-                                  {isArrayFilter(filter) ? filters[filter.id].length : 1}
+                                  {filters['type'].length}
                                 </Badge>
                               )}
                             </div>
@@ -378,288 +484,88 @@ export function DebateFilters({
                               className={cn(
                                 "h-8 w-8 rounded-md flex items-center justify-center",
                                 "transition-colors",
-                                isFilterActive(filter.id) && isEnabled
+                                isFilterActive('type') && isEnabled
                                   ? "bg-primary/10 text-primary hover:bg-primary/15" 
                                   : "hover:bg-muted text-muted-foreground hover:text-foreground"
                               )}
                               onClick={() => {
                                 if (isEnabled) {
-                                  if (typeof filters[filter.id] === 'boolean') {
-                                    // Toggle boolean filters
-                                    handleFilterChange(
-                                      filter.id,
-                                      !filters[filter.id]
-                                    );
+                                  // Toggle between all items and no items
+                                  if (filters['type'].length === 0) {
+                                    // Select all types
+                                    const allTypes = Object.values(DEBATE_TYPES)
+                                      .flatMap(types => types.map(t => t.type));
+                                    handleFilterChange('type', allTypes);
                                   } else {
-                                    // Toggle between all items and no items
-                                    const currentFilter = filters[filter.id];
-                                    if (Array.isArray(currentFilter)) {
-                                      if (currentFilter.length === 0) {
-                                        // Select all available items
-                                        if (filter.id === 'type') {
-                                          // For type filter, get all available types based on location
-                                          const availableTypes = filters.location.length > 0
-                                            ? getAvailableTypes(filters.location)
-                                            : Object.values(DEBATE_TYPES).flatMap(types => types.map(t => t.type));
-                                          handleFilterChange(filter.id, availableTypes);
-                                        } else if (filter.id === 'location') {
-                                          // For location filter, get all available locations based on type
-                                          const availableLocations = filters.type.length > 0
-                                            ? getAvailableLocations(filters.type)
-                                            : filter.options.map(opt => opt.value);
-                                          handleFilterChange(filter.id, availableLocations);
-                                        } else {
-                                          // For other array filters, select all options
-                                          handleFilterChange(
-                                            filter.id,
-                                            filter.options.map(opt => opt.value)
-                                          );
-                                        }
-                                      } else {
-                                        // Clear selection
-                                        handleFilterChange(filter.id, []);
-                                      }
-                                    }
+                                    // Clear selection
+                                    handleFilterChange('type', []);
                                   }
                                 }
                               }}
-                              title={isFilterActive(filter.id) ? "Clear all" : "Select all"}
+                              title={isFilterActive('type') ? "Clear all" : "Select all"}
                             >
                               <CheckCheck className={cn(
                                 "w-4 h-4",
-                                isFilterActive(filter.id) && isEnabled && "opacity-50"
+                                isFilterActive('type') && isEnabled && "opacity-50"
                               )} />
                             </button>
                           </div>
 
                           <ScrollArea className="max-h-[320px] overflow-y-auto">
-                            {filter.id === 'type' ? (
-                              <div>
-                                {Object.entries(DEBATE_TYPES).map(([house, types]) => (
-                                  <div key={house}>
-                                    <div className="px-3 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
-                                      {house === 'Commons' ? 'House of Commons' : 'House of Lords'}
-                                    </div>
-                                    {types
-                                      .filter(type => {
-                                        if (filters.location.length === 0) return true;
-                                        return getAvailableTypes(filters.location).includes(type.type);
-                                      })
-                                      .map(type => (
-                                        <button 
-                                          key={type.type}
-                                          className={cn(
-                                            "w-full flex items-center gap-2 px-3 py-2.5",
-                                            "transition-all duration-200 text-md relative text-left",
-                                            "hover:bg-muted/70 active:bg-muted",
-                                            "after:absolute after:bottom-0 after:left-3 after:right-3 after:h-px",
-                                            "after:opacity-100",
-                                            house === 'Commons' && "after:bg-[rgb(0,110,70)]",
-                                            house === 'Lords' && "after:bg-[rgb(163,36,59)]",
-                                            filters[filter.id].includes(type.type) && [
-                                              "bg-primary/10 text-primary hover:bg-primary/15",
-                                              "after:bg-primary/20"
-                                            ]
-                                          )}
-                                          onClick={() => {
-                                            handleFilterChange(
-                                              filter.id,
-                                              filters[filter.id].includes(type.type)
-                                                ? filters[filter.id].filter(t => t !== type.type)
-                                                : [...filters[filter.id], type.type]
-                                            );
-                                          }}
-                                        >
-                                          <span className="flex-1 font-medium">{type.label}</span>
-                                          {filters[filter.id].includes(type.type) && (
-                                            <Check className="w-4 h-4 shrink-0" />
-                                          )}
-                                        </button>
-                                      ))}
+                            <div>
+                              {Object.entries(DEBATE_TYPES).map(([house, types]) => (
+                                <div key={house}>
+                                  <div className="px-3 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                                    {house === 'Commons' ? 'House of Commons' : 'House of Lords'}
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div>
-                                {filter.id === 'location' ? (
-                                  <div>
-                                    {Object.entries(LOCATION_GROUPS).map(([house, houseLocations]) => {
-                                      const availableLocations = filters.type.length > 0
-                                        ? getAvailableLocations(filters.type)
-                                        : houseLocations;
-                                      
-                                      const filteredLocations = houseLocations.filter(loc => 
-                                        availableLocations.includes(loc as never)
-                                      );
-
-                                      if (filteredLocations.length === 0) return null;
-
-                                      const allHouseLocationsSelected = filteredLocations.every(loc => 
-                                        filters.location.includes(loc)
-                                      );
-
-                                      return (
-                                        <div key={house}>
-                                          <button
-                                            className={cn(
-                                              "w-full px-3 py-2 text-sm font-medium",
-                                              "flex items-center justify-between",
-                                              "bg-muted/50 hover:bg-muted/70",
-                                              "transition-colors"
-                                            )}
-                                            onClick={() => {
-                                              const currentLocations = new Set(filters.location);
-                                              
-                                              if (allHouseLocationsSelected) {
-                                                // Remove all locations for this house
-                                                filteredLocations.forEach(loc => currentLocations.delete(loc));
-                                              } else {
-                                                // Add all available locations for this house
-                                                filteredLocations.forEach(loc => currentLocations.add(loc));
-                                              }
-                                              
-                                              handleFilterChange('location', Array.from(currentLocations));
-                                            }}
-                                          >
-                                            <span>{house}</span>
-                                            {allHouseLocationsSelected && (
-                                              <Check className="w-4 h-4" />
-                                            )}
-                                          </button>
-                                          
-                                          {filteredLocations.map(location => (
-                                            <button 
-                                              key={location}
-                                              className={cn(
-                                                "w-full flex items-center gap-2 px-3 py-2.5",
-                                                "transition-all duration-200 text-md relative text-left",
-                                                "hover:bg-muted/70 active:bg-muted",
-                                                filters.location.includes(location)
-                                                  ? "bg-primary/10 text-primary hover:bg-primary/15"
-                                                  : "text-foreground"
-                                              )}
-                                              onClick={() => {
-                                                handleFilterChange(
-                                                  'location',
-                                                  filters.location.includes(location)
-                                                    ? filters.location.filter(v => v !== location)
-                                                    : [...filters.location, location]
-                                                );
-                                              }}
-                                            >
-                                              <div className="flex items-center gap-2 flex-1">
-                                                {locationColors[location] && (
-                                                  <span
-                                                    className={cn(
-                                                      "w-3 h-3 rounded-full ring-1",
-                                                      filters.location.includes(location)
-                                                        ? "ring-primary"
-                                                        : "ring-border"
-                                                    )}
-                                                    style={{ backgroundColor: locationColors[location] }}
-                                                  />
-                                                )}
-                                                <span className="font-medium">{location}</span>
-                                              </div>
-                                              {filters.location.includes(location) && (
-                                                <Check className="w-4 h-4 shrink-0" />
-                                              )}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <div>
-                                    {isArrayFilter(filter) && (
-                                      <div>
-                                        {filter.options
-                                          .filter(item => {
-                                            if (filter.id === 'location' && filters.type.length > 0) {
-                                              return getAvailableLocations(filters.type).includes(item.value);
-                                            }
-                                            return true;
-                                          })
-                                          .map(item => (
-                                            <button 
-                                              key={item.value}
-                                              className={cn(
-                                                "w-full flex items-center gap-2 px-3 py-2.5",
-                                                "transition-all duration-200 text-md relative text-left",
-                                                "hover:bg-muted/70 active:bg-muted",
-                                                isArrayValue(filters[filter.id]) && filters[filter.id].includes(item.value)
-                                                  ? "bg-primary/10 text-primary hover:bg-primary/15"
-                                                  : "text-foreground"
-                                              )}
-                                              onClick={() => {
-                                                if (isArrayValue(filters[filter.id])) {
-                                                  handleFilterChange(
-                                                    filter.id,
-                                                    filters[filter.id].includes(item.value)
-                                                      ? filters[filter.id].filter(v => v !== item.value)
-                                                      : [...filters[filter.id], item.value]
-                                                  );
-                                                }
-                                              }}
-                                            >
-                                              <div className="flex-1 flex items-center gap-2">
-                                                {item.icon && (
-                                                  <item.icon className={cn(
-                                                    "w-4 h-4",
-                                                    isArrayValue(filters[filter.id]) && filters[filter.id].includes(item.value)
-                                                      ? "text-primary"
-                                                      : "text-muted-foreground"
-                                                  )} />
-                                                )}
-                                                {item.color && (
-                                                  <span
-                                                    className={cn(
-                                                      "w-3 h-3 rounded-full ring-1",
-                                                      isArrayValue(filters[filter.id]) && filters[filter.id].includes(item.value)
-                                                        ? "ring-primary"
-                                                        : "ring-border"
-                                                    )}
-                                                    style={{ backgroundColor: item.color }}
-                                                  />
-                                                )}
-                                                <span className="font-medium">{item.label}</span>
-                                              </div>
-                                              {isArrayValue(filters[filter.id]) && filters[filter.id].includes(item.value) && (
-                                                <Check className="w-4 h-4 shrink-0" />
-                                              )}
-                                            </button>
-                                          ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                  {types.map(type => (
+                                    <button 
+                                      key={type.type}
+                                      className={cn(
+                                        "w-full flex items-center gap-2 px-3 py-2.5",
+                                        "transition-all duration-200 text-md relative text-left",
+                                        "hover:bg-muted/70 active:bg-muted",
+                                        "after:absolute after:bottom-0 after:left-3 after:right-3 after:h-px",
+                                        "after:opacity-100",
+                                        house === 'Commons' && "after:bg-[rgb(0,110,70)]",
+                                        house === 'Lords' && "after:bg-[rgb(163,36,59)]",
+                                        filters['type'].includes(type.type) && [
+                                          "bg-primary/10 text-primary hover:bg-primary/15",
+                                          "after:bg-primary/20"
+                                        ]
+                                      )}
+                                      onClick={() => {
+                                        handleFilterChange(
+                                          'type',
+                                          filters['type'].includes(type.type)
+                                            ? filters['type'].filter(t => t !== type.type)
+                                            : [...filters['type'], type.type]
+                                        );
+                                      }}
+                                    >
+                                      <span className="flex-1 font-medium">{type.label}</span>
+                                      {filters['type'].includes(type.type) && (
+                                        <Check className="w-4 h-4 shrink-0" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
                           </ScrollArea>
 
-                          {((filter.id === 'type' && filters.location.length > 0) ||
-                            (filter.id === 'location' && filters.type.length > 0)) && (
-                            <div className="px-3 py-2 text-sm text-muted-foreground border-t bg-muted/30">
-                              Showing options available for current selection
-                            </div>
-                          )}
-
-                          {isFilterActive(filter.id) && (
+                          {isFilterActive('type') && (
                             <div className="p-2 border-t bg-muted/30">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="w-full h-8 text-xs font-medium hover:bg-muted"
                                 onClick={() => {
-                                  handleFilterChange(
-                                    filter.id,
-                                    []
-                                  );
-                                  setOpen(prev => ({ ...prev, [filter.id]: false }));
+                                  handleFilterChange('type', []);
+                                  setOpen(prev => ({ ...prev, type: false }));
                                 }}
                               >
-                                Clear {filter.label.toLowerCase()}
+                                Clear type
                               </Button>
                             </div>
                           )}

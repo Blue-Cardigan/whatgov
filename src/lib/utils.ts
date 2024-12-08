@@ -35,20 +35,20 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
   }
   
   return parsedJson
+    .filter(item => item !== null && typeof item === 'object')
     .map(item => {
-      if (!item || typeof item !== 'object') {
-        console.error('Invalid key point item:', item);
-        return null;
-      }
-
       const keyPoint = item as Record<string, unknown>;
       
       // Ensure support and opposition are arrays of Speaker objects
       const support = Array.isArray(keyPoint.support) 
-        ? keyPoint.support.map(s => parseSpeaker(s))
+        ? keyPoint.support
+            .filter(s => s !== null)
+            .map(s => parseSpeaker(s))
         : [];
       const opposition = Array.isArray(keyPoint.opposition)
-        ? keyPoint.opposition.map(s => parseSpeaker(s))
+        ? keyPoint.opposition
+            .filter(s => s !== null)
+            .map(s => parseSpeaker(s))
         : [];
 
       // Handle speaker parsing with standardized Speaker fields
@@ -90,24 +90,17 @@ export function parseKeyPoints(json: Json): KeyPoint[] {
         } as Speaker;
       }
 
-      if (typeof keyPoint.point !== 'string') {
-        console.error('Invalid point format:', keyPoint);
-        return null;
-      }
-
-      const result: KeyPoint = {
-        point: keyPoint.point,
+      return {
+        point: String(keyPoint.point || ''),
         context: typeof keyPoint.context === 'string' ? keyPoint.context : null,
         speaker,
         support,
         opposition
       };
-
-      return result;
     })
     .filter((item): item is KeyPoint => 
       item !== null && 
-      typeof item.point === 'string' &&
+      item.point !== '' &&
       item.speaker &&
       typeof item.speaker.memberId === 'string' &&
       Array.isArray(item.support) &&
