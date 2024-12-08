@@ -231,37 +231,6 @@ export function Search() {
           <TabsTrigger value="hansard">Hansard Search</TabsTrigger>
         </TabsList>
 
-        {activeTab === 'ai' && (
-          <div className="mb-4 text-sm text-muted-foreground text-center flex items-center justify-center">
-            <LightbulbIcon className="w-4 h-4 mr-2 inline" />
-            <span>{getSearchLimitMessage()}</span>
-          </div>
-        )}
-
-        <TabsContent value="hansard">
-          <h1 className="text-2xl font-bold mt-4">Search Hansard</h1>
-          <p className="text-muted-foreground mb-4">The Official Parliamentary Record</p>
-          <div className="mb-8 lg:mb-12">
-            <QueryBuilder
-              searchParams={state.searchParams}
-              onSearch={handleSearch}
-              mode="hansard"
-            />
-          </div>
-
-          <SearchResults
-            results={state.results?.Contributions || []}
-            isLoading={state.isLoading}
-            totalResults={state.results?.TotalContributions || 0}
-            searchParams={state.searchParams}
-            onSearch={handleSearch}
-            onLoadMore={() => performSearch(undefined, true)}
-            hasMore={Boolean(state.results?.TotalContributions && 
-              state.results.Contributions.length < state.results.TotalContributions)}
-            aiContent={state.results?.aiContent}
-          />
-        </TabsContent>
-
         <TabsContent value="ai">
           <h1 className="text-2xl font-bold mt-4">AI Research Assistant</h1>
           <p className="text-muted-foreground mb-4">
@@ -272,12 +241,14 @@ export function Search() {
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 {!isPremium && (
                   <>
-                    <span>{getRemainingAISearches()} searches remaining</span>
                     <UpgradePopover feature="ai-search">
-                      <Button variant="ghost" size="sm" className="h-6 px-2">
-                        <InfoIcon className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-6 pl-2 pr-0">
+                        <LightbulbIcon className="h-4 w-4" />
                       </Button>
                     </UpgradePopover>
+                    <span>
+                      {getRemainingAISearches()} searches remaining {isEngagedCitizen ? 'this week' : 'this month'}
+                    </span>
                   </>
                 )}
               </div>
@@ -326,6 +297,30 @@ export function Search() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="hansard">
+          <h1 className="text-2xl font-bold mt-4">Search Hansard</h1>
+          <p className="text-muted-foreground mb-4">The Official Parliamentary Record</p>
+          <div className="mb-8 lg:mb-12">
+            <QueryBuilder
+              searchParams={state.searchParams}
+              onSearch={handleSearch}
+              mode="hansard"
+            />
+          </div>
+
+          <SearchResults
+            results={state.results?.Contributions || []}
+            isLoading={state.isLoading}
+            totalResults={state.results?.TotalContributions || 0}
+            searchParams={state.searchParams}
+            onSearch={handleSearch}
+            onLoadMore={() => performSearch(undefined, true)}
+            hasMore={Boolean(state.results?.TotalContributions && 
+              state.results.Contributions.length < state.results.TotalContributions)}
+            aiContent={state.results?.aiContent}
+          />
         </TabsContent>
       </Tabs>
       

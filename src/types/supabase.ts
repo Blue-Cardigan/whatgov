@@ -29,6 +29,8 @@ export type UserProfile = {
   newsletter?: boolean;
   ai_searches_count?: number;
   ai_searches_last_reset?: string;
+  votes_count?: number;
+  votes_last_reset?: string;
 };
 
 export type Json =
@@ -330,6 +332,8 @@ export type Database = {
           updated_at: string
           want_newsletter: boolean | null
           email_verified: boolean
+          votes_count?: number
+          votes_last_reset?: string
         }
         Insert: {
           ai_chats?: Json | null

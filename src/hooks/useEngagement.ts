@@ -77,56 +77,74 @@ export function useEngagement() {
     const now = new Date();
     const resetTime = new Date(lastReset);
     resetTime.setHours(RESET_HOUR, 0, 0, 0);
-    resetTime.setDate(resetTime.getDate() + 1); // Set to next day
+    resetTime.setDate(resetTime.getDate() + 1);
     return now >= resetTime;
   }
 
-  const checkAndResetDaily = useCallback(() => {
-    if (shouldReset(new Date(stats.lastResetDate))) {
-      setStats(initializeStats());
-      return true;
-    }
-    return false;
-  }, [stats.lastResetDate]);
+  const recordVote = useCallback(async () => {
+    if (user?.id) {
+      try {
+        const supabase = createClient();
+        const now = new Date();
+        const resetTime = new Date(profile?.votes_last_reset || 0);
+        resetTime.setHours(RESET_HOUR, 0, 0, 0);
+        resetTime.setDate(resetTime.getDate() + 1);
 
-  const recordVote = useCallback(() => {
-    if (!checkAndResetDaily()) {
-      setStats(prev => ({
-        ...prev,
-        votes: prev.votes + 1
-      }));
+        const shouldResetCount = now >= resetTime;
+        
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .update({
+            votes_count: shouldResetCount ? 1 : (profile?.votes_count || 0) + 1,
+            votes_last_reset: shouldResetCount ? now.toISOString() : profile?.votes_last_reset
+          })
+          .eq('id', user.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Update local profile state through AuthContext
+        await updateProfile(data);
+
+      } catch (error) {
+        console.error('Failed to record vote:', error);
+        toast({
+          title: "Error",
+          description: "Failed to record vote. Please try again.",
+          variant: "destructive",
+        });
+        throw error;
+      }
+    } else {
+      // For anonymous users, use localStorage
+      if (!shouldReset(new Date(stats.lastResetDate))) {
+        setStats(prev => ({
+          ...prev,
+          votes: prev.votes + 1
+        }));
+      } else {
+        setStats(prev => ({
+          ...prev,
+          votes: 1,
+          lastResetDate: new Date().toISOString()
+        }));
+      }
     }
-  }, [checkAndResetDaily]);
+  }, [user?.id, profile, updateProfile, toast, stats.lastResetDate]);
 
   const getRemainingVotes = useCallback((): number => {
     if (user) return Infinity;
     
-    checkAndResetDaily();
-    return Math.max(0, ANON_LIMITS.DAILY_VOTES - stats.votes);
-  }, [user, stats.votes, checkAndResetDaily]);
-
-  const shouldShowVotePrompt = useCallback((): boolean => {
-    if (user) return false;
-    const remaining = getRemainingVotes();
-    
-    // Only show if we haven't shown this prompt before
-    const shouldShow = ENGAGEMENT_TRIGGERS.VOTES_REMAINING.includes(remaining) && 
-      !stats.shownPrompts.includes(remaining);
-    
-    // If we should show, record that we've shown it
-    if (shouldShow) {
-      setStats(prev => ({
-        ...prev,
-        shownPrompts: [...prev.shownPrompts, remaining]
-      }));
+    // For anonymous users, use localStorage
+    if (shouldReset(new Date(stats.lastResetDate))) {
+      return ANON_LIMITS.DAILY_VOTES;
     }
-    
-    return shouldShow;
-  }, [user, getRemainingVotes, stats.shownPrompts]);
+    return Math.max(0, ANON_LIMITS.DAILY_VOTES - stats.votes);
+  }, [user, stats.votes, stats.lastResetDate]);
 
   const hasReachedVoteLimit = useCallback((): boolean => {
     if (user) return false;
-    
     return getRemainingVotes() <= 0;
   }, [user, getRemainingVotes]);
 
@@ -238,6 +256,25 @@ export function useEngagement() {
     
     return getRemainingAssistants() <= 0;
   }, [user, isPremium, getRemainingAssistants]);
+
+  const shouldShowVotePrompt = useCallback((): boolean => {
+    if (user) return false;
+    const remaining = getRemainingVotes();
+    
+    // Only show if we haven't shown this prompt before
+    const shouldShow = ENGAGEMENT_TRIGGERS.VOTES_REMAINING.includes(remaining) && 
+      !stats.shownPrompts.includes(remaining);
+    
+    // If we should show, record that we've shown it
+    if (shouldShow) {
+      setStats(prev => ({
+        ...prev,
+        shownPrompts: [...prev.shownPrompts, remaining]
+      }));
+    }
+    
+    return shouldShow;
+  }, [user, getRemainingVotes, stats.shownPrompts]);
 
   return {
     recordVote,
