@@ -32,6 +32,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { promptTemplates } from "@/lib/assistant-prompts";
+import { UpgradePopover } from "@/components/ui/upgrade-popover";
+import { useEngagement } from "@/hooks/useEngagement";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AssistantBuilderProps {
   isOpen: boolean;
@@ -51,6 +54,9 @@ export function AssistantBuilder({
   setIsOpen,
   onAssistantCreate
 }: AssistantBuilderProps) {
+  const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
+  const { user, isPremium } = useAuth();
+  
   // Assistant details
   const [assistantName, setAssistantName] = useState("");
   const [assistantDescription, setAssistantDescription] = useState("");
@@ -261,6 +267,16 @@ export function AssistantBuilder({
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Custom Assistant</DialogTitle>
+            {!isPremium && (
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <span>{getRemainingAssistants()} assistants remaining</span>
+                <UpgradePopover feature="assistant">
+                  <Button variant="ghost" size="sm" className="h-6 px-2">
+                    <InfoIcon className="h-4 w-4" />
+                  </Button>
+                </UpgradePopover>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-6 py-4">
@@ -393,10 +409,18 @@ export function AssistantBuilder({
               <Button variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateClick}>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create Assistant
-              </Button>
+              {hasReachedAssistantLimit() ? (
+                <UpgradePopover feature="assistant">
+                  <Button>
+                    Create Assistant
+                  </Button>
+                </UpgradePopover>
+              ) : (
+                <Button onClick={handleCreateClick}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Create Assistant
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

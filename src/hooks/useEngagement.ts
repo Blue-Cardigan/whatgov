@@ -2,15 +2,26 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ANON_LIMITS, ENGAGEMENT_TRIGGERS } from '@/lib/utils';
 import { startOfWeek, startOfMonth } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import createClient from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'whatgov_engagement';
 const RESET_HOUR = 0; // Reset at midnight UTC
 
 // AI search limits per tier
-const AI_SEARCH_LIMITS = {
-  FREE: 5,        // 5 per month
-  ENGAGED: 5,     // 5 per week
-  PRO: Infinity   // Unlimited
+const AI_LIMITS = {
+  FREE: {
+    SEARCHES: 5,        // 5 per month
+    ASSISTANTS: 0       // 0 total
+  },
+  ENGAGED: {
+    SEARCHES: 5,        // 5 per week
+    ASSISTANTS: 1       // 1 total
+  },
+  PRO: {
+    SEARCHES: Infinity, // Unlimited
+    ASSISTANTS: Infinity // Unlimited
+  }
 } as const;
 
 interface EngagementStats {
@@ -19,10 +30,13 @@ interface EngagementStats {
   shownPrompts: number[];
   aiSearches: number;
   aiSearchLastReset: string;
+  assistantsCreated: number;
 }
 
 export function useEngagement() {
-  const { user, isEngagedCitizen, isPremium } = useAuth();
+  const { user, profile, updateProfile, isEngagedCitizen, isPremium } = useAuth();
+  const { toast } = useToast();
+
   const [stats, setStats] = useState<EngagementStats>(() => {
     if (typeof window === 'undefined') return initializeStats();
     
@@ -55,6 +69,7 @@ export function useEngagement() {
       shownPrompts: [],
       aiSearches: 0,
       aiSearchLastReset: new Date().toISOString(),
+      assistantsCreated: 0,
     };
   }
 
@@ -117,8 +132,10 @@ export function useEngagement() {
 
   // Add function to check if we should reset AI search count
   const shouldResetAISearches = useCallback((): boolean => {
+    if (!profile?.ai_searches_last_reset) return true;
+
     const now = new Date();
-    const lastReset = new Date(stats.aiSearchLastReset);
+    const lastReset = new Date(profile.ai_searches_last_reset);
 
     if (isEngagedCitizen) {
       // Weekly reset for Engaged Citizen tier
@@ -129,48 +146,98 @@ export function useEngagement() {
       const monthStart = startOfMonth(now);
       return lastReset < monthStart;
     }
-  }, [stats.aiSearchLastReset, isEngagedCitizen]);
+  }, [profile, isEngagedCitizen]);
 
-  // Add function to check and reset AI search stats
-  const checkAndResetAISearches = useCallback(() => {
-    if (shouldResetAISearches()) {
-      setStats(prev => ({
-        ...prev,
-        aiSearches: 0,
-        aiSearchLastReset: new Date().toISOString()
-      }));
-      return true;
+  // Simplified AI search recording
+  const recordAISearch = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const now = new Date().toISOString();
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({
+          ai_searches_count: shouldResetAISearches() ? 1 : (profile?.ai_searches_count || 0) + 1,
+          ai_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_searches_last_reset
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local profile state through AuthContext
+      await updateProfile(data);
+
+    } catch (error) {
+      console.error('Failed to record AI search:', error);
+      toast({
+        title: "Error",
+        description: "Failed to record search. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
     }
-    return false;
-  }, [shouldResetAISearches]);
+  }, [user?.id, profile, shouldResetAISearches, updateProfile, toast]);
 
-  // Add function to record AI search
-  const recordAISearch = useCallback(() => {
-    if (!checkAndResetAISearches()) {
-      setStats(prev => ({
-        ...prev,
-        aiSearches: prev.aiSearches + 1
-      }));
-    }
-  }, [checkAndResetAISearches]);
-
-  // Add function to get remaining AI searches
+  // Simplified remaining searches check
   const getRemainingAISearches = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return Infinity;
+    if (isPremium) return AI_LIMITS.PRO.SEARCHES;
     
-    checkAndResetAISearches();
-    const limit = isEngagedCitizen ? AI_SEARCH_LIMITS.ENGAGED : AI_SEARCH_LIMITS.FREE;
-    return Math.max(0, limit - stats.aiSearches);
-  }, [user, isPremium, isEngagedCitizen, stats.aiSearches, checkAndResetAISearches]);
+    const limit = isEngagedCitizen ? 
+      AI_LIMITS.ENGAGED.SEARCHES : 
+      AI_LIMITS.FREE.SEARCHES;
+
+    // If we need to reset, return full limit
+    if (shouldResetAISearches()) {
+      return limit;
+    }
+
+    return Math.max(0, limit - (profile?.ai_searches_count || 0));
+  }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
 
   // Add function to check if user has reached AI search limit
   const hasReachedAISearchLimit = useCallback((): boolean => {
     if (!user) return true;
     if (isPremium) return false;
     
+    if (shouldResetAISearches()) {
+      return false;
+    }
+    
     return getRemainingAISearches() <= 0;
-  }, [user, isPremium, getRemainingAISearches]);
+  }, [user, isPremium, getRemainingAISearches, shouldResetAISearches]);
+
+  // Add function to record assistant creation
+  const recordAssistantCreation = useCallback(() => {
+    setStats(prev => ({
+      ...prev,
+      assistantsCreated: prev.assistantsCreated + 1
+    }));
+  }, []);
+
+  // Add function to get remaining assistant creations
+  const getRemainingAssistants = useCallback((): number => {
+    if (!user) return 0;
+    if (isPremium) return AI_LIMITS.PRO.ASSISTANTS;
+    
+    const limit = isEngagedCitizen ? 
+      AI_LIMITS.ENGAGED.ASSISTANTS : 
+      AI_LIMITS.FREE.ASSISTANTS;
+    
+    return Math.max(0, limit - stats.assistantsCreated);
+  }, [user, isPremium, isEngagedCitizen, stats.assistantsCreated]);
+
+  // Add function to check if user has reached assistant creation limit
+  const hasReachedAssistantLimit = useCallback((): boolean => {
+    if (!user) return true;
+    if (isPremium) return false;
+    
+    return getRemainingAssistants() <= 0;
+  }, [user, isPremium, getRemainingAssistants]);
 
   return {
     recordVote,
@@ -180,5 +247,8 @@ export function useEngagement() {
     recordAISearch,
     getRemainingAISearches,
     hasReachedAISearchLimit,
+    recordAssistantCreation,
+    getRemainingAssistants,
+    hasReachedAssistantLimit,
   };
 }

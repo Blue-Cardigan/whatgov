@@ -12,12 +12,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { useAssistant } from '@/hooks/useAssistant';
-import { StreamedResponse } from './StreamedResponse';
+import { StreamedResponse } from './Assistant/StreamedResponse';
 import { useSearch } from '@/contexts/SearchContext';
-import { LightbulbIcon, PlusCircle } from 'lucide-react';
-import { AssistantBuilder } from './AssistantBuilder';
-import { AssistantSelect } from './AssistantSelect';
+import { LightbulbIcon } from 'lucide-react';
+import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
+import { UpgradePopover } from "@/components/ui/upgrade-popover";
+import { InfoIcon } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -41,13 +42,13 @@ export function Search() {
   // Update active tab once auth state is confirmed
   useEffect(() => {
     if (!authLoading) {
-      if (user && !hasReachedAISearchLimit()) {
+      if (user) {
         setActiveTab(state.aiSearch.query ? 'ai' : 'hansard');
       } else {
         setActiveTab('hansard');
       }
     }
-  }, [user, authLoading, hasReachedAISearchLimit, state.aiSearch.query]);
+  }, [user, authLoading, state.aiSearch.query]);
 
   // Update to use new state structure
   const [fileQuery, setFileQuery] = useState(state.aiSearch.query);
@@ -72,8 +73,8 @@ export function Search() {
 
       const response = await HansardAPI.search(params);
       
-      if (!loadMore && enableAI) {
-        recordAISearch();
+      if (!loadMore && enableAI && params.enableAI) {
+        await recordAISearch();
       }
 
       dispatch({ type: 'SET_PARAMS', payload: params });
@@ -105,13 +106,13 @@ export function Search() {
       return "Loading...";
     }
     if (!user) {
-      return "Sign in to access AI search";
+      return "Sign in to access the AI ResearchAssistant";
     }
     
     const remaining = getRemainingAISearches();
     
     if (isPremium) {
-      return "Unlimited AI searches available";
+      return "Unlimited AI Assistant searches available";
     }
     
     if (isEngagedCitizen) {
@@ -223,9 +224,9 @@ export function Search() {
         <TabsList className="grid w-full grid-cols-2 mt-4 mb-4">
           <TabsTrigger 
             value="ai" 
-            disabled={authLoading || !user || hasReachedAISearchLimit()}
+            disabled={authLoading || !user}
           >
-            AI Search
+            AI Research Assistant
           </TabsTrigger>
           <TabsTrigger value="hansard">Hansard Search</TabsTrigger>
         </TabsList>
@@ -262,11 +263,26 @@ export function Search() {
         </TabsContent>
 
         <TabsContent value="ai">
-          <h1 className="text-2xl font-bold mt-4">AI Search</h1>
+          <h1 className="text-2xl font-bold mt-4">AI Research Assistant</h1>
           <p className="text-muted-foreground mb-4">
             Search through parliamentary records with AI assistance
           </p>
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                {!isPremium && (
+                  <>
+                    <span>{getRemainingAISearches()} searches remaining</span>
+                    <UpgradePopover feature="ai-search">
+                      <Button variant="ghost" size="sm" className="h-6 px-2">
+                        <InfoIcon className="h-4 w-4" />
+                      </Button>
+                    </UpgradePopover>
+                  </>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <div className="flex-1">
                 <input
@@ -283,31 +299,20 @@ export function Search() {
                   }}
                 />
               </div>
-              <div className="w-[200px]">
-                <AssistantSelect onAssistantChange={handleAssistantChange} />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setIsAssistantBuilderOpen(true)}
-                className="gap-2"
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Create Assistant</span>
-              </Button>
-              <Button 
-                onClick={handleFileSearch} 
-                disabled={aiLoading}
-                className="min-w-[100px]"
-              >
-                {aiLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Searching</span>
-                  </div>
-                ) : (
-                  'Search'
-                )}
-              </Button>
+              {hasReachedAISearchLimit() ? (
+                <UpgradePopover feature="ai-search">
+                  <Button>
+                    Search
+                  </Button>
+                </UpgradePopover>
+              ) : (
+                <Button 
+                  onClick={handleFileSearch} 
+                  disabled={aiLoading}
+                >
+                  {aiLoading ? 'Searching...' : 'Search'}
+                </Button>
+              )}
             </div>
 
             <div className="border rounded-lg overflow-hidden">

@@ -1,28 +1,48 @@
 import { useState, useCallback } from 'react';
 import { parseStreamingResponse } from '@/lib/openai-api';
+import { useEngagement } from '@/hooks/useEngagement';
+import { useToast } from '@/hooks/use-toast';
 
 export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string>('');
   const [citations, setCitations] = useState<string[]>([]);
+  const { hasReachedAISearchLimit, recordAISearch } = useEngagement();
+  const { toast } = useToast();
 
   const performFileSearch = useCallback(async (
     query: string, 
     openaiAssistantId: string | null,
     onStreamingUpdate?: (text: string, citations: string[]) => void
   ) => {
+    // Check limits before proceeding
+    if (hasReachedAISearchLimit()) {
+      toast({
+        title: "Search limit reached",
+        description: "Please upgrade your account to continue using AI search",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setStreamingText('');
     setCitations([]);
 
     try {
+      // Record the AI search before making the request
+      await recordAISearch();
+
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, assistantId: openaiAssistantId }),
       });
 
-      if (!response.ok) throw new Error('Stream request failed');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Stream request failed');
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
@@ -78,12 +98,19 @@ export function useAssistant() {
 
     } catch (error) {
       console.error('Error in file search:', error);
-      setStreamingText('An error occurred while searching.');
-      onStreamingUpdate?.('An error occurred while searching.', []);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while searching.';
+      setStreamingText(errorMessage);
+      onStreamingUpdate?.(errorMessage, []);
+      
+      toast({
+        title: "Search failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [hasReachedAISearchLimit, recordAISearch, toast]);
 
   return {
     isLoading,

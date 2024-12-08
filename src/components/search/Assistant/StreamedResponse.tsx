@@ -48,7 +48,6 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   return (
     <div className="prose dark:prose-invert prose-slate max-w-none">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold m-0">Results</h2>
         {streamingText && !isLoading && (
           <SaveSearchButton
             query={query}

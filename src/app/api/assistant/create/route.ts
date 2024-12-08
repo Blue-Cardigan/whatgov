@@ -21,6 +21,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check user's assistant count
+    const { count, error: countError } = await supabase
+      .from('assistants')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    if (countError) {
+      console.error('Error counting assistants:', countError);
+      return NextResponse.json(
+        { error: 'Failed to verify assistant limit' },
+        { status: 500 }
+      );
+    }
+
+    // Get user's subscription status
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('tier')
+      .eq('user_id', user.id)
+      .single();
+
+    const tier = subscription?.tier || 'FREE';
+    const limit = tier === 'PRO' ? Infinity : 
+                 tier === 'ENGAGED' ? 5 : 2;
+
+    if (count && count >= limit) {
+      return NextResponse.json(
+        { error: 'Assistant limit reached for your tier' },
+        { status: 403 }
+      );
+    }
+
     const { name, description, filters, keywords, userId, fileIds, promptType } = await request.json();
 
     // Verify the requesting user matches the authenticated user

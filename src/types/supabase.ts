@@ -27,6 +27,8 @@ export type UserProfile = {
   email: string;
   email_verified?: boolean;
   newsletter?: boolean;
+  ai_searches_count?: number;
+  ai_searches_last_reset?: string;
 };
 
 export type Json =
