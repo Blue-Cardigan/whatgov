@@ -57,6 +57,21 @@ export function processCitations(text: string, citations: string[]): {
   };
 }
 
+export const constructHansardUrl = (debateExtId: string, title: string, date: string) => {
+  // Convert title to PascalCase
+  const formattedTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .split(/[\s-]+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+
+  // Format date with hyphens (yyyy-MM-dd)
+  const formattedDate = date.replace(/\//g, '-');
+
+  return `https://hansard.parliament.uk/House/${formattedDate}/debates/${debateExtId}/${formattedTitle}`;
+};
+
 // Add new type for vector store file operations
 type VectorStoreResponse = {
   success: boolean;

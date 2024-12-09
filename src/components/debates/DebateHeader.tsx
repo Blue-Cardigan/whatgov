@@ -38,7 +38,7 @@ export function DebateHeader({
       
       const { data, error } = await supabase
         .from('debates')
-        .select('party_count, contribution_count, house, date, type, ai_title')
+        .select('party_count, contribution_count, house, date, type, ai_title, title')
         .eq('ext_id', extId)
         .single();
 

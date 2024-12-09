@@ -14,7 +14,9 @@ Professionals
 [/] Limit assistant usage by engagement
 [/] Assistant filter editing
 [ ] Export saved searches to file
-[ ] Implement automatic updates of custom assistants
+[ ] Implement 'Keep this assistant updated with new debates' 
+      - Check new debates and add to matching assistants
+      - Remove old debates at end of week
 [ ] Save query-assistant pairs to rerun
 
 [ ] Save hansard searches
@@ -22,6 +24,7 @@ Professionals
 [ ] Add divisions to assistant
 [ ] Add full voting history of each MP
 [ ] Add bill progress/schedule
+[ ] Add Order Paper
 
 [ ] Newsletter sending from backend
    1) Generate a 'this week' intro from summaries

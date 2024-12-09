@@ -4,9 +4,16 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { exportToPDF } from '@/lib/pdf-export';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SearchCardProps {
   search: AISearch;
@@ -14,10 +21,27 @@ interface SearchCardProps {
 
 export function SearchCard({ search }: SearchCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
 
   const handleSearchAgain = () => {
     router.push(`/search?q=${encodeURIComponent(search.query)}`);
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportToPDF({
+        title: search.query,
+        content: search.response,
+        citations: search.citations,
+        date: new Date(search.created_at),
+      });
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -30,9 +54,28 @@ export function SearchCard({ search }: SearchCardProps) {
               {formatDistanceToNow(new Date(search.created_at), { addSuffix: true })}
             </p>
           </div>
-          <Button variant="secondary" onClick={handleSearchAgain}>
-            Search Again
-          </Button>
+          <div className="flex gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={handleExport}
+                    disabled={isExporting}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Export to PDF
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button variant="secondary" onClick={handleSearchAgain}>
+              Search Again
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

@@ -2,6 +2,16 @@ import { processCitations } from '@/lib/openai-api';
 import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { SaveSearchButton } from './SaveSearchButton';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import { exportToPDF } from '@/lib/pdf-export';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useState } from 'react';
 
 interface StreamedResponseProps {
   streamingText: string;
@@ -11,6 +21,24 @@ interface StreamedResponseProps {
 }
 
 export function StreamedResponse({ streamingText, citations, isLoading, query }: StreamedResponseProps) {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportToPDF({
+        title: query,
+        content: streamingText,
+        citations,
+        date: new Date(),
+      });
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading && !streamingText) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -48,13 +76,34 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   return (
     <div className="prose dark:prose-invert prose-slate max-w-none">
       <div className="flex justify-between items-center mb-4">
-        {streamingText && !isLoading && (
-          <SaveSearchButton
-            query={query}
-            response={streamingText}
-            citations={citations}
-          />
-        )}
+        <div className="flex gap-2">
+          {streamingText && !isLoading && (
+            <>
+              <SaveSearchButton
+                query={query}
+                response={streamingText}
+                citations={citations}
+              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleExport}
+                      disabled={isExporting}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Export to PDF
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
+          )}
+        </div>
       </div>
 
       <ReactMarkdown
