@@ -18,6 +18,7 @@ import {
     filterDescription: string;
     debateCount: number | null;
     isCountLoading: boolean;
+    mode: 'create' | 'edit';
   }
   
   export function AssistantConfirmationDialog({
@@ -29,12 +30,15 @@ import {
     filterDescription,
     debateCount,
     isCountLoading,
+    mode
   }: AssistantConfirmationDialogProps) {
     return (
       <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Assistant Creation</AlertDialogTitle>
+            <AlertDialogTitle>
+              {mode === 'edit' ? 'Confirm Assistant Updates' : 'Confirm Assistant Creation'}
+            </AlertDialogTitle>
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-lg space-y-3">
                 <div>
@@ -86,6 +90,8 @@ import {
             >
               {debateCount === 0 ? (
                 "No Matching Debates"
+              ) : mode === 'edit' ? (
+                "Save Changes"
               ) : (
                 "Create Assistant"
               )}

@@ -1,4 +1,4 @@
-import createClient from './client';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { TOPIC_DEFINITIONS, LOCATION_GROUPS, DEBATE_TYPES, partyColours } from '@/lib/utils';
 import { SearchFilterParams } from '@/types/assistant';
 
@@ -26,7 +26,7 @@ export type SearchFilter = {
 type SearchFilterInput = Omit<SearchFilter, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 
 export class AssistantQueryBuilder {
-  private supabase = createClient();
+  constructor(private supabase: SupabaseClient) {}
 
   async saveFilter(userId: string, filter: SearchFilterInput): Promise<SearchFilter | null> {
     const { data, error } = await this.supabase
@@ -135,6 +135,187 @@ export class AssistantQueryBuilder {
     }
 
     return data;
+  }
+
+  async getAssistant(assistantId: string): Promise<{
+    id: string;
+    name: string;
+    description: string;
+    prompt_type: string;
+    keywords: string[];
+    filters: {
+      members: Array<{
+        member_id: number;
+        memberId: string;
+        name: string;
+        display_as: string;
+        party: string;
+        constituency?: string;
+      }>;
+      members_filter_type: 'inclusive' | 'exclusive';
+      parties: string[];
+      parties_filter_type: 'inclusive' | 'exclusive';
+      subtopics: string[];
+      subtopics_filter_type: 'inclusive' | 'exclusive';
+      house: 'Commons' | 'Lords' | 'Both';
+      debate_types: string[];
+      debate_types_filter_type: 'inclusive' | 'exclusive';
+      date_from: string | null;
+      date_to: string | null;
+      days_of_week: string[];
+    };
+    openai_assistant_id: string;
+    vector_store_id: string | null;
+    file_ids: string[];
+  } | null> {
+    // First get the assistant data
+    const { data: assistant, error } = await this.supabase
+      .from('assistants')
+      .select(`
+        id,
+        name,
+        description,
+        prompt_type,
+        keywords,
+        filters,
+        openai_assistant_id,
+        vector_store_id,
+        file_ids
+      `)
+      .eq('id', assistantId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching assistant:', error);
+      return null;
+    }
+
+    // Then fetch member details if there are members in filters
+    let members: Array<{
+      member_id: number;
+      memberId: string;
+      name: string;
+      display_as: string;
+      party: string;
+      constituency?: string;
+    }> = [];
+
+    if (assistant.filters?.members?.length > 0) {
+      const { data: memberData, error: memberError } = await this.supabase
+        .from('members')
+        .select('member_id, display_as, party, constituency')
+        .in('member_id', assistant.filters.members);
+
+      if (!memberError && memberData) {
+        members = memberData.map(member => ({
+          member_id: member.member_id,
+          memberId: member.member_id.toString(),
+          name: member.display_as,
+          display_as: member.display_as,
+          party: member.party,
+          constituency: member.constituency
+        }));
+      }
+    }
+
+    const filters = assistant.filters || {};
+
+    // Ensure keywords is always an array
+    const keywords = Array.isArray(assistant.keywords) ? assistant.keywords : [];
+
+    return {
+      id: assistant.id,
+      name: assistant.name,
+      description: assistant.description,
+      prompt_type: assistant.prompt_type,
+      keywords: keywords,
+      filters: {
+        members,
+        members_filter_type: filters.members_filter_type || 'inclusive',
+        parties: filters.parties || [],
+        parties_filter_type: filters.parties_filter_type || 'inclusive',
+        subtopics: filters.subtopics || [],
+        subtopics_filter_type: filters.subtopics_filter_type || 'inclusive',
+        house: filters.house || 'Both',
+        debate_types: filters.debate_types || [],
+        debate_types_filter_type: filters.debate_types_filter_type || 'inclusive',
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+        days_of_week: filters.days_of_week || []
+      },
+      openai_assistant_id: assistant.openai_assistant_id,
+      vector_store_id: assistant.vector_store_id,
+      file_ids: assistant.file_ids || []
+    };
+  }
+
+  async updateAssistant(assistantId: string, data: {
+    name: string;
+    description: string;
+    prompt_type: string;
+    keywords: string[];
+    filters: {
+      members: number[];
+      members_filter_type: 'inclusive' | 'exclusive';
+      parties: string[];
+      parties_filter_type: 'inclusive' | 'exclusive';
+      subtopics: string[];
+      subtopics_filter_type: 'inclusive' | 'exclusive';
+      house: 'Commons' | 'Lords' | 'Both';
+      debate_types: string[];
+      debate_types_filter_type: 'inclusive' | 'exclusive';
+      date_from: string | null;
+      date_to: string | null;
+      days_of_week: string[];
+    };
+  }): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('assistants')
+      .update({
+        name: data.name,
+        description: data.description,
+        prompt_type: data.prompt_type,
+        keywords: data.keywords,
+        filters: data.filters,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', assistantId);
+
+    if (error) {
+      console.error('Error updating assistant:', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  async getAssistantFiles(assistantId: string): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from('assistants')
+      .select('file_ids')
+      .eq('id', assistantId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching assistant files:', error);
+      return [];
+    }
+
+    return data.file_ids || [];
+  }
+
+  async updateAssistantFiles(assistantId: string, fileIds: string[]): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('assistants')
+      .update({ file_ids: fileIds })
+      .eq('id', assistantId);
+
+    if (error) {
+      console.error('Error updating assistant files:', error);
+      return false;
+    }
+
+    return true;
   }
 }
 

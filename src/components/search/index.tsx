@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { useAssistant } from '@/hooks/useAssistant';
 import { StreamedResponse } from './Assistant/StreamedResponse';
 import { useSearch } from '@/contexts/SearchContext';
-import { LightbulbIcon } from 'lucide-react';
+import { LightbulbIcon, PlusCircleIcon, UserCircle2Icon } from 'lucide-react';
 import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
-import { InfoIcon } from 'lucide-react';
+import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
 
 const PAGE_SIZE = 10;
 
@@ -37,18 +37,18 @@ export function Search() {
   } = useAssistant();
 
   // Set initial tab based on user's access level and search limit
-  const [activeTab, setActiveTab] = useState('hansard');
+  const [activeTab, setActiveTab] = useState('ai');
 
   // Update active tab once auth state is confirmed
   useEffect(() => {
     if (!authLoading) {
-      if (user) {
-        setActiveTab(state.aiSearch.query ? 'ai' : 'hansard');
-      } else {
+      if (!user) {
         setActiveTab('hansard');
+      } else {
+        setActiveTab('ai');
       }
     }
-  }, [user, authLoading, state.aiSearch.query]);
+  }, [user, authLoading]);
 
   // Update to use new state structure
   const [fileQuery, setFileQuery] = useState(state.aiSearch.query);
@@ -224,7 +224,6 @@ export function Search() {
         <TabsList className="grid w-full grid-cols-2 mt-4 mb-4">
           <TabsTrigger 
             value="ai" 
-            disabled={authLoading || !user}
           >
             AI Research Assistant
           </TabsTrigger>
@@ -232,71 +231,134 @@ export function Search() {
         </TabsList>
 
         <TabsContent value="ai">
-          <h1 className="text-2xl font-bold mt-4">AI Research Assistant</h1>
-          <p className="text-muted-foreground mb-4">
-            Search through parliamentary records with AI assistance
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                {!isPremium && (
-                  <>
-                    <UpgradePopover feature="ai-search">
-                      <Button variant="ghost" size="sm" className="h-6 pl-2 pr-0">
-                        <LightbulbIcon className="h-4 w-4" />
+          {!user ? (
+            <div className="text-center py-8">
+              <h2 className="text-xl font-semibold mb-4">Sign in to access the AI Research Assistant</h2>
+              <p className="text-muted-foreground mb-4">
+                Create an account or sign in to start using AI-powered search
+              </p>
+              {/* You can add a sign-in button here if desired */}
+            </div>
+          ) : hasReachedAISearchLimit() ? (
+            <div className="text-center py-8">
+              <h2 className="text-xl font-semibold mb-4">Search limit reached</h2>
+              <p className="text-muted-foreground mb-4">
+                {isEngagedCitizen 
+                  ? "You've reached your weekly search limit" 
+                  : "You've reached your monthly search limit"}
+              </p>
+              <UpgradePopover feature="ai-search">
+                <Button>Upgrade for unlimited searches</Button>
+              </UpgradePopover>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold mt-4">AI Research Assistant</h1>
+                  <p className="text-muted-foreground">
+                    Search through parliamentary records with AI assistance
+                  </p>
+                </div>
+                <div className="flex gap-2 items-start mt-4">
+                  {/* Assistant Select with icon */}
+                  {isPremium ? (
+                    <AssistantSelect 
+                      onAssistantChange={handleAssistantChange}
+                    />
+                  ) : (
+                    <UpgradePopover feature="assistant">
+                      <Button variant="outline" size="icon">
+                        <UserCircle2Icon className="h-4 w-4" />
                       </Button>
                     </UpgradePopover>
-                    <span>
-                      {getRemainingAISearches()} searches remaining {isEngagedCitizen ? 'this week' : 'this month'}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+                  )}
 
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded"
-                  placeholder="Enter your search query..."
-                  value={fileQuery}
-                  onChange={handleFileQueryChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleFileSearch();
-                    }
-                  }}
-                />
+                  {/* Create Assistant with icon */}
+                  {isPremium ? (
+                    <Button 
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsAssistantBuilderOpen(true)}
+                    >
+                      <PlusCircleIcon className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <UpgradePopover feature="assistant">
+                      <Button variant="outline" size="icon">
+                        <PlusCircleIcon className="h-4 w-4" />
+                      </Button>
+                    </UpgradePopover>
+                  )}
+                </div>
               </div>
-              {hasReachedAISearchLimit() ? (
-                <UpgradePopover feature="ai-search">
-                  <Button>
-                    Search
-                  </Button>
-                </UpgradePopover>
-              ) : (
-                <Button 
-                  onClick={handleFileSearch} 
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? 'Searching...' : 'Search'}
-                </Button>
-              )}
-            </div>
 
-            <div className="border rounded-lg overflow-hidden">
-              <div className="p-4">
-                <StreamedResponse 
-                  streamingText={state.aiSearch.streamingText}
-                  citations={state.aiSearch.citations}
-                  isLoading={state.aiSearch.isLoading}
-                  query={state.aiSearch.query}
-                />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    {!isPremium && (
+                      <>
+                        <UpgradePopover feature="ai-search">
+                          <Button variant="ghost" size="sm" className="h-6 pl-2 pr-0">
+                            <LightbulbIcon className="h-4 w-4" />
+                          </Button>
+                        </UpgradePopover>
+                        <span>
+                          {getRemainingAISearches()} searches remaining {isEngagedCitizen ? 'this week' : 'this month'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {/* Search input - now without the assistant controls */}
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      placeholder="Enter your search query..."
+                      value={fileQuery}
+                      onChange={handleFileQueryChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleFileSearch();
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Search button */}
+                  {hasReachedAISearchLimit() ? (
+                    <UpgradePopover feature="ai-search">
+                      <Button>
+                        Search
+                      </Button>
+                    </UpgradePopover>
+                  ) : (
+                    <Button 
+                      onClick={handleFileSearch} 
+                      disabled={aiLoading}
+                    >
+                      {aiLoading ? 'Searching...' : 'Search'}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="p-4">
+                    <StreamedResponse 
+                      streamingText={state.aiSearch.streamingText}
+                      citations={state.aiSearch.citations}
+                      isLoading={state.aiSearch.isLoading}
+                      query={state.aiSearch.query}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="hansard">
@@ -328,6 +390,7 @@ export function Search() {
         isOpen={isAssistantBuilderOpen}
         setIsOpen={setIsAssistantBuilderOpen}
         onAssistantCreate={handleAssistantCreate}
+        mode="create"
       />
     </>
   );

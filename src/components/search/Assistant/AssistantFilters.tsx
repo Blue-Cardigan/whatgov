@@ -366,7 +366,7 @@ export function AssistantFilters({
               />
             </div>
             
-            <ScrollArea className="h-[300px] border rounded-md p-4">
+            <ScrollArea className="min-h-[50px] border rounded-md p-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {Object.keys(partyColours).map((party) => (
                   <div key={party} className="flex items-center gap-2">

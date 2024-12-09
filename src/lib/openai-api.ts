@@ -56,3 +56,68 @@ export function processCitations(text: string, citations: string[]): {
     citationLinks: citationLinks.filter(link => link.url !== ''),
   };
 }
+
+// Add new type for vector store file operations
+type VectorStoreResponse = {
+  success: boolean;
+  error?: string;
+  data?: any;
+};
+
+// Add files to vector store
+export async function addFilesToVectorStore(fileIds: string[]): Promise<VectorStoreResponse> {
+  try {
+    const response = await fetch('/api/assistant/vector-store/add-files', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileIds }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add files to vector store');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data
+    };
+  } catch (error) {
+    console.error('Error adding files to vector store:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+// Remove file from vector store
+export async function removeFileFromVectorStore(fileId: string): Promise<VectorStoreResponse> {
+  try {
+    const response = await fetch('/api/assistant/vector-store/remove-file', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileId }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to remove file from vector store');
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data
+    };
+  } catch (error) {
+    console.error('Error removing file from vector store:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}

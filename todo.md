@@ -12,7 +12,7 @@ Professionals
 [/] Select prompt/style in assistant builder
 [/] More detailed summaries for longer debates 
 [/] Limit assistant usage by engagement
-[ ] Assistant filter editing
+[/] Assistant filter editing
 [ ] Export saved searches to file
 [ ] Implement automatic updates of custom assistants
 [ ] Save query-assistant pairs to rerun

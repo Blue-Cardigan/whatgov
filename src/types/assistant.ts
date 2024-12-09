@@ -29,35 +29,46 @@ export interface AssistantCreateRequest {
   };
 }
 
+// Update Assistant interface to match database schema
 export interface Assistant {
   id: string;
   user_id: string;
   name: string;
   description: string;
-  filters: AssistantCreateRequest['filters'];
+  filters: SearchFilterParams;
   status: 'pending' | 'processing' | 'ready' | 'failed';
-  vector_store_id?: string;
-  openai_assistant_id?: string;
+  vector_store_id: string | null;
+  openai_assistant_id: string | null;
   file_ids: string[];
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  keywords: string[] | null;
+  prompt_type: string | null;
 }
 
-// New type for just the filter parameters
+// Update SearchFilterParams to match database schema
 export interface SearchFilterParams {
-    members: number[];
-    members_filter_type: 'inclusive' | 'exclusive';
-    parties: string[];
-    parties_filter_type: 'inclusive' | 'exclusive';
-    subtopics: string[];
-    subtopics_filter_type: 'inclusive' | 'exclusive';
-    house: 'Commons' | 'Lords' | 'Both';
-    debate_types: string[]; // No filter type needed
-    date_from: string | null;
-    date_to: string | null;
-    days_of_week: string[];
-};
+  members: {
+    member_id: number;
+    memberId: string;
+    name: string;
+    display_as: string;
+    party: string;
+    constituency?: string;
+  }[];
+  members_filter_type: 'inclusive' | 'exclusive';
+  parties: string[];
+  parties_filter_type: 'inclusive' | 'exclusive';
+  subtopics: string[];
+  subtopics_filter_type: 'inclusive' | 'exclusive';
+  house: 'Commons' | 'Lords' | 'Both';
+  debate_types: string[];
+  debate_types_filter_type: 'inclusive' | 'exclusive';
+  date_from: string | null;
+  date_to: string | null;
+  days_of_week: string[];
+}
 
 // Update SearchFilter to extend SearchFilterParams
 export interface SearchFilter extends SearchFilterParams {

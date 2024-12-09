@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { Badge, PlusCircle, X, InfoIcon } from "lucide-react";
+import { Badge, PlusCircle, X, InfoIcon, Loader2 } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { toast } from "@/hooks/use-toast";
 import { Speaker } from "@/types";
+import createClient from "@/lib/supabase/client";
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -47,21 +49,22 @@ interface AssistantBuilderProps {
     fileIds: string[];
     promptType: keyof typeof promptTemplates;
   }) => Promise<void>;
+  mode: 'create' | 'edit';
+  assistantId?: string;
 }
 
 export function AssistantBuilder({
   isOpen,
   setIsOpen,
-  onAssistantCreate
+  onAssistantCreate,
+  mode = 'create',
+  assistantId
 }: AssistantBuilderProps) {
-  const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
   const { user, isPremium } = useAuth();
+  const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
   
-  // Assistant details
   const [assistantName, setAssistantName] = useState("");
   const [assistantDescription, setAssistantDescription] = useState("");
-  
-  // Filter states
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<Speaker[]>([]);
@@ -75,17 +78,81 @@ export function AssistantBuilder({
   const [debateTypesFilterType, setDebateTypesFilterType] = useState<'inclusive' | 'exclusive'>('inclusive');
   const [dateRange, setDateRange] = useState<DateRange>();
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-
-  // UI states
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCountLoading, setIsCountLoading] = useState(false);
   const [debateCount, setDebateCount] = useState<number | null>(null);
+  const [selectedPromptType, setSelectedPromptType] = useState<keyof typeof promptTemplates>('default');
+  const [isLoading, setIsLoading] = useState(false);
+  const supabase = createClient();
 
-  // Add new state for prompt type
-  const [selectedPromptType, setSelectedPromptType] = useState<keyof typeof promptTemplates>('legislative');
+  useEffect(() => {
+    if (isOpen && !isPremium) {
+      setIsOpen(false);
+    }
+  }, [isOpen, isPremium, setIsOpen]);
 
-  // Handlers
-  const handleKeywordSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    async function loadAssistant() {
+      if (mode === 'edit' && assistantId) {
+        setIsLoading(true);
+        try {
+          const queryBuilder = new AssistantQueryBuilder(supabase);
+          const assistant = await queryBuilder.getAssistant(assistantId);
+          
+          if (assistant) {
+            // Basic details
+            setAssistantName(assistant.name);
+            setAssistantDescription(assistant.description);
+            setSelectedPromptType(assistant.prompt_type as keyof typeof promptTemplates);
+            setKeywords(assistant.keywords || []);
+            
+            // Members
+            setSelectedMembers(assistant.filters.members);
+            setMembersFilterType(assistant.filters.members_filter_type);
+            
+            // Parties
+            setSelectedParties(assistant.filters.parties);
+            setPartiesFilterType(assistant.filters.parties_filter_type);
+            
+            // Topics
+            setSelectedTopics(assistant.filters.subtopics);
+            setTopicsFilterType(assistant.filters.subtopics_filter_type);
+            
+            // House
+            setSelectedHouse(assistant.filters.house);
+            
+            // Debate Types
+            setSelectedDebateTypes(assistant.filters.debate_types);
+            setDebateTypesFilterType(assistant.filters.debate_types_filter_type);
+            
+            // Dates
+            if (assistant.filters.date_from && assistant.filters.date_to) {
+              setDateRange({
+                from: new Date(assistant.filters.date_from),
+                to: new Date(assistant.filters.date_to)
+              });
+            }
+            
+            // Days of Week
+            setSelectedDays(assistant.filters.days_of_week);
+          }
+        } catch (error) {
+          console.error('Error loading assistant:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load assistant details",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadAssistant();
+  }, [mode, assistantId]);
+
+  const handleKeywordSubmit = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && keywordInput.trim()) {
       e.preventDefault();
       if (!keywords.includes(keywordInput.trim())) {
@@ -93,7 +160,11 @@ export function AssistantBuilder({
       }
       setKeywordInput('');
     }
-  };
+  }, [keywordInput, keywords]);
+
+  if (!isPremium) {
+    return null;
+  }
 
   const getFilterDescription = () => {
     const parts = [];
@@ -179,7 +250,14 @@ export function AssistantBuilder({
     setIsCountLoading(true);
     try {
       const filters: SearchFilterParams = {
-        members: selectedMembers.map(m => m.member_id),
+        members: selectedMembers.map(m => ({
+          member_id: m.member_id,
+          memberId: m.member_id.toString(),
+          name: m.display_as,
+          display_as: m.display_as,
+          party: m.party,
+          constituency: m.constituency
+        })),
         members_filter_type: membersFilterType,
         parties: selectedParties,
         parties_filter_type: partiesFilterType,
@@ -187,12 +265,13 @@ export function AssistantBuilder({
         subtopics_filter_type: topicsFilterType,
         house: selectedHouse,
         debate_types: selectedDebateTypes,
+        debate_types_filter_type: debateTypesFilterType,
         date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
         date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
         days_of_week: selectedDays,
       };
 
-      const queryBuilder = new AssistantQueryBuilder();
+      const queryBuilder = new AssistantQueryBuilder(supabase);
       const fileIds = await queryBuilder.getMatchingDebates(filters);
       setDebateCount(fileIds.length);
     } catch (error) {
@@ -224,7 +303,14 @@ export function AssistantBuilder({
   const createAssistant = async () => {
     try {
       const filters: SearchFilterParams = {
-        members: selectedMembers.map(m => m.member_id),
+        members: selectedMembers.map(m => ({
+          member_id: m.member_id,
+          memberId: m.member_id.toString(),
+          name: m.display_as,
+          display_as: m.display_as,
+          party: m.party,
+          constituency: m.constituency
+        })),
         members_filter_type: membersFilterType,
         parties: selectedParties,
         parties_filter_type: partiesFilterType,
@@ -232,30 +318,69 @@ export function AssistantBuilder({
         subtopics_filter_type: topicsFilterType,
         house: selectedHouse as 'Commons' | 'Lords' | 'Both',
         debate_types: selectedDebateTypes,
+        debate_types_filter_type: debateTypesFilterType,
         date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
         date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
         days_of_week: selectedDays
       };
 
-      const queryBuilder = new AssistantQueryBuilder();
+      const queryBuilder = new AssistantQueryBuilder(supabase);
       const fileIds = await queryBuilder.getMatchingDebates(filters);
+
+      if (mode === 'edit' && assistantId) {
+        // Update existing assistant
+        const response = await fetch('/api/assistant/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            assistantId,
+            name: assistantName,
+            description: assistantDescription,
+            promptType: selectedPromptType,
+            filters,
+            keywords,
+            fileIds: fileIds.map((row: { file_id: string }) => row.file_id)
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update assistant');
+        }
+      } else {
+        // Create new assistant
+        await onAssistantCreate({
+          name: assistantName,
+          description: assistantDescription,
+          filters,
+          keywords,
+          fileIds: fileIds.map((row: { file_id: string }) => row.file_id),
+          promptType: selectedPromptType
+        });
+      }
 
       await onAssistantCreate({
         name: assistantName,
         description: assistantDescription,
         filters,
         keywords,
-        fileIds: fileIds.map((row: { file_id: string }) => row.file_id),
+        fileIds: [],
         promptType: selectedPromptType
       });
 
-      setShowConfirmation(false);
       setIsOpen(false);
+      toast({
+        title: mode === 'edit' ? "Assistant Updated" : "Assistant Created",
+        description: mode === 'edit' 
+          ? "Your assistant has been updated successfully"
+          : "Your new assistant is ready to use",
+      });
     } catch (error) {
       console.error('Error creating assistant:', error);
       toast({
         title: "Error",
-        description: "Failed to create assistant",
+        description: "Failed to create assistant. Please try again.",
         variant: "destructive",
       });
     }
@@ -266,7 +391,12 @@ export function AssistantBuilder({
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Custom Assistant</DialogTitle>
+            <DialogTitle>
+              {mode === 'edit' ? 'Edit Assistant' : 'Create Custom Assistant'}
+            </DialogTitle>
+            <DialogDescription>
+              Configure your custom AI assistant to analyze parliamentary debates based on your specific requirements.
+            </DialogDescription>
             {!isPremium && (
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span>{getRemainingAssistants()} assistants remaining</span>
@@ -279,150 +409,163 @@ export function AssistantBuilder({
             )}
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Assistant Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., Climate Change Specialist"
-                  value={assistantName}
-                  onChange={(e) => setAssistantName(e.target.value)}
-                />
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading assistant details...</span>
               </div>
-
-              {/* Prompt Type Selection */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="promptType">Assistant Type</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <InfoIcon 
-                          className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[350px] whitespace-pre-wrap">
-                        {promptTemplates[selectedPromptType].split('${')[0]}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Select
-                  value={selectedPromptType}
-                  onValueChange={(value: keyof typeof promptTemplates) => setSelectedPromptType(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">General Purpose</SelectItem>
-                    <SelectItem value="legislative">Legislative Analysis</SelectItem>
-                    <SelectItem value="policy">Policy Impact</SelectItem>
-                    <SelectItem value="scrutiny">Parliamentary Scrutiny</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Description - only show for default prompt type */}
-              {selectedPromptType === 'default' && (
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="name">Assistant Name</Label>
                   <Input
-                    id="description"
-                    placeholder="e.g., newsletter-style analyses for an audience of campaigners"
-                    value={assistantDescription}
-                    onChange={(e) => setAssistantDescription(e.target.value)}
+                    id="name"
+                    placeholder="e.g., Climate Change Specialist"
+                    value={assistantName}
+                    onChange={(e) => setAssistantName(e.target.value)}
                   />
                 </div>
-              )}
 
-              {/* Keywords Section */}
-              <div className="space-y-2">
-                <Label>Keywords</Label>
-                <p className="text-sm text-muted-foreground">
-                    Add keywords to help focus the assistant&apos;s responses. Press Enter to add each keyword.
-                </p>
-                <Input
-                    placeholder="Type a keyword and press Enter..."
-                    value={keywordInput}
-                    onChange={(e) => setKeywordInput(e.target.value)}
-                    onKeyDown={handleKeywordSubmit}
-                />
-                <div className="flex flex-wrap gap-2 mt-2">
-                    {keywords.map((keyword) => (
-                    <Badge 
-                        key={keyword}
-                        className="group flex items-center gap-1 pr-1"
-                    >
-                        {keyword}
-                        <button
-                        onClick={() => setKeywords(keywords.filter(k => k !== keyword))}
-                        className="ml-1 rounded-full p-1 hover:bg-muted-foreground/20"
-                        >
-                        <X className="h-3 w-3" />
-                        </button>
-                    </Badge>
-                    ))}
+                {/* Prompt Type Selection */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="promptType">Assistant Type</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <InfoIcon 
+                            className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[350px] whitespace-pre-wrap">
+                          {promptTemplates[selectedPromptType]?.split('${')[0] || 'Select a prompt type'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Select
+                    value={selectedPromptType}
+                    onValueChange={(value: keyof typeof promptTemplates) => setSelectedPromptType(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">General Purpose</SelectItem>
+                      <SelectItem value="legislative">Legislative Analysis</SelectItem>
+                      <SelectItem value="policy">Policy Impact</SelectItem>
+                      <SelectItem value="scrutiny">Parliamentary Scrutiny</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Description - only show for default prompt type */}
+                {selectedPromptType === 'default' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      placeholder="e.g., newsletter-style analyses for an audience of campaigners"
+                      value={assistantDescription}
+                      onChange={(e) => setAssistantDescription(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {/* Keywords Section */}
+                <div className="space-y-2">
+                  <Label>Keywords</Label>
+                  <p className="text-sm text-muted-foreground">
+                      Add keywords to help focus the assistant&apos;s responses. Press Enter to add each keyword.
+                  </p>
+                  <Input
+                      placeholder="Type a keyword and press Enter..."
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      onKeyDown={handleKeywordSubmit}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                      {keywords.map((keyword) => (
+                      <Badge 
+                          key={keyword}
+                          className="group flex items-center gap-1 pr-1"
+                      >
+                          {keyword}
+                          <button
+                          onClick={() => setKeywords(keywords.filter(k => k !== keyword))}
+                          className="ml-1 rounded-full p-1 hover:bg-muted-foreground/20"
+                          >
+                          <X className="h-3 w-3" />
+                          </button>
+                      </Badge>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Filters */}
-            <AssistantFilters
-              selectedMembers={selectedMembers}
-              membersFilterType={membersFilterType}
-              onMembersFilterTypeChange={setMembersFilterType}
-              onMemberSelect={(member) => setSelectedMembers([...selectedMembers, member])}
-              onMemberRemove={(memberId) => setSelectedMembers(selectedMembers.filter(m => m.member_id.toString() !== memberId))}
-              selectedParties={selectedParties}
-              partiesFilterType={partiesFilterType}
-              onPartiesFilterTypeChange={setPartiesFilterType}
-              onPartySelect={(party) => setSelectedParties([...selectedParties, party])}
-              onPartyRemove={(party) => setSelectedParties(selectedParties.filter(p => p !== party))}
-              selectedTopics={selectedTopics}
-              topicsFilterType={topicsFilterType}
-              onTopicsFilterTypeChange={setTopicsFilterType}
-              onTopicSelect={(topicString) => {
-                const topics = topicString.split(',');
-                setSelectedTopics(prev => [...new Set([...prev, ...topics])]);
-              }}
-              onTopicRemove={(topicString) => {
-                const topics = topicString.split(',');
-                setSelectedTopics(prev => prev.filter(t => !topics.includes(t)));
-              }}
-              selectedHouse={selectedHouse}
-              onHouseChange={setSelectedHouse}
-              selectedDebateTypes={selectedDebateTypes}
-              debateTypesFilterType={debateTypesFilterType}
-              onDebateTypesFilterTypeChange={setDebateTypesFilterType}
-              onDebateTypeSelect={(type) => setSelectedDebateTypes([...selectedDebateTypes, type])}
-              onDebateTypeRemove={(type) => setSelectedDebateTypes(selectedDebateTypes.filter(t => t !== type))}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              selectedDays={selectedDays}
-              onDaySelect={(day) => setSelectedDays([...selectedDays, day])}
-              onDayRemove={(day) => setSelectedDays(selectedDays.filter(d => d !== day))}
-            />
+              {/* Filters */}
+              <AssistantFilters
+                selectedMembers={selectedMembers}
+                membersFilterType={membersFilterType}
+                onMembersFilterTypeChange={setMembersFilterType}
+                onMemberSelect={(member) => setSelectedMembers([...selectedMembers, member])}
+                onMemberRemove={(memberId) => setSelectedMembers(selectedMembers.filter(m => m.member_id.toString() !== memberId))}
+                selectedParties={selectedParties}
+                partiesFilterType={partiesFilterType}
+                onPartiesFilterTypeChange={setPartiesFilterType}
+                onPartySelect={(party) => setSelectedParties([...selectedParties, party])}
+                onPartyRemove={(party) => setSelectedParties(selectedParties.filter(p => p !== party))}
+                selectedTopics={selectedTopics}
+                topicsFilterType={topicsFilterType}
+                onTopicsFilterTypeChange={setTopicsFilterType}
+                onTopicSelect={(topicString) => {
+                  const topics = topicString.split(',');
+                  setSelectedTopics(prev => [...new Set([...prev, ...topics])]);
+                }}
+                onTopicRemove={(topicString) => {
+                  const topics = topicString.split(',');
+                  setSelectedTopics(prev => prev.filter(t => !topics.includes(t)));
+                }}
+                selectedHouse={selectedHouse}
+                onHouseChange={setSelectedHouse}
+                selectedDebateTypes={selectedDebateTypes}
+                debateTypesFilterType={debateTypesFilterType}
+                onDebateTypesFilterTypeChange={setDebateTypesFilterType}
+                onDebateTypeSelect={(type) => setSelectedDebateTypes([...selectedDebateTypes, type])}
+                onDebateTypeRemove={(type) => setSelectedDebateTypes(selectedDebateTypes.filter(t => t !== type))}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                selectedDays={selectedDays}
+                onDaySelect={(day) => setSelectedDays([...selectedDays, day])}
+                onDayRemove={(day) => setSelectedDays(selectedDays.filter(d => d !== day))}
+              />
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsOpen(false)}>
-                Cancel
-              </Button>
-              {hasReachedAssistantLimit() ? (
-                <UpgradePopover feature="assistant">
-                  <Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                {mode === 'edit' ? (
+                  <Button onClick={handleCreateClick}>
+                    Save Changes
+                  </Button>
+                ) : hasReachedAssistantLimit() ? (
+                  <UpgradePopover feature="assistant">
+                    <Button>
+                      Create Assistant
+                    </Button>
+                  </UpgradePopover>
+                ) : (
+                  <Button onClick={handleCreateClick}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
                     Create Assistant
                   </Button>
-                </UpgradePopover>
-              ) : (
-                <Button onClick={handleCreateClick}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Create Assistant
-                </Button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -435,6 +578,7 @@ export function AssistantBuilder({
         filterDescription={getFilterDescription()}
         debateCount={debateCount}
         isCountLoading={isCountLoading}
+        mode={mode}
       />
     </>
   );
