@@ -50,6 +50,7 @@ interface AssistantBuilderProps {
     keywords: string[];
     fileIds: string[];
     promptType: keyof typeof promptTemplates;
+    keepUpdated: boolean;
   }) => Promise<void>;
   mode: 'create' | 'edit';
   assistantId?: string;
@@ -62,7 +63,7 @@ export function AssistantBuilder({
   mode = 'create',
   assistantId
 }: AssistantBuilderProps) {
-  const { user, isPremium } = useAuth();
+  const { isPremium } = useAuth();
   const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
   
   const [assistantName, setAssistantName] = useState("");
@@ -153,7 +154,7 @@ export function AssistantBuilder({
     }
 
     loadAssistant();
-  }, [mode, assistantId]);
+  }, [mode, assistantId, supabase]);
 
   const handleKeywordSubmit = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && keywordInput.trim()) {
@@ -207,7 +208,7 @@ export function AssistantBuilder({
       
       // Group selected topics by their main topic
       selectedTopics.forEach(subtopic => {
-        const mainTopic = Object.entries(TOPIC_DEFINITIONS).find(([_, subtopics]) => 
+        const mainTopic = Object.entries(TOPIC_DEFINITIONS).find(([, subtopics]) => 
           subtopics.includes(subtopic as never)
         )?.[0];
         
@@ -346,7 +347,6 @@ export function AssistantBuilder({
         date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
         date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
         days_of_week: selectedDays,
-        keepUpdated
       };
 
       const queryBuilder = new AssistantQueryBuilder(supabase);
@@ -577,7 +577,7 @@ export function AssistantBuilder({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={keepUpdated}
-                    onCheckedChange={setKeepUpdated}
+                    onCheckedChange={(checked) => setKeepUpdated(checked === true)}
                     id="keep-updated"
                   />
                   <Label htmlFor="keep-updated" className="text-sm leading-none cursor-pointer">

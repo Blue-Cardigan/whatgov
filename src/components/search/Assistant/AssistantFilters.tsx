@@ -129,6 +129,12 @@ export function AssistantFilters({
 }: AssistantFiltersProps) {
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
+  // Set default date range if not provided
+  const defaultDateRange = dateRange || {
+    from: new Date('2024-07-04'),
+    to: new Date(),
+  };
+
   // Local state for search inputs
   const [membersSearch, setMembersSearch] = useState("");
 
@@ -494,7 +500,7 @@ export function AssistantFilters({
           <div className="space-y-4">
             <Label>Date Range</Label>
             <DatePickerWithRange
-              date={dateRange}
+              date={defaultDateRange}
               onDateChange={onDateRangeChange}
             />
           </div>

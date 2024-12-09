@@ -151,7 +151,10 @@ export function Search() {
             payload: {
               query: fileQuery,
               streamingText,
-              citations
+              citations: citations.map(citation => ({
+                index: citation.indexOf(fileQuery),
+                url: citation
+              }))
             }
           });
         }
@@ -303,9 +306,7 @@ export function Search() {
                             <LightbulbIcon className="h-4 w-4" />
                           </Button>
                         </UpgradePopover>
-                        <span>
-                          {getRemainingAISearches()} searches remaining {isEngagedCitizen ? 'this week' : 'this month'}
-                        </span>
+                        <span>{getSearchLimitMessage()}</span>
                       </>
                     )}
                   </div>
@@ -350,7 +351,7 @@ export function Search() {
                   <div className="p-4">
                     <StreamedResponse 
                       streamingText={state.aiSearch.streamingText}
-                      citations={state.aiSearch.citations}
+                      citations={state.aiSearch.citations.map(citation => citation.url)}
                       isLoading={state.aiSearch.isLoading}
                       query={state.aiSearch.query}
                     />

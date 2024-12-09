@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Select,
   SelectContent,
@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, UserCog, AlertCircle, PencilIcon } from 'lucide-react';
+import { Loader2, UserCog, PencilIcon } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -39,7 +39,7 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
   const supabase = useSupabase();
   const { user, isPremium } = useAuth();
 
-  const fetchAssistants = async () => {
+  const fetchAssistants = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -57,18 +57,11 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, supabase]);
 
   useEffect(() => {
     fetchAssistants();
-  }, [user, supabase]);
-
-  const handleEditClick = async (e: React.MouseEvent, assistantId: string) => {
-    e.preventDefault(); // Prevent select from opening/closing
-    e.stopPropagation(); // Prevent event bubbling
-    setEditingAssistant(assistantId);
-    setIsEditDialogOpen(true);
-  };
+  }, [user, supabase, fetchAssistants]);
 
   const handleEditClose = async (shouldRefresh: boolean = true) => {
     setIsEditDialogOpen(false);

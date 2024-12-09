@@ -279,7 +279,7 @@ const DebateAnalysisDashboard = () => {
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip 
-                    formatter={(value, name) => [`${value} debates`, 'Frequency']}
+                    formatter={(value) => [`${value} debates`, 'Frequency']}
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '6px' }}
                   />
                   <Bar dataKey="frequency" fill="#8884d8" radius={[4, 4, 0, 0]} />
@@ -367,7 +367,7 @@ const DebateAnalysisDashboard = () => {
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip 
-                    formatter={(value, name) => [`${value} appearances`, 'Frequency']}
+                    formatter={(value) => [`${value} appearances`, 'Frequency']}
                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '6px' }}
                   />
                   <Bar dataKey="frequency" fill="#8884d8" radius={[4, 4, 0, 0]} />

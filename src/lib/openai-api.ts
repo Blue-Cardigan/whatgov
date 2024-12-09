@@ -45,6 +45,10 @@ export function processCitations(text: string, citations: string[]): {
   citationLinks: { index: number; url: string }[];
 } {
   const citationLinks = citations.map((citation, index) => {
+    if (typeof citation !== 'string') {
+      console.error(`Citation at index ${index} is not a string:`, citation);
+      return { index, url: '' };
+    }
     const match = citation.match(/\[\d+\]\s+(.+?)\.txt$/);
     if (!match) return { index, url: '' };
     const filename = match[1];
@@ -72,11 +76,17 @@ export const constructHansardUrl = (debateExtId: string, title: string, date: st
   return `https://hansard.parliament.uk/House/${formattedDate}/debates/${debateExtId}/${formattedTitle}`;
 };
 
-// Add new type for vector store file operations
+// Add specific type for vector store data
+type VectorStoreData = {
+  processedFiles?: string[];
+  status?: string;
+  message?: string;
+};
+
 type VectorStoreResponse = {
   success: boolean;
   error?: string;
-  data?: any;
+  data?: VectorStoreData;
 };
 
 // Add files to vector store

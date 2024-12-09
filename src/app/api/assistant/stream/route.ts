@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // If no assistantId is provided, use the default assistant
-    const assistantIDToUse = assistantId || process.env.OPENAI_ASSISTANT_ID!;
+    const assistantIDToUse = assistantId || process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
     console.log('assistantIDToUse', assistantIDToUse);
 
     // If using a custom assistant, verify it exists and belongs to the user
@@ -46,14 +46,17 @@ export async function POST(request: Request) {
             if (part.event === "thread.message.delta") {
             const content = part.data.delta.content;
             if (content && content.length > 0) {
-                const textContent = content[0].text?.value;
-                if (textContent) {
-                controller.enqueue(encoder.encode(
-                    JSON.stringify({ 
-                    type: 'text', 
-                    content: textContent 
-                    }) + '\n'
-                ));
+                const firstContent = content[0];
+                if ('text' in firstContent) {
+                    const textContent = firstContent.text?.value;
+                    if (textContent) {
+                        controller.enqueue(encoder.encode(
+                            JSON.stringify({ 
+                                type: 'text', 
+                                content: textContent 
+                            }) + '\n'
+                        ));
+                    }
                 }
             }
             } else if (part.event === "thread.message.completed") {
@@ -67,10 +70,12 @@ export async function POST(request: Request) {
                 const annotation = annotations[i];
                 processedText = processedText.replace(annotation.text, `[${i + 1}]`);
                 
-                const { file_citation } = annotation;
-                if (file_citation) {
-                    const citedFile = await openai.files.retrieve(file_citation.file_id);
-                    citations.push(`[${i + 1}] ${citedFile.filename}`);
+                if ('file_citation' in annotation) {
+                    const { file_citation } = annotation;
+                    if (file_citation) {
+                        const citedFile = await openai.files.retrieve(file_citation.file_id);
+                        citations.push(`[${i + 1}] ${citedFile.filename}`);
+                    }
                 }
                 }
 

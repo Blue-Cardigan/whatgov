@@ -14,11 +14,11 @@ const AI_LIMITS = {
     SEARCHES: 5,        // 5 per month
     ASSISTANTS: 0       // 0 total
   },
-  ENGAGED: {
+  ENGAGED_CITIZEN: {
     SEARCHES: 5,        // 5 per week
     ASSISTANTS: 1       // 1 total
   },
-  PRO: {
+  PROFESSIONAL: {
     SEARCHES: Infinity, // Unlimited
     ASSISTANTS: Infinity // Unlimited
   }
@@ -203,10 +203,10 @@ export function useEngagement() {
   // Simplified remaining searches check
   const getRemainingAISearches = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PRO.SEARCHES;
+    if (isPremium) return AI_LIMITS.PROFESSIONAL.SEARCHES;
     
     const limit = isEngagedCitizen ? 
-      AI_LIMITS.ENGAGED.SEARCHES : 
+      AI_LIMITS.ENGAGED_CITIZEN.SEARCHES : 
       AI_LIMITS.FREE.SEARCHES;
 
     // If we need to reset, return full limit
@@ -240,10 +240,10 @@ export function useEngagement() {
   // Add function to get remaining assistant creations
   const getRemainingAssistants = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PRO.ASSISTANTS;
+    if (isPremium) return AI_LIMITS.PROFESSIONAL.ASSISTANTS;
     
     const limit = isEngagedCitizen ? 
-      AI_LIMITS.ENGAGED.ASSISTANTS : 
+      AI_LIMITS.ENGAGED_CITIZEN.ASSISTANTS : 
       AI_LIMITS.FREE.ASSISTANTS;
     
     return Math.max(0, limit - stats.assistantsCreated);

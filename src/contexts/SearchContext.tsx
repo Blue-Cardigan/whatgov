@@ -3,6 +3,12 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
 
+// Add new type for citations
+type Citation = {
+  index: number;
+  url: string;
+};
+
 interface SearchState {
   results: SearchResponse | null;
   searchParams: SearchParams;
@@ -11,7 +17,7 @@ interface SearchState {
   aiSearch: {
     query: string;
     streamingText: string;
-    citations: any[];
+    citations: Citation[];
     isLoading: boolean;
   };
 }
@@ -23,7 +29,7 @@ type SearchAction =
   | { type: 'APPEND_RESULTS'; payload: SearchResponse }
   | { type: 'CLEAR_RESULTS' }
   | { type: 'SET_AI_LOADING'; payload: boolean }
-  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: any[] } }
+  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[] } }
   | { type: 'CLEAR_AI_SEARCH' };
 
 const initialState: SearchState = {

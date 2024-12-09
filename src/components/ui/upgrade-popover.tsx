@@ -13,7 +13,7 @@ interface UpgradePopoverProps {
   trigger?: 'hover' | 'click';
 }
 
-export function UpgradePopover({ children, feature, trigger = 'hover' }: UpgradePopoverProps) {
+export function UpgradePopover({ children, feature }: UpgradePopoverProps) {
   const { isEngagedCitizen } = useAuth();
 
   const getContent = () => {

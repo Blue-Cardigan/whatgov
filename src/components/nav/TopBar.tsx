@@ -5,7 +5,6 @@ import type { ArrayFilterItem, BooleanFilterItem, FeedFilters } from "@/types";
 import { DebateFilters } from "../debates/DebateFilters";
 import { 
   Calendar, 
-  MapPin, 
   Tags, 
   LayoutList,
   UserIcon,
@@ -20,9 +19,6 @@ interface TopBarProps {
   onChange: (filters: FeedFilters) => void;
   className?: string;
 }
-
-// Remove location from ArrayFilterId
-type ArrayFilterId = 'type' | 'days' | 'topics';
 
 // Update filterItems array to remove location and reorder type
 export const filterItems = [

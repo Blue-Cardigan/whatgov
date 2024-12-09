@@ -81,6 +81,14 @@ export async function middleware(req: NextRequest) {
   try {
     const pathname = req.nextUrl.pathname;
 
+    // Check for first-time visitor
+    const isFirstVisit = !req.cookies.get('visited');
+    if (isFirstVisit) {
+      const response = NextResponse.redirect(new URL('/intro', req.url));
+      response.cookies.set('visited', 'true', { path: '/', maxAge: 60 * 60 * 24 * 365 }); // Set cookie for 1 year
+      return response;
+    }
+
     // API routes
     if (pathname.startsWith('/api/')) {
       const { user, response } = await handleApiAuth(req, NextResponse.next());

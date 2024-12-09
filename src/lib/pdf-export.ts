@@ -122,7 +122,7 @@ export async function exportToPDF({
       const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
       if (!match) continue;
       
-      const [_, index, extId] = match;
+      const [index, extId] = match;
       const debate = debateMap.get(extId);
       
       if (debate) {
