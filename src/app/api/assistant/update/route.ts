@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { AssistantQueryBuilder } from '@/lib/supabase/assistant';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { promptTemplates } from '@/lib/assistant-prompts';
 
 const openai = new OpenAI();
 
@@ -15,7 +16,8 @@ export async function POST(request: Request) {
       promptType,
       filters,
       keywords,
-      fileIds
+      fileIds,
+      keepUpdated
     } = await request.json();
 
     // Get the existing assistant
@@ -70,13 +72,18 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update the assistant in OpenAI
+    // Get the full prompt template
+    const promptTemplate = promptTemplates[promptType as keyof typeof promptTemplates]
+      .replace('${keywords.length > 0 ? `\\nPrioritize analysis of these key areas: ${keywords.join(\', \')}` : \'\'}', 
+        keywords.length > 0 ? `\nPrioritize analysis of these key areas: ${keywords.join(', ')}` : '');
+
+    // Update the assistant in OpenAI with the full prompt
     await openai.beta.assistants.update(
       existingAssistant.openai_assistant_id,
       {
         name,
         description,
-        instructions: promptType,
+        instructions: promptTemplate,
       }
     );
 
@@ -88,7 +95,8 @@ export async function POST(request: Request) {
         prompt_type: promptType,
         keywords,
         filters,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        keep_updated: keepUpdated
       }),
       queryBuilder.updateAssistantFiles(assistantId, fileIds)
     ]);

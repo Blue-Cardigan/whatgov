@@ -37,6 +37,8 @@ import { promptTemplates } from "@/lib/assistant-prompts";
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
 import { useEngagement } from "@/hooks/useEngagement";
 import { useAuth } from "@/contexts/AuthContext";
+import { TOPIC_DEFINITIONS } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AssistantBuilderProps {
   isOpen: boolean;
@@ -84,6 +86,7 @@ export function AssistantBuilder({
   const [selectedPromptType, setSelectedPromptType] = useState<keyof typeof promptTemplates>('default');
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
+  const [keepUpdated, setKeepUpdated] = useState(true);
 
   useEffect(() => {
     if (isOpen && !isPremium) {
@@ -174,7 +177,7 @@ export function AssistantBuilder({
       parts.push(`from the House of ${selectedHouse}`);
     }
 
-    // Keywords - Keep this in the description even though it's not used for filtering
+    // Keywords
     if (keywords.length > 0) {
       const keywordText = keywords.length === 1
         ? `with special attention to the keyword "${keywords[0]}"`
@@ -198,12 +201,33 @@ export function AssistantBuilder({
       parts.push(partyText);
     }
 
-    // Topics
+    // Topics - Group by main topics and count subtopics
     if (selectedTopics.length > 0) {
-      const topicText = topicsFilterType === 'exclusive'
-        ? `covering all of these topics: ${selectedTopics.join(', ')}`
-        : `covering any of these topics: ${selectedTopics.join(', ')}`;
-      parts.push(topicText);
+      const topicGroups = new Map();
+      
+      // Group selected topics by their main topic
+      selectedTopics.forEach(subtopic => {
+        const mainTopic = Object.entries(TOPIC_DEFINITIONS).find(([_, subtopics]) => 
+          subtopics.includes(subtopic as never)
+        )?.[0];
+        
+        if (mainTopic) {
+          if (!topicGroups.has(mainTopic)) {
+            topicGroups.set(mainTopic, 0);
+          }
+          topicGroups.set(mainTopic, topicGroups.get(mainTopic) + 1);
+        }
+      });
+
+      const topicText = Array.from(topicGroups.entries())
+        .map(([topic, count]) => `${topic} (${count} subtopics)`)
+        .join(', ');
+
+      parts.push(
+        topicsFilterType === 'exclusive'
+          ? `covering all selected subtopics in: ${topicText}`
+          : `covering any selected subtopics in: ${topicText}`
+      );
     }
 
     // Debate Types
@@ -321,7 +345,8 @@ export function AssistantBuilder({
         debate_types_filter_type: debateTypesFilterType,
         date_from: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : null,
         date_to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : null,
-        days_of_week: selectedDays
+        days_of_week: selectedDays,
+        keepUpdated
       };
 
       const queryBuilder = new AssistantQueryBuilder(supabase);
@@ -341,7 +366,8 @@ export function AssistantBuilder({
             promptType: selectedPromptType,
             filters,
             keywords,
-            fileIds: fileIds.map((row: { file_id: string }) => row.file_id)
+            fileIds: fileIds.map((row: { file_id: string }) => row.file_id),
+            keepUpdated
           }),
         });
 
@@ -356,7 +382,8 @@ export function AssistantBuilder({
           filters,
           keywords,
           fileIds: fileIds.map((row: { file_id: string }) => row.file_id),
-          promptType: selectedPromptType
+          promptType: selectedPromptType,
+          keepUpdated
         });
       }
 
@@ -366,7 +393,8 @@ export function AssistantBuilder({
         filters,
         keywords,
         fileIds: [],
-        promptType: selectedPromptType
+        promptType: selectedPromptType,
+        keepUpdated
       });
 
       setIsOpen(false);
@@ -542,6 +570,21 @@ export function AssistantBuilder({
                 onDaySelect={(day) => setSelectedDays([...selectedDays, day])}
                 onDayRemove={(day) => setSelectedDays(selectedDays.filter(d => d !== day))}
               />
+
+              {/* New Checkbox for Keep Updated Option */}
+              <div className="space-y-2">
+                <Label>Keep Assistant Updated</Label>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={keepUpdated}
+                    onCheckedChange={setKeepUpdated}
+                    id="keep-updated"
+                  />
+                  <Label htmlFor="keep-updated" className="text-sm leading-none cursor-pointer">
+                    Keep Assistant updated with new debates
+                  </Label>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsOpen(false)}>

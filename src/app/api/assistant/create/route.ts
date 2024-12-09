@@ -38,13 +38,14 @@ export async function POST(request: Request) {
     // Get user's subscription status
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('tier')
+      .select('plan')
       .eq('user_id', user.id)
       .single();
 
-    const tier = subscription?.tier || 'FREE';
-    const limit = tier === 'PRO' ? Infinity : 
-                 tier === 'ENGAGED' ? 5 : 2;
+    const plan = subscription?.plan || 'FREE';
+    console.log('plan', plan);
+    const limit = plan === 'PROFESSIONAL' ? Infinity : 
+                 plan === 'ENGAGED_CITIZEN' ? 5 : 2;
 
     if (count && count >= limit) {
       return NextResponse.json(
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, description, filters, keywords, userId, fileIds, promptType } = await request.json();
+    const { name, description, filters, keywords, userId, fileIds, promptType, keepUpdated } = await request.json();
 
     // Verify the requesting user matches the authenticated user
     if (userId !== user.id) {
@@ -81,7 +82,8 @@ export async function POST(request: Request) {
         filters,
         keywords,
         prompt_type: promptType,
-        status: 'pending'
+        status: 'pending',
+        keep_updated: keepUpdated
       })
       .select()
       .single();
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
         name,
         description: description || undefined,
         instructions: promptTemplate,
-        model: "gpt-4",
+        model: "gpt-4o",
         tools: [{ type: "file_search" }],
         tool_resources: {
           "file_search": {

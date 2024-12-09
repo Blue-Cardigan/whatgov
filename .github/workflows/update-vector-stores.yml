@@ -1,0 +1,29 @@
+name: Update Vector Stores
+
+on:
+  schedule:
+    # Run daily at 7am UTC
+    - cron: '0 7 * * *'
+
+jobs:
+  update-vector-stores:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16' # Specify the Node.js version you are using
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run update script
+      run: node src/workers/update_vector_stores.ts
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} 

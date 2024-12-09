@@ -7,9 +7,9 @@ create or replace function get_matching_debates(
   p_subtopics_filter_type text,
   p_house text,
   p_debate_types text[],
-  p_date_from date,
-  p_date_to date,
-  p_days_of_week text[]
+  p_days_of_week text[],
+  p_date_from date default (current_date - interval '1 day'),
+  p_date_to date default (current_date - interval '1 day')
 ) returns table (file_id text) as $$
 declare
   query text;

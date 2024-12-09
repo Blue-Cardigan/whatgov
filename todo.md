@@ -13,10 +13,11 @@ Professionals
 [/] More detailed summaries for longer debates 
 [/] Limit assistant usage by engagement
 [/] Assistant filter editing
-[ ] Export saved searches to file
+[/] Export saved searches to file
 [ ] Implement 'Keep this assistant updated with new debates' 
       - Check new debates and add to matching assistants
       - Remove old debates at end of week
+[ ] Delete assistants
 [ ] Save query-assistant pairs to rerun
 
 [ ] Save hansard searches

@@ -268,6 +268,8 @@ export class AssistantQueryBuilder {
       date_to: string | null;
       days_of_week: string[];
     };
+    updated_at?: string;
+    keep_updated?: boolean;
   }): Promise<boolean> {
     const { error } = await this.supabase
       .from('assistants')
@@ -277,7 +279,8 @@ export class AssistantQueryBuilder {
         prompt_type: data.prompt_type,
         keywords: data.keywords,
         filters: data.filters,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        keep_updated: data.keep_updated
       })
       .eq('id', assistantId);
 
