@@ -20,18 +20,24 @@ export function PostActions({
     <div className="flex items-center gap-2">
       <Link 
         href={`/debate/${debate.ext_id.toUpperCase()}`}
-        className="group"
+        className="group flex items-center gap-2"
       >
         <CardTitle className="text-lg sm:text-xl font-bold group-hover:text-primary transition-colors flex items-center gap-1.5 sm:gap-2">
           {debate.ai_title}
           <ArrowUpRight className="min-h-[14px] min-w-[14px] h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-50 -translate-y-0.5 translate-x-0.5 transition-transform group-hover:translate-y-0 group-hover:translate-x-0" />
         </CardTitle>
+        {debate.ai_summary && isEngagedCitizen && (
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              onShare();
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <LightbulbIcon className="h-4 w-4 text-primary hover:text-primary/80 transition-colors" />
+          </button>
+        )}
       </Link>
-      {debate.ai_summary && isEngagedCitizen && (
-        <button onClick={onShare}>
-          <LightbulbIcon className="h-4 w-4 text-primary hover:text-primary/80 transition-colors" />
-        </button>
-      )}
     </div>
   );
 }

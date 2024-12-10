@@ -12,6 +12,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useState } from 'react';
+import { CitationsList } from '@/components/ui/citation';
+import { InlineCitation } from '@/components/ui/inline-citation';
 
 interface StreamedResponseProps {
   streamingText: string;
@@ -39,6 +41,104 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     }
   };
 
+  const MarkdownWithCitations = ({ text }: { text: string }) => {
+    const renderWithCitations = (content: string) => {
+      const parts = content.split(/(\[\d+\])/);
+      return parts.map((part, i) => {
+        const citationMatch = part.match(/\[(\d+)\]/);
+        if (citationMatch) {
+          const citationIndex = parseInt(citationMatch[1]) - 1;
+          const citation = citations[citationIndex];
+          if (citation) {
+            return (
+              <InlineCitation 
+                key={`citation-${i}`}
+                index={citationIndex}
+                citation={citation}
+              />
+            );
+          }
+        }
+        return part;
+      });
+    };
+
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              className="text-primary hover:text-primary-foreground hover:bg-primary transition-colors no-underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          ),
+          h1: ({ children }) => (
+            <h1 className="text-2xl font-bold mt-6 mb-4 text-foreground">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-xl font-bold mt-5 mb-3 text-foreground">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-lg font-bold mt-4 mb-2 text-foreground">
+              {children}
+            </h3>
+          ),
+          p: ({ children }) => (
+            <p className="mb-4 leading-relaxed text-foreground">
+              {typeof children === 'string' 
+                ? renderWithCitations(children)
+                : children}
+            </p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc pl-6 mb-4 text-foreground">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-6 mb-4 text-foreground">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="mb-1 text-foreground">
+              {typeof children === 'string'
+                ? renderWithCitations(children)
+                : children}
+            </li>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-muted pl-4 italic my-4 text-muted-foreground">
+              {typeof children === 'string'
+                ? renderWithCitations(children)
+                : children}
+            </blockquote>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-bold text-foreground">
+              {children}
+            </strong>
+          ),
+          em: ({ children }) => (
+            <em className="italic text-foreground">
+              {children}
+            </em>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
+  };
+
   if (isLoading && !streamingText) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -58,20 +158,6 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
       </div>
     );
   }
-
-  // Process the text to wrap citations in markdown links
-  const processedText = (streamingText || '').split(/(\[\d+\])/).map((part) => {
-    const citationMatch = part.match(/\[(\d+)\]/);
-    if (citationMatch) {
-      const citationIndex = parseInt(citationMatch[1]) - 1;
-      const citation = citations[citationIndex];
-      if (citation) {
-        const { url } = processCitations('', [citation]).citationLinks[0];
-        return `[${part}](${url})`;
-      }
-    }
-    return part;
-  }).join('');
 
   return (
     <div className="prose dark:prose-invert prose-slate max-w-none">
@@ -112,93 +198,9 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
         </div>
       </div>
 
-      <ReactMarkdown
-        components={{
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              className="text-primary hover:text-primary-foreground hover:bg-primary transition-colors no-underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {children}
-            </a>
-          ),
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold mt-6 mb-4 text-foreground">
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-bold mt-5 mb-3 text-foreground">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-bold mt-4 mb-2 text-foreground">
-              {children}
-            </h3>
-          ),
-          p: ({ children }) => (
-            <p className="mb-4 leading-relaxed text-foreground">
-              {children}
-            </p>
-          ),
-          ul: ({ children }) => (
-            <ul className="list-disc pl-6 mb-4 text-foreground">
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal pl-6 mb-4 text-foreground">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li className="mb-1 text-foreground">
-              {children}
-            </li>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-muted pl-4 italic my-4 text-muted-foreground">
-              {children}
-            </blockquote>
-          ),
-          strong: ({ children }) => (
-            <strong className="font-bold text-foreground">
-              {children}
-            </strong>
-          ),
-          em: ({ children }) => (
-            <em className="italic text-foreground">
-              {children}
-            </em>
-          ),
-        }}
-      >
-        {processedText}
-      </ReactMarkdown>
+      <MarkdownWithCitations text={streamingText} />
 
-      {citations.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-border space-y-4">
-          <h3 className="text-lg font-semibold mb-3 text-foreground">Sources:</h3>
-          <div className="space-y-3">
-            {citations.map((citation, index) => {
-              const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
-              if (!match) return null;
-              const extId = match[2];
-              
-              return (
-                <DebateHeader 
-                  key={index}
-                  extId={extId}
-                  className="border border-border"
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <CitationsList citations={citations} />
     </div>
   );
 } 

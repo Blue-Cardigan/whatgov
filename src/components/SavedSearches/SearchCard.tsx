@@ -26,6 +26,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { CitationsList } from '@/components/ui/citation';
+import { InlineCitation } from '@/components/ui/inline-citation';
 
 interface SearchCardProps {
   search: SavedSearch;
@@ -106,6 +108,65 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
     );
   };
 
+  // Replace processText with MarkdownWithCitations component
+  const MarkdownWithCitations = ({ text }: { text: string }) => {
+    const renderWithCitations = (content: string) => {
+      // Match standalone citation numbers: [1], [2], etc.
+      const parts = content.split(/(\[\d+\])/);
+      return parts.map((part, i) => {
+        const citationMatch = part.match(/\[(\d+)\]/);
+        if (citationMatch && search.citations) {
+          const citationIndex = parseInt(citationMatch[1]) - 1; // Convert to 0-based index
+          const citation = search.citations[citationIndex];
+          if (citation) {
+            // Extract the citation number from the citation string to verify match
+            const citationNumberMatch = citation.match(/^\[(\d+)\]/);
+            if (citationNumberMatch && parseInt(citationNumberMatch[1]) === citationIndex + 1) {
+              return (
+                <InlineCitation 
+                  key={`citation-${i}`}
+                  index={citationIndex}
+                  citation={citation}
+                />
+              );
+            }
+          }
+        }
+        return part;
+      });
+    };
+
+    return (
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => (
+            <p className="mb-4 leading-relaxed text-foreground">
+              {typeof children === 'string' 
+                ? renderWithCitations(children)
+                : children}
+            </p>
+          ),
+          li: ({ children }) => (
+            <li className="mb-1 text-foreground">
+              {typeof children === 'string'
+                ? renderWithCitations(children)
+                : children}
+            </li>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-muted pl-4 italic my-4 text-muted-foreground">
+              {typeof children === 'string'
+                ? renderWithCitations(children)
+                : children}
+            </blockquote>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -179,14 +240,12 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
       <CardContent>
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           {search.search_type === 'ai' ? (
-            // AI Search Content
             <div className="prose dark:prose-invert prose-sm max-w-none mb-4">
-              <ReactMarkdown>
-                {isOpen ? search.response : search.response.slice(0, 200) + '...'}
-              </ReactMarkdown>
+              <MarkdownWithCitations 
+                text={isOpen ? search.response : search.response.slice(0, 200) + '...'}
+              />
             </div>
           ) : (
-            // Hansard Search Content
             renderHansardMetrics()
           )}
 
@@ -210,24 +269,7 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
 
           <CollapsibleContent>
             {search.search_type === 'ai' && search.citations.length > 0 && (
-              <div className="mt-4 pt-4 border-t space-y-4">
-                <h3 className="text-sm font-semibold">Sources:</h3>
-                <div className="space-y-3">
-                  {search.citations.map((citation, index) => {
-                    const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
-                    if (!match) return null;
-                    const extId = match[2];
-                    
-                    return (
-                      <DebateHeader 
-                        key={index}
-                        extId={extId}
-                        className="border rounded-md"
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+              <CitationsList citations={search.citations} />
             )}
           </CollapsibleContent>
         </Collapsible>
