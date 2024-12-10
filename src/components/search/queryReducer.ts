@@ -17,6 +17,14 @@ interface QueryState {
   focusedIndex: number | null;
 }
 
+export interface SavedQueryState {
+  parts: QueryPart[];
+  startDate?: string;
+  endDate?: string;
+  house?: string;
+  enableAI?: boolean;
+}
+
 const getMinLength = (type: QueryPart['type']): number => {
   return {
     spokenby: 2,

@@ -44,7 +44,7 @@ export function QueryBuilder({
   mode
 }: QueryBuilderProps) {
   const { isEngagedCitizen, user } = useAuth();
-  const { getRemainingAISearches } = useEngagement();
+  const { getRemainingHansardAISearches } = useEngagement();
   const isFirstRender = useRef(true);
   const previousSearchTerm = useRef(searchParams.searchTerm);
   const router = useRouter();
@@ -413,10 +413,10 @@ export function QueryBuilder({
                 {user ? (
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-muted-foreground">
-                      {getRemainingAISearches() === Infinity ? (
+                      {getRemainingHansardAISearches() === Infinity ? (
                         "Unlimited searches"
                       ) : (
-                        `${getRemainingAISearches()} searches remaining`
+                        `${getRemainingHansardAISearches()} searches remaining`
                       )}
                     </span>
                     <Popover>
@@ -425,13 +425,13 @@ export function QueryBuilder({
                           variant={enableAI ? "default" : "outline"}
                           size="sm"
                           onClick={() => {
-                            if (getRemainingAISearches() > 0) {
+                            if (getRemainingHansardAISearches() > 0) {
                               setEnableAI(!enableAI);
                             }
                           }}
                           className={cn(
                             "gap-2",
-                            enableAI && getRemainingAISearches() <= 0 && "opacity-50 cursor-not-allowed"
+                            enableAI && getRemainingHansardAISearches() <= 0 && "opacity-50 cursor-not-allowed"
                           )}
                         >
                           <LightbulbIcon className="h-4 w-4" />
@@ -482,7 +482,7 @@ export function QueryBuilder({
   );
 }
 
-function parseInitialValue(value: string): QueryPart[] {
+export function parseInitialValue(value: string): QueryPart[] {
   if (!value) return [];
 
   const matches = value.match(/(?:[^\s"]+|"[^"]*")+/g) || [];

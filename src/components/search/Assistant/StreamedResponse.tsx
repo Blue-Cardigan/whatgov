@@ -80,9 +80,15 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
           {streamingText && !isLoading && (
             <>
               <SaveSearchButton
-                query={query}
-                response={streamingText}
-                citations={citations}
+                aiSearch={{
+                  query,
+                  streamingText,
+                  citations: citations.map((url, index) => ({
+                    index,
+                    url
+                  }))
+                }}
+                searchType="ai"
               />
               <TooltipProvider>
                 <Tooltip>

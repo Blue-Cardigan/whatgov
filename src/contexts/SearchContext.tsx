@@ -20,6 +20,7 @@ interface SearchState {
     citations: Citation[];
     isLoading: boolean;
   };
+  searchType?: 'ai' | 'hansard';
 }
 
 type SearchAction =
@@ -30,7 +31,8 @@ type SearchAction =
   | { type: 'CLEAR_RESULTS' }
   | { type: 'SET_AI_LOADING'; payload: boolean }
   | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[] } }
-  | { type: 'CLEAR_AI_SEARCH' };
+  | { type: 'CLEAR_AI_SEARCH' }
+  | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' };
 
 const initialState: SearchState = {
   results: null,
@@ -46,7 +48,8 @@ const initialState: SearchState = {
     streamingText: '',
     citations: [],
     isLoading: false
-  }
+  },
+  searchType: undefined
 };
 
 const SearchContext = createContext<{
@@ -88,7 +91,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
         streamingText: state.aiSearch.streamingText,
         citations: state.aiSearch.citations,
         isLoading: state.aiSearch.isLoading
-      }
+      },
+      searchType: state.searchType
     }));
   }, [
     state.results, 
@@ -96,7 +100,8 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     state.aiSearch.query,
     state.aiSearch.streamingText,
     state.aiSearch.citations,
-    state.aiSearch.isLoading
+    state.aiSearch.isLoading,
+    state.searchType
   ]);
 
   return (
@@ -167,6 +172,11 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         aiSearch: initialState.aiSearch
+      };
+    case 'SET_SEARCH_TYPE':
+      return {
+        ...state,
+        searchType: action.payload
       };
     default:
       return state;

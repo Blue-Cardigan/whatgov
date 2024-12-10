@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { SearchResults } from "./SearchResults";
-import { QueryBuilder } from './QueryBuilder';
+import { QueryBuilder, parseInitialValue } from './QueryBuilder';
 import { HansardAPI } from '@/lib/search-api';
 import type { SearchParams } from '@/types/search';
 import type { SearchFilterParams } from '@/types/assistant';
@@ -19,16 +19,21 @@ import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
 import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
+import { SaveSearchButton } from './Assistant/SaveSearchButton';
 
 const PAGE_SIZE = 10;
 
-export function Search() {
+interface SearchProps {
+  initialTab?: 'ai' | 'hansard';
+}
+
+export function Search({ initialTab }: SearchProps) {
   const { state, dispatch } = useSearch();
   const { user, isEngagedCitizen, isPremium, loading: authLoading } = useAuth();
   const { 
-    recordAISearch, 
-    hasReachedAISearchLimit, 
-    getRemainingAISearches 
+    recordResearchSearch, 
+    hasReachedResearchSearchLimit, 
+    getRemainingResearchSearches 
   } = useEngagement();
   const { toast } = useToast();
   const { 
@@ -36,19 +41,93 @@ export function Search() {
     isLoading: aiLoading
   } = useAssistant();
 
-  // Set initial tab based on user's access level and search limit
-  const [activeTab, setActiveTab] = useState('ai');
+  // Update the tab handling to accept an initial tab from URL or saved search
+  const [activeTab, setActiveTab] = useState<'ai' | 'hansard'>(
+    initialTab || state.searchType || 'ai'
+  );
 
-  // Update active tab once auth state is confirmed
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        setActiveTab('hansard');
+    if (initialTab) {
+      setActiveTab(initialTab);
+      dispatch({ type: 'SET_SEARCH_TYPE', payload: initialTab });
+    }
+  }, [initialTab, dispatch]);
+
+  // Create a handler function for tab changes
+  const handleTabChange = (value: string) => {
+    if (value === 'ai' || value === 'hansard') {
+      setActiveTab(value);
+      dispatch({ type: 'SET_SEARCH_TYPE', payload: value });
+      
+      // Clear the other search type's state when switching tabs
+      if (value === 'ai') {
+        dispatch({ type: 'SET_PARAMS', payload: { 
+          searchTerm: '',
+          skip: 0,
+          take: PAGE_SIZE,
+          orderBy: 'SittingDateDesc'
+        }});
+        dispatch({ 
+          type: 'SET_RESULTS', 
+          payload: {
+            TotalMembers: 0,
+            TotalContributions: 0,
+            TotalWrittenStatements: 0,
+            TotalWrittenAnswers: 0,
+            TotalCorrections: 0,
+            TotalPetitions: 0,
+            TotalDebates: 0,
+            TotalCommittees: 0,
+            TotalDivisions: 0,
+            SearchTerms: [],
+            Members: [],
+            Contributions: [],
+            WrittenStatements: [],
+            WrittenAnswers: [],
+            Corrections: [],
+            Petitions: [],
+            Debates: [],
+            Divisions: [],
+            Committees: [],
+          }
+        });
       } else {
-        setActiveTab('ai');
+        dispatch({ type: 'CLEAR_AI_SEARCH' });
       }
     }
-  }, [user, authLoading]);
+  };
+
+  // Effect to handle loading saved search state
+  useEffect(() => {
+    // Get search state from URL or sessionStorage
+    const savedState = sessionStorage.getItem('searchState');
+    if (savedState) {
+      const parsed = JSON.parse(savedState);
+      
+      // Set the correct tab based on saved search type
+      if (parsed.searchType) {
+        setActiveTab(parsed.searchType);
+        dispatch({ type: 'SET_SEARCH_TYPE', payload: parsed.searchType });
+      }
+      
+      // Load the appropriate state based on search type
+      if (parsed.searchType === 'hansard') {
+        // Load Hansard search state
+        dispatch({ type: 'SET_PARAMS', payload: parsed.searchParams });
+        dispatch({ type: 'SET_RESULTS', payload: parsed.results });
+      } else if (parsed.searchType === 'ai') {
+        // Load AI search state
+        dispatch({ 
+          type: 'SET_AI_SEARCH', 
+          payload: {
+            query: parsed.aiSearch.query,
+            streamingText: parsed.aiSearch.streamingText,
+            citations: parsed.aiSearch.citations
+          }
+        });
+      }
+    }
+  }, [dispatch]);
 
   // Update to use new state structure
   const [fileQuery, setFileQuery] = useState(state.aiSearch.query);
@@ -61,7 +140,7 @@ export function Search() {
   const performSearch = useCallback(async (newParams?: Partial<SearchParams>, loadMore = false) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const enableAI = user?.id && !hasReachedAISearchLimit();
+      const enableAI = user?.id && !hasReachedResearchSearchLimit();
       
       const params: SearchParams = {
         ...state.searchParams,
@@ -74,7 +153,7 @@ export function Search() {
       const response = await HansardAPI.search(params);
       
       if (!loadMore && enableAI && params.enableAI) {
-        await recordAISearch();
+        await recordResearchSearch();
       }
 
       dispatch({ type: 'SET_PARAMS', payload: params });
@@ -92,7 +171,7 @@ export function Search() {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [state.searchParams, user, hasReachedAISearchLimit, recordAISearch, toast, dispatch]);
+  }, [state.searchParams, user, hasReachedResearchSearchLimit, recordResearchSearch, toast, dispatch]);
 
   const handleSearch = useCallback((params: Partial<SearchParams>) => 
     performSearch(params), [performSearch]);
@@ -109,7 +188,7 @@ export function Search() {
       return "Sign in to access the AI ResearchAssistant";
     }
     
-    const remaining = getRemainingAISearches();
+    const remaining = getRemainingResearchSearches();
     
     if (isPremium) {
       return "Unlimited AI Assistant searches available";
@@ -221,16 +300,16 @@ export function Search() {
     <>
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-2 mt-4 mb-4">
-          <TabsTrigger 
-            value="ai" 
-          >
+          <TabsTrigger value="ai">
             AI Research Assistant
           </TabsTrigger>
-          <TabsTrigger value="hansard">Hansard Search</TabsTrigger>
+          <TabsTrigger value="hansard">
+            Hansard Searchπ
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="ai">
@@ -242,7 +321,7 @@ export function Search() {
               </p>
               {/* You can add a sign-in button here if desired */}
             </div>
-          ) : hasReachedAISearchLimit() ? (
+          ) : hasReachedResearchSearchLimit() ? (
             <div className="text-center py-8">
               <h2 className="text-xl font-semibold mb-4">Search limit reached</h2>
               <p className="text-muted-foreground mb-4">
@@ -331,7 +410,7 @@ export function Search() {
                   </div>
 
                   {/* Search button */}
-                  {hasReachedAISearchLimit() ? (
+                  {hasReachedResearchSearchLimit() ? (
                     <UpgradePopover feature="ai-search">
                       <Button>
                         Search
@@ -360,6 +439,15 @@ export function Search() {
               </div>
             </div>
           )}
+          <SaveSearchButton 
+            aiSearch={{
+              query: state.aiSearch.query,
+              streamingText: state.aiSearch.streamingText,
+              citations: state.aiSearch.citations
+            }}
+            searchType="ai"
+            className="mt-4"
+          />
         </TabsContent>
 
         <TabsContent value="hansard">
@@ -383,6 +471,22 @@ export function Search() {
             hasMore={Boolean(state.results?.TotalContributions && 
               state.results.Contributions.length < state.results.TotalContributions)}
             aiContent={state.results?.aiContent}
+          />
+
+          <SaveSearchButton 
+            searchParams={{
+              searchTerm: state.searchParams.searchTerm || '',
+              startDate: state.searchParams.startDate,
+              endDate: state.searchParams.endDate,
+              house: state.searchParams.house || 'Commons',
+              enableAI: state.searchParams.enableAI,
+              skip: state.searchParams.skip,
+              take: state.searchParams.take,
+              orderBy: state.searchParams.orderBy
+            }}
+            results={state.results}
+            searchType="hansard"
+            className="mt-4"
           />
         </TabsContent>
       </Tabs>

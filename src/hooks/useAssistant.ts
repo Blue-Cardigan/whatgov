@@ -7,7 +7,7 @@ export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string>('');
   const [citations, setCitations] = useState<string[]>([]);
-  const { hasReachedAISearchLimit, recordAISearch } = useEngagement();
+  const { hasReachedResearchSearchLimit, recordResearchSearch } = useEngagement();
   const { toast } = useToast();
 
   const performFileSearch = useCallback(async (
@@ -16,7 +16,7 @@ export function useAssistant() {
     onStreamingUpdate?: (text: string, citations: string[]) => void
   ) => {
     // Check limits before proceeding
-    if (hasReachedAISearchLimit()) {
+    if (hasReachedResearchSearchLimit()) {
       toast({
         title: "Search limit reached",
         description: "Please upgrade your account to continue using AI search",
@@ -31,7 +31,7 @@ export function useAssistant() {
 
     try {
       // Record the AI search before making the request
-      await recordAISearch();
+      await recordResearchSearch();
 
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
@@ -110,7 +110,7 @@ export function useAssistant() {
     } finally {
       setIsLoading(false);
     }
-  }, [hasReachedAISearchLimit, recordAISearch, toast]);
+  }, [hasReachedResearchSearchLimit, recordResearchSearch, toast]);
 
   return {
     isLoading,

@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import type { AISearch } from '@/types/supabase';
+import type { SavedSearch } from '@/types/search';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DebateHeader } from '@/components/debates/DebateHeader';
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface SearchCardProps {
-  search: AISearch;
+  search: SavedSearch;
 }
 
 export function SearchCard({ search }: SearchCardProps) {
@@ -25,7 +25,36 @@ export function SearchCard({ search }: SearchCardProps) {
   const router = useRouter();
 
   const handleSearchAgain = () => {
-    router.push(`/search?q=${encodeURIComponent(search.query)}`);
+    const searchState = {
+      searchType: search.search_type,
+      ...(search.search_type === 'ai' 
+        ? {
+            aiSearch: {
+              query: search.query,
+              streamingText: search.response,
+              citations: search.citations.map((citation: string) => ({
+                index: citation.indexOf(search.query),
+                url: citation
+              })),
+              isLoading: false
+            }
+          }
+        : {
+            searchParams: {
+              ...search.query_state,
+              searchTerm: search.query,
+              skip: 0,
+              take: 10,
+              orderBy: 'SittingDateDesc'
+            },
+            results: JSON.parse(search.response),
+            isLoading: false
+          }
+      )
+    };
+    
+    sessionStorage.setItem('searchState', JSON.stringify(searchState));
+    router.push(`/search?tab=${search.search_type}`);
   };
 
   const handleExport = async () => {

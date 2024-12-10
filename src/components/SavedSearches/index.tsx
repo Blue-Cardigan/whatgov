@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useAuth } from '@/contexts/AuthContext';
-import type { AISearch } from '@/types/supabase';
+import type { SavedSearch } from '@/types/search';
 import { SearchCard } from './SearchCard';
 import { Clock } from 'lucide-react';
 
 export function SavedSearches() {
-  const [searches, setSearches] = useState<AISearch[]>([]);
+  const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = useSupabase();
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export function SavedSearches() {
 
       try {
         const { data } = await supabase
-          .from('ai_searches')
+          .from('saved_searches')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });

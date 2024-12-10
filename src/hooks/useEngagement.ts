@@ -11,16 +11,19 @@ const RESET_HOUR = 0; // Reset at midnight UTC
 // AI search limits per tier
 const AI_LIMITS = {
   FREE: {
-    SEARCHES: 5,        // 5 per month
-    ASSISTANTS: 0       // 0 total
+    RESEARCH_SEARCHES: 5,    // 5 research assistant searches per month
+    HANSARD_AI: 5,          // 5 AI-assisted Hansard searches per month
+    ASSISTANTS: 0           // 0 total
   },
   ENGAGED_CITIZEN: {
-    SEARCHES: 5,        // 5 per week
-    ASSISTANTS: 1       // 1 total
+    RESEARCH_SEARCHES: 5,    // 5 research assistant searches per week
+    HANSARD_AI: 5,          // 5 AI-assisted Hansard searches per week
+    ASSISTANTS: 1           // 1 total
   },
   PROFESSIONAL: {
-    SEARCHES: Infinity, // Unlimited
-    ASSISTANTS: Infinity // Unlimited
+    RESEARCH_SEARCHES: Infinity, // Unlimited
+    HANSARD_AI: Infinity,       // Unlimited
+    ASSISTANTS: Infinity        // Unlimited
   }
 } as const;
 
@@ -28,7 +31,8 @@ interface EngagementStats {
   votes: number;
   lastResetDate: string;
   shownPrompts: number[];
-  aiSearches: number;
+  researchSearches: number;      // Renamed from aiSearches
+  hansardAISearches: number;     // New counter for Hansard AI searches
   aiSearchLastReset: string;
   assistantsCreated: number;
 }
@@ -67,7 +71,8 @@ export function useEngagement() {
       votes: 0,
       lastResetDate: new Date().toISOString(),
       shownPrompts: [],
-      aiSearches: 0,
+      researchSearches: 0,
+      hansardAISearches: 0,
       aiSearchLastReset: new Date().toISOString(),
       assistantsCreated: 0,
     };
@@ -166,8 +171,8 @@ export function useEngagement() {
     }
   }, [profile, isEngagedCitizen]);
 
-  // Simplified AI search recording
-  const recordAISearch = useCallback(async () => {
+  // Add separate functions for each type of AI search
+  const recordResearchSearch = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -177,7 +182,7 @@ export function useEngagement() {
       const { data, error } = await supabase
         .from('user_profiles')
         .update({
-          ai_searches_count: shouldResetAISearches() ? 1 : (profile?.ai_searches_count || 0) + 1,
+          research_searches_count: shouldResetAISearches() ? 1 : (profile?.research_searches_count || 0) + 1,
           ai_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_searches_last_reset
         })
         .eq('id', user.id)
@@ -185,12 +190,10 @@ export function useEngagement() {
         .single();
 
       if (error) throw error;
-
-      // Update local profile state through AuthContext
       await updateProfile(data);
 
     } catch (error) {
-      console.error('Failed to record AI search:', error);
+      console.error('Failed to record research search:', error);
       toast({
         title: "Error",
         description: "Failed to record search. Please try again.",
@@ -200,25 +203,70 @@ export function useEngagement() {
     }
   }, [user?.id, profile, shouldResetAISearches, updateProfile, toast]);
 
-  // Simplified remaining searches check
-  const getRemainingAISearches = useCallback((): number => {
+  const recordHansardAISearch = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const now = new Date().toISOString();
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({
+          hansard_ai_searches_count: shouldResetAISearches() ? 1 : (profile?.hansard_ai_searches_count || 0) + 1,
+          ai_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_searches_last_reset
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      await updateProfile(data);
+
+    } catch (error) {
+      console.error('Failed to record Hansard AI search:', error);
+      toast({
+        title: "Error",
+        description: "Failed to record search. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [user?.id, profile, shouldResetAISearches, updateProfile, toast]);
+
+  // Add separate functions to get remaining searches for each type
+  const getRemainingResearchSearches = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PROFESSIONAL.SEARCHES;
+    if (isPremium) return AI_LIMITS.PROFESSIONAL.RESEARCH_SEARCHES;
     
     const limit = isEngagedCitizen ? 
-      AI_LIMITS.ENGAGED_CITIZEN.SEARCHES : 
-      AI_LIMITS.FREE.SEARCHES;
+      AI_LIMITS.ENGAGED_CITIZEN.RESEARCH_SEARCHES : 
+      AI_LIMITS.FREE.RESEARCH_SEARCHES;
 
-    // If we need to reset, return full limit
     if (shouldResetAISearches()) {
       return limit;
     }
 
-    return Math.max(0, limit - (profile?.ai_searches_count || 0));
+    return Math.max(0, limit - (profile?.research_searches_count || 0));
   }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
 
-  // Add function to check if user has reached AI search limit
-  const hasReachedAISearchLimit = useCallback((): boolean => {
+  const getRemainingHansardAISearches = useCallback((): number => {
+    if (!user) return 0;
+    if (isPremium) return AI_LIMITS.PROFESSIONAL.HANSARD_AI;
+    
+    const limit = isEngagedCitizen ? 
+      AI_LIMITS.ENGAGED_CITIZEN.HANSARD_AI : 
+      AI_LIMITS.FREE.HANSARD_AI;
+
+    if (shouldResetAISearches()) {
+      return limit;
+    }
+
+    return Math.max(0, limit - (profile?.hansard_ai_searches_count || 0));
+  }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
+
+  // Add separate functions to check limits for each type
+  const hasReachedResearchSearchLimit = useCallback((): boolean => {
     if (!user) return true;
     if (isPremium) return false;
     
@@ -226,8 +274,19 @@ export function useEngagement() {
       return false;
     }
     
-    return getRemainingAISearches() <= 0;
-  }, [user, isPremium, getRemainingAISearches, shouldResetAISearches]);
+    return getRemainingResearchSearches() <= 0;
+  }, [user, isPremium, getRemainingResearchSearches, shouldResetAISearches]);
+
+  const hasReachedHansardAISearchLimit = useCallback((): boolean => {
+    if (!user) return true;
+    if (isPremium) return false;
+    
+    if (shouldResetAISearches()) {
+      return false;
+    }
+    
+    return getRemainingHansardAISearches() <= 0;
+  }, [user, isPremium, getRemainingHansardAISearches, shouldResetAISearches]);
 
   // Add function to record assistant creation
   const recordAssistantCreation = useCallback(() => {
@@ -281,9 +340,12 @@ export function useEngagement() {
     getRemainingVotes,
     shouldShowVotePrompt,
     hasReachedVoteLimit,
-    recordAISearch,
-    getRemainingAISearches,
-    hasReachedAISearchLimit,
+    recordResearchSearch,
+    recordHansardAISearch,
+    getRemainingResearchSearches,
+    getRemainingHansardAISearches,
+    hasReachedResearchSearchLimit,
+    hasReachedHansardAISearchLimit,
     recordAssistantCreation,
     getRemainingAssistants,
     hasReachedAssistantLimit,

@@ -7,18 +7,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Bookmark, BookmarkCheck, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { SearchResponse, SearchParams } from '@/types/search';
 
 interface SaveSearchButtonProps {
-  query: string;
-  response: string;
-  citations: string[];
+  results?: SearchResponse | null;
+  searchParams?: SearchParams;
+  aiSearch?: {
+    query: string;
+    streamingText: string;
+    citations: Array<{ index: number; url: string }>;
+  };
+  searchType: 'ai' | 'hansard';
   className?: string;
 }
 
 export function SaveSearchButton({ 
-  query, 
-  response, 
-  citations,
+  results,
+  searchParams,
+  aiSearch,
+  searchType,
   className 
 }: SaveSearchButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
@@ -61,12 +68,34 @@ export function SaveSearchButton({
     try {
       setIsSaving(true);
 
-      const { error } = await supabase.from('ai_searches').insert({
+      const saveData = {
         user_id: user.id,
-        query,
-        response,
-        citations,
-      });
+        search_type: searchType,
+        ...(searchType === 'ai' 
+          ? {
+              query: aiSearch?.query || '',
+              response: aiSearch?.streamingText || '',
+              citations: aiSearch?.citations.map(c => c.url) || [],
+              query_state: null
+            }
+          : {
+              query: searchParams?.searchTerm || '',
+              response: JSON.stringify(results || {}),
+              citations: [],
+              query_state: {
+                parts: searchParams?.searchTerm ? [searchParams.searchTerm] : [],
+                startDate: searchParams?.startDate,
+                endDate: searchParams?.endDate,
+                house: searchParams?.house || 'Commons',
+                enableAI: searchParams?.enableAI
+              }
+            }
+        )
+      };
+
+      const { error } = await supabase
+        .from('saved_searches')
+        .insert(saveData);
 
       if (error) throw error;
 

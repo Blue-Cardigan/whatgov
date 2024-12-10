@@ -593,12 +593,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export interface AISearch {
-  id: string;
-  user_id: string;
-  query: string;
-  response: string;
-  citations: string[];
-  created_at: string;
-}
