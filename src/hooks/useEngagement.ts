@@ -155,10 +155,10 @@ export function useEngagement() {
 
   // Add function to check if we should reset AI search count
   const shouldResetAISearches = useCallback((): boolean => {
-    if (!profile?.ai_searches_last_reset) return true;
+    if (!profile?.ai_and_ai_hansard_searches_last_reset) return true;
 
     const now = new Date();
-    const lastReset = new Date(profile.ai_searches_last_reset);
+    const lastReset = new Date(profile.ai_and_ai_hansard_searches_last_reset);
 
     if (isEngagedCitizen) {
       // Weekly reset for Engaged Citizen tier
@@ -182,8 +182,8 @@ export function useEngagement() {
       const { data, error } = await supabase
         .from('user_profiles')
         .update({
-          research_searches_count: shouldResetAISearches() ? 1 : (profile?.research_searches_count || 0) + 1,
-          ai_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_searches_last_reset
+          ai_searches_count: shouldResetAISearches() ? 1 : (profile?.ai_searches_count || 0) + 1,
+          ai_and_ai_hansard_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_and_ai_hansard_searches_last_reset
         })
         .eq('id', user.id)
         .select()
@@ -214,7 +214,7 @@ export function useEngagement() {
         .from('user_profiles')
         .update({
           hansard_ai_searches_count: shouldResetAISearches() ? 1 : (profile?.hansard_ai_searches_count || 0) + 1,
-          ai_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_searches_last_reset
+          ai_and_ai_hansard_searches_last_reset: shouldResetAISearches() ? now : profile?.ai_and_ai_hansard_searches_last_reset
         })
         .eq('id', user.id)
         .select()
@@ -247,7 +247,7 @@ export function useEngagement() {
       return limit;
     }
 
-    return Math.max(0, limit - (profile?.research_searches_count || 0));
+    return Math.max(0, limit - (profile?.ai_searches_count || 0));
   }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
 
   const getRemainingHansardAISearches = useCallback((): number => {

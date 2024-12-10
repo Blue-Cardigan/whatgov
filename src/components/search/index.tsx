@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { SearchResults } from "./SearchResults";
-import { QueryBuilder, parseInitialValue } from './QueryBuilder';
+import { QueryBuilder } from './QueryBuilder';
 import { HansardAPI } from '@/lib/search-api';
 import type { SearchParams } from '@/types/search';
 import type { SearchFilterParams } from '@/types/assistant';
@@ -303,7 +303,8 @@ export function Search({ initialTab }: SearchProps) {
     };
 
     initializeFromSavedState();
-  }, []); // Empty dependency array - runs only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array with ESLint disable comment
 
   const [isAssistantBuilderOpen, setIsAssistantBuilderOpen] = useState(false);
 

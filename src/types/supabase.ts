@@ -28,9 +28,10 @@ export type UserProfile = {
   email_verified?: boolean;
   newsletter?: boolean;
   ai_searches_count?: number;
-  ai_searches_last_reset?: string;
+  ai_and_ai_hansard_searches_last_reset?: string;
   votes_count?: number;
   votes_last_reset?: string;
+  hansard_ai_searches_count?: number;
 };
 
 export type Json =

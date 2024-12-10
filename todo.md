@@ -20,7 +20,7 @@ Professionals
 [ ] Delete assistants
 [ ] Save query-assistant pairs to rerun
 
-[ ] Save hansard searches
+[/] Save hansard searches
 [ ] Term frequency tracking in hansard search
 [ ] Add divisions to assistant
 [ ] Add full voting history of each MP

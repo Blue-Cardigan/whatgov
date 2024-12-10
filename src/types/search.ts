@@ -14,15 +14,15 @@ export interface SearchState {
 }
 
 export interface SavedSearch {
-  id: uuid;
-  user_id: uuid;
+  id: string;
+  user_id: string;
   query: string;
   response: string;
   citations: string[];
   created_at: string;
   search_type: 'ai' | 'hansard';
   query_state?: {
-    parts?: any[];
+    parts?: string;
     startDate?: string;
     endDate?: string;
     house?: 'Commons' | 'Lords';
