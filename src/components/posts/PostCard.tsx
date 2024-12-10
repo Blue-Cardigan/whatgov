@@ -1,5 +1,5 @@
 import { FeedItem, PartyCount } from '@/types';
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, UserIcon, MessageSquare, LightbulbIcon, ArrowUpRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { useVotes } from '@/hooks/useVotes';
 import { PartyDistribution } from './PartyDistribution';
-import Link from 'next/link';
+import { useContentNavigation, PostActions } from './PostCardUtils';
 
 interface PostCardProps {
   item: FeedItem;
@@ -27,63 +27,6 @@ interface PostCardProps {
   onExpandChange?: (isExpanded: boolean) => void;
   hasReachedLimit?: boolean;
   remainingVotes?: number;
-}
-
-// Extract into separate component
-function PostActions({ 
-  debate
-}: { 
-  debate: FeedItem; 
-  onShare: () => void 
-}) {
-  return (
-    <Link 
-      href={`/debate/${debate.ext_id.toUpperCase()}`}
-      className="group"
-    >
-      <CardTitle className="text-lg sm:text-xl font-bold group-hover:text-primary transition-colors flex items-center gap-1.5 sm:gap-2">
-        {debate.ai_title}
-        <ArrowUpRight className="min-h-[14px] min-w-[14px] h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-50 -translate-y-0.5 translate-x-0.5 transition-transform group-hover:translate-y-0 group-hover:translate-x-0" />
-      </CardTitle>
-    </Link>
-  );
-}
-
-// Extract content navigation logic into custom hook
-function useContentNavigation(hasDivisions: boolean) {
-  const [activeSlide, setActiveSlide] = useState<string>(
-    hasDivisions ? 'division' : 'debate'
-  );
-  const isFirstMount = useRef(true);
-  const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
-
-  const getSlideIndex = useCallback((slide: string): number => {
-    if (slide === 'division') return 0;
-    if (slide === 'debate') return hasDivisions ? 1 : 0;
-    const cardIndex = parseInt(slide.split('-')[1]);
-    return (hasDivisions ? 2 : 1) + cardIndex;
-  }, [hasDivisions]);
-
-  const getSlideType = useCallback((index: number): string => {
-    if (index === 0 && hasDivisions) return 'division';
-    if (index === (hasDivisions ? 1 : 0)) return 'debate';
-    const cardIndex = index - (hasDivisions ? 2 : 1);
-    return `keyPoints-${cardIndex}`;
-  }, [hasDivisions]);
-
-  const handleSlideChange = useCallback((type: string, index?: number) => {
-    setActiveSlide(type);
-    if (typeof index === 'number') setCurrentDivisionIndex(index);
-  }, []);
-
-  return {
-    activeSlide,
-    currentDivisionIndex,
-    getSlideIndex,
-    getSlideType,
-    handleSlideChange,
-    isFirstMount
-  };
 }
 
 export const PostCard = memo(function PostCard({ 
@@ -99,7 +42,8 @@ export const PostCard = memo(function PostCard({
 
   const { 
     activeSlide, 
-    currentDivisionIndex, 
+    currentDivisionIndex,
+    setCurrentDivisionIndex,
     getSlideIndex, 
     getSlideType, 
     handleSlideChange, 
@@ -220,6 +164,10 @@ export const PostCard = memo(function PostCard({
     isFirstMount.current = false;
   }, [hasDivisions, isFirstMount]);
 
+  const handleDivisionNavigate = useCallback((index: number) => {
+    setCurrentDivisionIndex(index);
+  }, [setCurrentDivisionIndex]);
+
   return (
     <>
       <Card 
@@ -285,7 +233,9 @@ export const PostCard = memo(function PostCard({
                 layout
               >
                 <DivisionContent 
-                  division={item.divisions![currentDivisionIndex]}
+                  divisions={item.divisions!}
+                  currentIndex={currentDivisionIndex}
+                  onNavigate={handleDivisionNavigate}
                   isActive={activeSlide === 'division'}
                 />
               </motion.div>
@@ -305,6 +255,8 @@ export const PostCard = memo(function PostCard({
                 readOnly={readOnly}
                 hasReachedLimit={hasReachedLimit}
                 onVote={handleVote}
+                analysisPreviewVariant="subtle"
+                hideAnalysis={true}
               />
             </motion.div>
           </div>

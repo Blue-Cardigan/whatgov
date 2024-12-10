@@ -1,15 +1,18 @@
 import { Division } from '@/types';
 import { CardContent } from "@/components/ui/card";
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { partyColours } from '@/lib/utils';
 import { cn } from "@/lib/utils";
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 
 interface DivisionContentProps {
-  division: Division;
+  divisions: Division[];
+  currentIndex: number;
+  onNavigate: (index: number) => void;
   isActive: boolean;
 }
 
@@ -19,14 +22,19 @@ type PartyVotes = Record<string, {
   color: string;
 }>;
 
-export function DivisionContent({ division, isActive }: DivisionContentProps) {
+export function DivisionContent({ 
+  divisions, 
+  currentIndex,
+  onNavigate,
+  isActive 
+}: DivisionContentProps) {
   const { profile } = useAuth();
   const { partyVotes } = useMemo(() => {
-    const total = division.ayes_count + division.noes_count;
+    const total = divisions[currentIndex].ayes_count + divisions[currentIndex].noes_count;
     const partyVotesMap: PartyVotes = {};
     
     // Process votes in a single pass
-    [...(division.aye_members || []), ...(division.noe_members || [])].forEach(member => {
+    [...(divisions[currentIndex].aye_members || []), ...(divisions[currentIndex].noe_members || [])].forEach(member => {
       if (!partyVotesMap[member.party]) {
         partyVotesMap[member.party] = {
           ayes: 0,
@@ -34,17 +42,17 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
           color: partyColours[member.party]?.color || '#A9A9A9'
         };
       }
-      const isAye = division.aye_members?.includes(member);
+      const isAye = divisions[currentIndex].aye_members?.includes(member);
       partyVotesMap[member.party][isAye ? 'ayes' : 'noes']++;
     });
 
     return {
       totalVotes: total,
-      ayePercentage: Math.round((division.ayes_count / total) * 100),
-      noePercentage: Math.round((division.noes_count / total) * 100),
+      ayePercentage: Math.round((divisions[currentIndex].ayes_count / total) * 100),
+      noePercentage: Math.round((divisions[currentIndex].noes_count / total) * 100),
       partyVotes: partyVotesMap
     };
-  }, [division]);
+  }, [divisions, currentIndex]);
 
   return (
     <CardContent>
@@ -57,27 +65,56 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
         }}
         transition={{ duration: 0.3 }}
       >
+        {/* Division Navigation */}
+        {divisions.length > 1 && (
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              className="h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Division {currentIndex + 1} of {divisions.length}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate(currentIndex + 1)}
+              disabled={currentIndex === divisions.length - 1}
+              className="h-8 px-2"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">
-                Division {division.division_number}
+                Division {divisions[currentIndex].division_number}
               </span>
-              {division.time && division.time !== '00:00:00' && (
+              {divisions[currentIndex].time && divisions[currentIndex].time !== '00:00:00' && (
                 <span className="text-xs text-muted-foreground">
-                  {division.time.slice(0, 5)}
+                  {divisions[currentIndex].time.slice(0, 5)}
                 </span>
               )}
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {division.ai_question}
+            {divisions[currentIndex].ai_question}
           </p>
         </div>
 
         {profile?.mp_id && profile?.mp && (
           <MPVoteIndicator 
-            division={division} 
+            division={divisions[currentIndex]} 
             mpId={profile.mp_id}
             mpName={profile.mp}
           />
@@ -88,7 +125,7 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
             <div className="flex items-center gap-1.5 mb-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
               <span className="text-xs font-medium">
-                Aye ({division.ayes_count})
+                Aye ({divisions[currentIndex].ayes_count})
               </span>
             </div>
             <div className="space-y-1.5">
@@ -150,9 +187,9 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
                   </div>
                 </PopoverContent>
               </Popover>
-              {division.ai_key_arguments?.for && (
+              {divisions[currentIndex].ai_key_arguments?.for && (
                 <p className="text-xs text-muted-foreground bg-emerald-500/5 p-2 rounded-md">
-                  {division.ai_key_arguments.for}
+                  {divisions[currentIndex].ai_key_arguments.for}
                 </p>
               )}
             </div>
@@ -162,7 +199,7 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
             <div className="flex items-center gap-1.5 mb-1.5">
               <XCircle className="h-3.5 w-3.5 text-rose-500" />
               <span className="text-xs font-medium">
-                Noe ({division.noes_count})
+                Noe ({divisions[currentIndex].noes_count})
               </span>
             </div>
             <div className="space-y-1.5">
@@ -224,9 +261,9 @@ export function DivisionContent({ division, isActive }: DivisionContentProps) {
                   </div>
                 </PopoverContent>
               </Popover>
-              {division.ai_key_arguments?.against && (
+              {divisions[currentIndex].ai_key_arguments?.against && (
                 <p className="text-xs text-muted-foreground bg-rose-500/5 p-2 rounded-md">
-                  {division.ai_key_arguments.against}
+                  {divisions[currentIndex].ai_key_arguments.against}
                 </p>
               )}
             </div>

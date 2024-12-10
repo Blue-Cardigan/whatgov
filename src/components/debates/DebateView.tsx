@@ -2,10 +2,11 @@
 
 import { FeedItem, PartyCount } from '@/types';
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building } from 'lucide-react';
+import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building, LockIcon, LightbulbIcon, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
+import { DebateContent, AnalysisPreview } from '../posts/DebateContent';
 import { DivisionContent } from '../posts/DivisionContent';
 import { CommentsContent } from '../posts/CommentsContent';
 import { KeyPointsContent } from '../posts/KeyPointsContent';
@@ -71,6 +72,7 @@ function stripHtmlTags(html: string): string {
 export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
   const { user, isEngagedCitizen } = useAuth();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
   const hasDivisions = debate.divisions && debate.divisions.length > 0;
 
   // Only show key points tab if user has appropriate subscription
@@ -347,103 +349,131 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
           </div>
         </CardHeader>
 
-        {/* Summary */}
+        {/* Overview Section */}
         <div className="px-6 pb-4">
-          <p className="text-muted-foreground text-justify whitespace-pre-line">
-            {debate.ai_summary.split('\n').join('\n\n')}
-          </p>
+          <h3 className="text-lg font-semibold mb-4">Overview</h3>
+          <div className="text-sm text-muted-foreground leading-relaxed text-justify">
+            <p>{debate.ai_overview}</p>
+          </div>
         </div>
 
-        {/* Tabs Section */}
-        <div className="border-t">
-          <Tabs defaultValue={activeTabDefault} className="w-full">
-            <div className="px-6 py-3 border-b">
-              <TabsList className="w-full justify-start h-auto p-0 bg-transparent space-x-4">
-                {hasDivisions && (
-                  <TabsTrigger 
-                    value="divisions"
-                    className="data-[state=active]:bg-primary/10"
-                  >
-                    Divisions
-                  </TabsTrigger>
-                )}
-                {debate.ai_comment_thread?.length > 0 && (
-                  <TabsTrigger 
-                    value="comments"
-                    className="data-[state=active]:bg-primary/10"
-                  >
-                    Hot Takes
-                  </TabsTrigger>
-                )}
-                {showKeyPointsTab && (
-                  <TabsTrigger 
-                    value="keyPoints"
-                    className="data-[state=active]:bg-primary/10"
-                  >
-                    Key Points
-                  </TabsTrigger>
-                )}
-                {hansardData && (
-                  <TabsTrigger value="hansard">
-                    Original Transcript
-                  </TabsTrigger>
-                )}
-              </TabsList>
-            </div>
-
-            {/* Tab Content */}
-            <div className="p-6">
-              {hasDivisions && (
-                <TabsContent value="divisions" className="mt-6">
-                  <div className="bg-card rounded-lg border">
-                    <DivisionContent 
-                      division={debate.divisions![0]}
-                      isActive={true}
-                    />
-                  </div>
-                </TabsContent>
-              )}
-
-              {debate.ai_comment_thread?.length > 0 && (
-                <TabsContent value="comments" className="mt-6">
-                  <div className="bg-card rounded-lg border">
-                    <CommentsContent 
-                      comments={debate.ai_comment_thread}
-                      isActive={true}
-                    />
-                  </div>
-                </TabsContent>
-              )}
-
-              {showKeyPointsTab && (
-                <TabsContent value="keyPoints" className="mt-6">
-                  <div className="bg-card rounded-lg border">
-                    <KeyPointsContent 
-                      keyPoints={debate.ai_key_points}
-                      isActive={true}
-                      userMp={userMp}
-                    />
-                  </div>
-                </TabsContent>
-              )}
-
-              {hansardData && (
-                <TabsContent value="hansard">
-                  <div className="bg-card rounded-lg border">
-                    {renderHansardContributions()}
-                  </div>
-                </TabsContent>
+        {/* Analysis Section - Modified */}
+        {debate.ai_summary && debate.ai_summary !== debate.ai_overview && (
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">Analysis</h3>
+              </div>
+              {isEngagedCitizen && (
+                <Badge variant="secondary" className="gap-1.5">
+                  <LightbulbIcon className="h-4 w-4" />
+                  Premium
+                </Badge>
               )}
             </div>
-          </Tabs>
-        </div>
+            
+            {isEngagedCitizen ? (
+              <div className="text-sm text-muted-foreground leading-relaxed text-justify">
+                <p>{debate.ai_summary}</p>
+              </div>
+            ) : (
+              <AnalysisPreview onUpgrade={() => setShowUpgradeDialog(true)} variant="full" />
+            )}
+          </div>
+        )}
       </Card>
+
+      {/* Tabs Section for Divisions, Comments, etc. */}
+      <div className="border-t">
+        <Tabs defaultValue={hasDivisions ? "divisions" : "comments"} className="w-full">
+          <div className="px-6 py-3 border-b">
+            <TabsList className="w-full justify-start h-auto p-0 bg-transparent space-x-4">
+              {hasDivisions && (
+                <TabsTrigger 
+                  value="divisions"
+                  className="data-[state=active]:bg-primary/10"
+                >
+                  Divisions
+                </TabsTrigger>
+              )}
+              {debate.ai_comment_thread?.length > 0 && (
+                <TabsTrigger 
+                  value="comments"
+                  className="data-[state=active]:bg-primary/10"
+                >
+                  Hot Takes
+                </TabsTrigger>
+              )}
+              {showKeyPointsTab && (
+                <TabsTrigger 
+                  value="keyPoints"
+                  className="data-[state=active]:bg-primary/10"
+                >
+                  Key Points
+                </TabsTrigger>
+              )}
+              {hansardData && (
+                <TabsTrigger value="hansard">
+                  Original Transcript
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {hasDivisions && (
+              <TabsContent value="divisions" className="mt-6">
+                <div className="bg-card rounded-lg border">
+                  <DivisionContent 
+                    divisions={debate.divisions!}
+                    currentIndex={currentDivisionIndex}
+                    onNavigate={setCurrentDivisionIndex}
+                    isActive={true}
+                  />
+                </div>
+              </TabsContent>
+            )}
+
+            {debate.ai_comment_thread?.length > 0 && (
+              <TabsContent value="comments" className="mt-6">
+                <div className="bg-card rounded-lg border">
+                  <CommentsContent 
+                    comments={debate.ai_comment_thread}
+                    isActive={true}
+                  />
+                </div>
+              </TabsContent>
+            )}
+
+            {showKeyPointsTab && (
+              <TabsContent value="keyPoints" className="mt-6">
+                <div className="bg-card rounded-lg border">
+                  <KeyPointsContent 
+                    keyPoints={debate.ai_key_points}
+                    isActive={true}
+                    userMp={userMp}
+                  />
+                </div>
+              </TabsContent>
+            )}
+
+            {hansardData && (
+              <TabsContent value="hansard">
+                <div className="bg-card rounded-lg border">
+                  {renderHansardContributions()}
+                </div>
+              </TabsContent>
+            )}
+          </div>
+        </Tabs>
+      </div>
 
       <UpgradeDialog 
         open={showUpgradeDialog} 
         onOpenChange={setShowUpgradeDialog}
-        title="Unlock Key Points"
-        description="Get instant access to key points made by MPs with an Engaged Citizen subscription."
+        title="Unlock Full Analysis"
+        description="Get instant access to complete debate analyses with an Engaged Citizen subscription."
       />
     </div>
   );

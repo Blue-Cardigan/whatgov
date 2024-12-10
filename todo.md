@@ -21,6 +21,10 @@ Professionals
 [ ] Save query-assistant pairs to rerun
 
 [/] Save hansard searches
+[ ] Fix Division generation
+[\] Create Openai files for divisions
+[/] Add divisions to assistants
+[ ] Show multiple divisions in postcard/debateview if present
 [ ] Term frequency tracking in hansard search
 [ ] Add divisions to assistant
 [ ] Add full voting history of each MP
