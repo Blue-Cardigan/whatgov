@@ -31,12 +31,9 @@ export function SearchCard({ search }: SearchCardProps) {
         ? {
             aiSearch: {
               query: search.query,
-              streamingText: search.response,
-              citations: search.citations.map((citation: string) => ({
-                index: citation.indexOf(search.query),
-                url: citation
-              })),
-              isLoading: false
+              streamingText: '', // Clear the streaming text
+              citations: [], // Clear the citations
+              isLoading: true // Set loading to true to trigger search
             }
           }
         : {
@@ -47,14 +44,14 @@ export function SearchCard({ search }: SearchCardProps) {
               take: 10,
               orderBy: 'SittingDateDesc'
             },
-            results: JSON.parse(search.response),
-            isLoading: false
+            results: null, // Clear the results to trigger new search
+            isLoading: true // Set loading to true to trigger search
           }
       )
     };
     
     sessionStorage.setItem('searchState', JSON.stringify(searchState));
-    router.push(`/search?tab=${search.search_type}`);
+    router.push(`/search?tab=${search.search_type}&execute=true`); // Add execute parameter
   };
 
   const handleExport = async () => {

@@ -207,14 +207,15 @@ export function Search({ initialTab }: SearchProps) {
     setSelectedOpenAIAssistantId(openaiAssistantId);
   };
 
-  const handleFileSearch = async () => {
-    if (!fileQuery.trim()) return;
+  const handleFileSearch = useCallback(async (overrideQuery?: string) => {
+    const queryToUse = overrideQuery || fileQuery;
+    if (!queryToUse.trim()) return;
     
     dispatch({ type: 'SET_AI_LOADING', payload: true });
     dispatch({ 
       type: 'SET_AI_SEARCH', 
       payload: { 
-        query: fileQuery,
+        query: queryToUse,
         streamingText: '',
         citations: []
       }
@@ -222,16 +223,16 @@ export function Search({ initialTab }: SearchProps) {
     
     try {
       await performFileSearch(
-        fileQuery, 
+        queryToUse, 
         selectedOpenAIAssistantId,
         (streamingText, citations) => {
           dispatch({ 
             type: 'SET_AI_SEARCH', 
             payload: {
-              query: fileQuery,
+              query: queryToUse,
               streamingText,
               citations: citations.map(citation => ({
-                index: citation.indexOf(fileQuery),
+                index: citation.indexOf(queryToUse),
                 url: citation
               }))
             }
@@ -248,7 +249,61 @@ export function Search({ initialTab }: SearchProps) {
     } finally {
       dispatch({ type: 'SET_AI_LOADING', payload: false });
     }
-  };
+  }, [fileQuery, selectedOpenAIAssistantId, performFileSearch, dispatch, toast]);
+
+  useEffect(() => {
+    const initializeFromSavedState = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const shouldExecute = searchParams.get('execute') === 'true';
+      const savedState = sessionStorage.getItem('searchState');
+
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        
+        // Set the correct tab based on saved search type
+        if (parsed.searchType) {
+          setActiveTab(parsed.searchType);
+          dispatch({ type: 'SET_SEARCH_TYPE', payload: parsed.searchType });
+        }
+        
+        if (shouldExecute) {
+          if (parsed.searchType === 'ai' && parsed.aiSearch?.query) {
+            // Set the query in state first
+            setFileQuery(parsed.aiSearch.query);
+            await handleFileSearch(parsed.aiSearch.query);
+          } else if (parsed.searchType === 'hansard' && parsed.searchParams) {
+            // Execute Hansard search with saved params
+            await performSearch(parsed.searchParams);
+          }
+
+          // Clean up the URL
+          const newUrl = window.location.pathname + '?tab=' + parsed.searchType;
+          window.history.replaceState({}, '', newUrl);
+          
+          // Clear the saved state after execution
+          sessionStorage.removeItem('searchState');
+        } else {
+          // Just load the saved state without executing
+          if (parsed.searchType === 'hansard') {
+            dispatch({ type: 'SET_PARAMS', payload: parsed.searchParams });
+            dispatch({ type: 'SET_RESULTS', payload: parsed.results });
+          } else if (parsed.searchType === 'ai') {
+            setFileQuery(parsed.aiSearch.query);
+            dispatch({ 
+              type: 'SET_AI_SEARCH', 
+              payload: {
+                query: parsed.aiSearch.query,
+                streamingText: parsed.aiSearch.streamingText,
+                citations: parsed.aiSearch.citations
+              }
+            });
+          }
+        }
+      }
+    };
+
+    initializeFromSavedState();
+  }, []); // Empty dependency array - runs only once on mount
 
   const [isAssistantBuilderOpen, setIsAssistantBuilderOpen] = useState(false);
 
@@ -418,7 +473,7 @@ export function Search({ initialTab }: SearchProps) {
                     </UpgradePopover>
                   ) : (
                     <Button 
-                      onClick={handleFileSearch} 
+                      onClick={() => handleFileSearch()} 
                       disabled={aiLoading}
                     >
                       {aiLoading ? 'Searching...' : 'Search'}
