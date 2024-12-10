@@ -17,7 +17,8 @@ Professionals
 [-] Implement 'Keep this assistant updated with new debates' 
       [-] Check new debates and add to matching assistants
       [ ] Remove old debates at end of week (second option)
-[ ] Delete assistants
+[/] Delete assistants
+[ ] Format saved searches correctly
 [ ] Save query-assistant pairs to rerun
 
 [/] Save hansard searches

@@ -63,6 +63,17 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
     fetchAssistants();
   }, [user, supabase, fetchAssistants]);
 
+  useEffect(() => {
+    // Reset to default assistant if the currently selected assistant is deleted
+    if (selectedAssistantId !== 'default' && assistants.length > 0) {
+      const assistantExists = assistants.some(a => a.id === selectedAssistantId);
+      if (!assistantExists) {
+        setSelectedAssistantId('default');
+        onAssistantChange(null, null);
+      }
+    }
+  }, [assistants, selectedAssistantId, onAssistantChange]);
+
   const handleEditClose = async (shouldRefresh: boolean = true) => {
     setIsEditDialogOpen(false);
     setEditingAssistant(null);
@@ -190,7 +201,9 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {selectedAssistantId !== 'default' ? 'Edit assistant' : 'Select an assistant to edit'}
+            {selectedAssistantId === 'default' 
+              ? 'The default assistant cannot be edited' 
+              : 'Edit assistant'}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -208,6 +221,7 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
           onAssistantCreate={async () => {
             // This won't be called in edit mode
           }}
+          onAssistantChange={onAssistantChange}
         />
       )}
     </div>

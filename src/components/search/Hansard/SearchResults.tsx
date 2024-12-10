@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import type { SearchParams } from '@/types/search';
 import type { SearchResultAIContent } from "@/types/search";
 import { ResultCard } from './ResultCard';
+import { SaveSearchButton } from '../SaveSearchButton';
 
 // Add new interface for grouped results
 interface GroupedContributions {
@@ -80,6 +81,74 @@ export function SearchResults({
     return Object.values(groups);
   }, [results]);
 
+  // Update the categorization to match the API response structure
+  const getResultMetadata = React.useCallback(() => {
+    const metadata = {
+      TotalMembers: new Set(results.map(c => c.MemberId).filter(Boolean)).size,
+      TotalContributions: totalResults,
+      TotalWrittenStatements: 0,
+      TotalWrittenAnswers: 0,
+      TotalCorrections: 0,
+      TotalPetitions: 0,
+      TotalDebates: groupedResults.length,
+      TotalCommittees: 0,
+      TotalDivisions: 0,
+      SearchTerms: searchParams.searchTerm ? [searchParams.searchTerm] : [],
+      Members: [],
+      Contributions: [],
+      WrittenStatements: [] as Contribution[],
+      WrittenAnswers: [] as Contribution[],
+      Corrections: [] as Contribution[],
+      Petitions: [] as any[],
+      Debates: [],
+      Divisions: [] as any[],
+      Committees: [] as any[]
+    };
+
+    // Categorize contributions based on their section
+    results.forEach(contribution => {
+      switch (contribution.DebateSection) {
+        case 'Written Statements':
+          metadata.WrittenStatements.push(contribution);
+          metadata.TotalWrittenStatements++;
+          break;
+        case 'Written Answers':
+          metadata.WrittenAnswers.push(contribution);
+          metadata.TotalWrittenAnswers++;
+          break;
+        case 'Written Corrections':
+          metadata.Corrections.push(contribution);
+          metadata.TotalCorrections++;
+          break;
+        // Add other categories as needed
+      }
+    });
+
+    return metadata;
+  }, [results, totalResults, groupedResults, searchParams.searchTerm]);
+
+  // Update the SaveSearchButton section
+  const renderSaveButton = () => {
+    if (!results.length || isLoading) return null;
+
+    return (
+      <SaveSearchButton 
+        searchParams={{
+          searchTerm: searchParams.searchTerm || '',
+          startDate: searchParams.startDate,
+          endDate: searchParams.endDate,
+          house: searchParams.house || 'Commons',
+          enableAI: searchParams.enableAI,
+          skip: searchParams.skip,
+          take: searchParams.take,
+          orderBy: searchParams.orderBy
+        }}
+        results={getResultMetadata()}
+        searchType="hansard"
+      />
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Results Header */}
@@ -102,19 +171,22 @@ export function SearchResults({
           )}
         </div>
 
-        <Select
-          value={searchParams.orderBy}
-          onValueChange={(value) => handleSortOrderChange(value as SearchParams['orderBy'])}
-          disabled={isLoading}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Sort by date" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="SittingDateDesc">Most Recent</SelectItem>
-            <SelectItem value="SittingDateAsc">Oldest First</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-4">
+          {renderSaveButton()}
+          <Select
+            value={searchParams.orderBy}
+            onValueChange={(value) => handleSortOrderChange(value as SearchParams['orderBy'])}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Sort by date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="SittingDateDesc">Most Recent</SelectItem>
+              <SelectItem value="SittingDateAsc">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Results List */}

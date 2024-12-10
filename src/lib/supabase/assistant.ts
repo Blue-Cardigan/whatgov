@@ -320,6 +320,23 @@ export class AssistantQueryBuilder {
 
     return true;
   }
+
+  async deleteAssistant(assistantId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .from('assistants')
+      .update({ 
+        status: 'deleted',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', assistantId);
+
+    if (error) {
+      console.error('Error deleting assistant:', error);
+      return false;
+    }
+
+    return true;
+  }
 }
 
 // Export constants for the UI

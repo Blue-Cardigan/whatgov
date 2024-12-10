@@ -467,7 +467,7 @@ export function QueryBuilder({
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {enableAI && user ? (
-                  "AI will analyze search results to provide clear summaries and key points from parliamentary debates."
+                  "Access summaries and key points from your search results."
                 ) : user ? (
                   "Enable AI analysis to get summaries and key points from parliamentary debates."
                 ) : (

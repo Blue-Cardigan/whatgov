@@ -452,7 +452,7 @@ export function ResultCard({
   }) {
     return (
       <Link 
-        href={`/debate/${debate.DebateSectionExtId.toUpperCase()}`}
+        href={`/debate/${debate.DebateSectionExtId}`}
         className="group"
       >
         <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors flex items-center gap-1">

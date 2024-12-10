@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import { SearchResults } from "./SearchResults";
-import { QueryBuilder } from './QueryBuilder';
 import { HansardAPI } from '@/lib/search-api';
 import type { SearchParams } from '@/types/search';
 import type { SearchFilterParams } from '@/types/assistant';
@@ -19,7 +17,7 @@ import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
 import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
-import { SaveSearchButton } from './Assistant/SaveSearchButton';
+import { HansardSearch } from './Hansard';
 
 const PAGE_SIZE = 10;
 
@@ -172,9 +170,6 @@ export function Search({ initialTab }: SearchProps) {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.searchParams, user, hasReachedResearchSearchLimit, recordResearchSearch, toast, dispatch]);
-
-  const handleSearch = useCallback((params: Partial<SearchParams>) => 
-    performSearch(params), [performSearch]);
 
   const handleFileQueryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFileQuery(event.target.value);
@@ -364,7 +359,7 @@ export function Search({ initialTab }: SearchProps) {
             AI Research Assistant
           </TabsTrigger>
           <TabsTrigger value="hansard">
-            Hansard Searchπ
+            Hansard Search
           </TabsTrigger>
         </TabsList>
 
@@ -495,55 +490,10 @@ export function Search({ initialTab }: SearchProps) {
               </div>
             </div>
           )}
-          <SaveSearchButton 
-            aiSearch={{
-              query: state.aiSearch.query,
-              streamingText: state.aiSearch.streamingText,
-              citations: state.aiSearch.citations
-            }}
-            searchType="ai"
-            className="mt-4"
-          />
         </TabsContent>
 
         <TabsContent value="hansard">
-          <h1 className="text-2xl font-bold mt-4">Search Hansard</h1>
-          <p className="text-muted-foreground mb-4">The Official Parliamentary Record</p>
-          <div className="mb-8 lg:mb-12">
-            <QueryBuilder
-              searchParams={state.searchParams}
-              onSearch={handleSearch}
-              mode="hansard"
-            />
-          </div>
-
-          <SearchResults
-            results={state.results?.Contributions || []}
-            isLoading={state.isLoading}
-            totalResults={state.results?.TotalContributions || 0}
-            searchParams={state.searchParams}
-            onSearch={handleSearch}
-            onLoadMore={() => performSearch(undefined, true)}
-            hasMore={Boolean(state.results?.TotalContributions && 
-              state.results.Contributions.length < state.results.TotalContributions)}
-            aiContent={state.results?.aiContent}
-          />
-
-          <SaveSearchButton 
-            searchParams={{
-              searchTerm: state.searchParams.searchTerm || '',
-              startDate: state.searchParams.startDate,
-              endDate: state.searchParams.endDate,
-              house: state.searchParams.house || 'Commons',
-              enableAI: state.searchParams.enableAI,
-              skip: state.searchParams.skip,
-              take: state.searchParams.take,
-              orderBy: state.searchParams.orderBy
-            }}
-            results={state.results}
-            searchType="hansard"
-            className="mt-4"
-          />
+          <HansardSearch />
         </TabsContent>
       </Tabs>
       

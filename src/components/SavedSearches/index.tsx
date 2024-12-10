@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { SavedSearch } from '@/types/search';
 import { SearchCard } from './SearchCard';
 import { Clock } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 export function SavedSearches() {
   const [searches, setSearches] = useState<SavedSearch[]>([]);
@@ -34,6 +35,43 @@ export function SavedSearches() {
 
     fetchSearches();
   }, [user, supabase]);
+
+  const handleDelete = async (searchId: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('saved_searches')
+        .delete()
+        .match({ 
+          id: searchId,
+          user_id: user.id // Ensure we only delete user's own searches
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Update local state to remove the deleted search
+      setSearches(prevSearches => 
+        prevSearches.filter(search => search.id !== searchId)
+      );
+
+      // Show success toast
+      toast({
+        title: "Search deleted",
+        description: "Your saved search has been removed",
+      });
+    } catch (error) {
+      console.error('Failed to delete search:', error);
+      // Show error toast
+      toast({
+        title: "Delete failed",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!user) {
     return (
@@ -71,14 +109,38 @@ export function SavedSearches() {
     );
   }
 
+  // Split searches into AI and Hansard
+  const aiSearches = searches.filter(s => s.search_type === 'ai');
+  const hansardSearches = searches.filter(s => s.search_type === 'hansard');
+
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
+    <div className="container max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Saved Searches</h1>
-      <div className="space-y-6">
-        {searches.map((search) => (
-          <SearchCard key={search.id} search={search} />
-        ))}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* AI Searches - Takes up 2 columns */}
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-xl font-semibold mb-4">AI Research Assistant</h2>
+          {aiSearches.map((search) => (
+            <SearchCard 
+              key={search.id} 
+              search={search} 
+              onDelete={() => handleDelete(search.id)}
+            />
+          ))}
+        </div>
+
+        {/* Hansard Searches - Takes up 1 column */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold mb-4">Hansard Search</h2>
+          {hansardSearches.map((search) => (
+            <SearchCard 
+              key={search.id} 
+              search={search}
+              onDelete={() => handleDelete(search.id)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
-} 
+}

@@ -39,6 +39,16 @@ import { useEngagement } from "@/hooks/useEngagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { TOPIC_DEFINITIONS } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AssistantBuilderProps {
   isOpen: boolean;
@@ -54,6 +64,7 @@ interface AssistantBuilderProps {
   }) => Promise<void>;
   mode: 'create' | 'edit';
   assistantId?: string;
+  onAssistantChange?: (assistantId: string | null, openaiAssistantId: string | null) => void;
 }
 
 export function AssistantBuilder({
@@ -61,7 +72,8 @@ export function AssistantBuilder({
   setIsOpen,
   onAssistantCreate,
   mode = 'create',
-  assistantId
+  assistantId,
+  onAssistantChange
 }: AssistantBuilderProps) {
   const { isPremium } = useAuth();
   const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
@@ -88,6 +100,7 @@ export function AssistantBuilder({
   const [isLoading, setIsLoading] = useState(false);
   const supabase = createClient();
   const [keepUpdated, setKeepUpdated] = useState(true);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   useEffect(() => {
     if (isOpen && !isPremium) {
@@ -155,6 +168,39 @@ export function AssistantBuilder({
 
     loadAssistant();
   }, [mode, assistantId, supabase]);
+
+  const handleDelete = () => {
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      if (!assistantId) return;
+      
+      const queryBuilder = new AssistantQueryBuilder(supabase);
+      const success = await queryBuilder.deleteAssistant(assistantId);
+      
+      if (success) {
+        setIsOpen(false);
+        onAssistantChange?.(null, null);
+        toast({
+          title: "Assistant Deleted",
+          description: "Your assistant has been deleted successfully",
+        });
+      } else {
+        throw new Error('Failed to delete assistant');
+      }
+    } catch (error) {
+      console.error('Error deleting assistant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assistant. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeleteConfirmation(false);
+    }
+  };
 
   const handleKeywordSubmit = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && keywordInput.trim()) {
@@ -586,31 +632,61 @@ export function AssistantBuilder({
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsOpen(false)}>
-                  Cancel
-                </Button>
-                {mode === 'edit' ? (
-                  <Button onClick={handleCreateClick}>
-                    Save Changes
-                  </Button>
-                ) : hasReachedAssistantLimit() ? (
-                  <UpgradePopover feature="assistant">
-                    <Button>
-                      Create Assistant
-                    </Button>
-                  </UpgradePopover>
-                ) : (
-                  <Button onClick={handleCreateClick}>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Create Assistant
+              <div className="flex justify-between gap-2">
+                {/* Add left-aligned delete button in edit mode */}
+                {mode === 'edit' && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                  >
+                    Delete Assistant
                   </Button>
                 )}
+                
+                {/* Right-aligned buttons group */}
+                <div className="flex gap-2 ml-auto">
+                  <Button variant="outline" onClick={() => setIsOpen(false)}>
+                    Cancel
+                  </Button>
+                  {mode === 'edit' ? (
+                    <Button onClick={handleCreateClick}>
+                      Save Changes
+                    </Button>
+                  ) : hasReachedAssistantLimit() ? (
+                    <UpgradePopover feature="assistant">
+                      <Button>
+                        Create Assistant
+                      </Button>
+                    </UpgradePopover>
+                  ) : (
+                    <Button onClick={handleCreateClick}>
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create Assistant
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your assistant &quot;{assistantName}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AssistantConfirmationDialog
         open={showConfirmation}

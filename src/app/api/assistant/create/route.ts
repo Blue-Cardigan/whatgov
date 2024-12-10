@@ -43,7 +43,6 @@ export async function POST(request: Request) {
       .single();
 
     const plan = subscription?.plan || 'FREE';
-    console.log('plan', plan);
     const limit = plan === 'PROFESSIONAL' ? Infinity : 
                  plan === 'ENGAGED_CITIZEN' ? 5 : 2;
 

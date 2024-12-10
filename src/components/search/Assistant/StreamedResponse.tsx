@@ -1,7 +1,7 @@
 import { processCitations } from '@/lib/openai-api';
 import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
-import { SaveSearchButton } from './SaveSearchButton';
+import { SaveSearchButton } from '../SaveSearchButton';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { exportToPDF } from '@/lib/pdf-export';

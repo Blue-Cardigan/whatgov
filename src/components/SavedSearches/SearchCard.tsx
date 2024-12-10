@@ -4,22 +4,35 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { exportToPDF } from '@/lib/pdf-export';
+import ReactMarkdown from 'react-markdown';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SearchCardProps {
   search: SavedSearch;
+  onDelete: () => void;
 }
 
-export function SearchCard({ search }: SearchCardProps) {
+export function SearchCard({ search, onDelete }: SearchCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
@@ -70,6 +83,29 @@ export function SearchCard({ search }: SearchCardProps) {
     }
   };
 
+  const renderHansardMetrics = () => {
+    if (search.search_type !== 'hansard' || !search.query_state) return null;
+    
+    const results = JSON.parse(search.response) || {};
+    const metrics = [
+      { label: 'Total Contributions', value: results.TotalContributions },
+      { label: 'Total Debates', value: results.TotalDebates },
+      { label: 'Written Statements', value: results.TotalWrittenStatements },
+      { label: 'Written Answers', value: results.TotalWrittenAnswers },
+    ];
+
+    return (
+      <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+        {metrics.map(({ label, value }) => (
+          <div key={label} className="bg-muted p-2 rounded">
+            <div className="font-medium">{label}</div>
+            <div className="text-muted-foreground">{value || 0}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -84,20 +120,56 @@ export function SearchCard({ search }: SearchCardProps) {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={handleExport}
-                    disabled={isExporting}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete saved search?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your saved search.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      {/* Move onDelete to the AlertDialogAction onClick directly */}
+                      <AlertDialogAction onClick={onDelete}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Export to PDF
+                  Delete search
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {search.search_type === 'ai' && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleExport}
+                      disabled={isExporting}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Export to PDF
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <Button variant="secondary" onClick={handleSearchAgain}>
               Search Again
             </Button>
@@ -106,13 +178,19 @@ export function SearchCard({ search }: SearchCardProps) {
       </CardHeader>
       <CardContent>
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <div className="prose dark:prose-invert prose-sm max-w-none mb-4">
-            <p>{search.response.slice(0, isOpen ? undefined : 200)}
-              {!isOpen && search.response.length > 200 && '...'}
-            </p>
-          </div>
+          {search.search_type === 'ai' ? (
+            // AI Search Content
+            <div className="prose dark:prose-invert prose-sm max-w-none mb-4">
+              <ReactMarkdown>
+                {isOpen ? search.response : search.response.slice(0, 200) + '...'}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            // Hansard Search Content
+            renderHansardMetrics()
+          )}
 
-          {search.response.length > 200 && (
+          {search.response.length > 200 && search.search_type === 'ai' && (
             <CollapsibleTrigger asChild>
               <Button variant="ghost" className="w-full">
                 {isOpen ? (
@@ -131,7 +209,7 @@ export function SearchCard({ search }: SearchCardProps) {
           )}
 
           <CollapsibleContent>
-            {search.citations.length > 0 && (
+            {search.search_type === 'ai' && search.citations.length > 0 && (
               <div className="mt-4 pt-4 border-t space-y-4">
                 <h3 className="text-sm font-semibold">Sources:</h3>
                 <div className="space-y-3">
