@@ -1,7 +1,7 @@
 import { FeedItem, PartyCount } from '@/types';
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, UserIcon, MessageSquare, LightbulbIcon, ArrowUpRight } from 'lucide-react';
+import { CalendarIcon, UserIcon, MessageSquare, LightbulbIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';

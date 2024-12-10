@@ -2,11 +2,11 @@
 
 import { FeedItem, PartyCount } from '@/types';
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building, LockIcon, LightbulbIcon, ArrowRight } from 'lucide-react';
+import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building, LightbulbIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { AnalysisPreview } from '../posts/DebateContent';
 import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
-import { DebateContent, AnalysisPreview } from '../posts/DebateContent';
 import { DivisionContent } from '../posts/DivisionContent';
 import { CommentsContent } from '../posts/CommentsContent';
 import { KeyPointsContent } from '../posts/KeyPointsContent';
@@ -98,11 +98,6 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
   const isUserMpSpeaker = useMemo(() => 
     userMp && debate.speakers?.[0]?.display_as === userMp,
     [userMp, debate.speakers]
-  );
-
-  const activeTabDefault = useMemo(() => 
-    hasDivisions ? "divisions" : "comments",
-    [hasDivisions]
   );
 
   const [searchQuery, setSearchQuery] = useState('');

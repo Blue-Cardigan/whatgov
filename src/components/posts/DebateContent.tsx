@@ -90,7 +90,7 @@ export function DebateContent({
   const [voteError, setVoteError] = useState<string | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { hasVoted } = useVotes();
-  const { user, isEngagedCitizen } = useAuth();
+  const { isEngagedCitizen } = useAuth();
   
   const isVoted = localVoted || hasVoted(debate.id);
   

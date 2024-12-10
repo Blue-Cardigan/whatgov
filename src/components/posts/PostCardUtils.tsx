@@ -3,7 +3,7 @@ import { LightbulbIcon } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 import { CardTitle } from "@/components/ui/card";
 import Link from 'next/link';
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Extract into separate component
