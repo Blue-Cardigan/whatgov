@@ -16,7 +16,7 @@ import { LightbulbIcon, PlusCircleIcon, UserCircle2Icon } from 'lucide-react';
 import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
-import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
+// import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
 import { HansardSearch } from './Hansard';
 
 const PAGE_SIZE = 10;
@@ -227,8 +227,9 @@ export function Search({ initialTab }: SearchProps) {
               query: queryToUse,
               streamingText,
               citations: citations.map(citation => ({
-                index: citation.indexOf(queryToUse),
-                url: citation
+                citation_index: citation.citation_index,
+                debate_id: citation.debate_id,
+                chunk_text: citation.chunk_text
               }))
             }
           });
@@ -395,7 +396,7 @@ export function Search({ initialTab }: SearchProps) {
                 </div>
                 <div className="flex gap-2 items-start mt-4">
                   {/* Assistant Select with icon */}
-                  {isPremium ? (
+                  {/* {isPremium ? (
                     <AssistantSelect 
                       onAssistantChange={handleAssistantChange}
                     />
@@ -405,10 +406,10 @@ export function Search({ initialTab }: SearchProps) {
                         <UserCircle2Icon className="h-4 w-4" />
                       </Button>
                     </UpgradePopover>
-                  )}
+                  )} */}
 
                   {/* Create Assistant with icon */}
-                  {isPremium ? (
+                  {/* {isPremium ? (
                     <Button 
                       variant="outline"
                       size="icon"
@@ -422,7 +423,7 @@ export function Search({ initialTab }: SearchProps) {
                         <PlusCircleIcon className="h-4 w-4" />
                       </Button>
                     </UpgradePopover>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -481,7 +482,7 @@ export function Search({ initialTab }: SearchProps) {
                   <div className="p-4">
                     <StreamedResponse 
                       streamingText={state.aiSearch.streamingText}
-                      citations={state.aiSearch.citations.map(citation => citation.url)}
+                      citations={state.aiSearch.citations}
                       isLoading={state.aiSearch.isLoading}
                       query={state.aiSearch.query}
                     />

@@ -2,10 +2,9 @@ import { formatDistanceToNow } from 'date-fns';
 import type { SavedSearch } from '@/types/search';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DebateHeader } from '@/components/debates/DebateHeader';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Download, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Children, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { exportToPDF } from '@/lib/pdf-export';
 import ReactMarkdown from 'react-markdown';
@@ -26,7 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CitationsList } from '@/components/ui/citation';
 import { InlineCitation } from '@/components/ui/inline-citation';
 
 interface SearchCardProps {
@@ -111,29 +109,37 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
   // Replace processText with MarkdownWithCitations component
   const MarkdownWithCitations = ({ text }: { text: string }) => {
     const renderWithCitations = (content: string) => {
-      // Match standalone citation numbers: [1], [2], etc.
-      const parts = content.split(/(\[\d+\])/);
+      const parts = content.split(/(【\d+】)/g);
       return parts.map((part, i) => {
-        const citationMatch = part.match(/\[(\d+)\]/);
+        const citationMatch = part.match(/【(\d+)】/);
         if (citationMatch && search.citations) {
-          const citationIndex = parseInt(citationMatch[1]) - 1; // Convert to 0-based index
-          const citation = search.citations[citationIndex];
-          if (citation) {
-            // Extract the citation number from the citation string to verify match
-            const citationNumberMatch = citation.match(/^\[(\d+)\]/);
-            if (citationNumberMatch && parseInt(citationNumberMatch[1]) === citationIndex + 1) {
+          const citationNumber = parseInt(citationMatch[1], 10);
+          try {
+            // Safely parse the citations array from the database
+            const citations = search.citations.map(c => {
+              try {
+                return typeof c === 'string' ? JSON.parse(c) : c;
+              } catch (e) {
+                console.error('Failed to parse citation:', c);
+                return null;
+              }
+            }).filter(Boolean);
+
+            const citation = citations.find(c => c?.citation_index === citationNumber);
+            if (citation) {
               return (
-                <InlineCitation 
-                  key={`citation-${i}`}
-                  index={citationIndex}
+                <InlineCitation
+                  key={`citation-${citationNumber}-${i}`}
                   citation={citation}
                 />
               );
             }
+          } catch (e) {
+            console.error('Error processing citations:', e);
           }
         }
-        return part;
-      });
+        return part ? <span key={`text-${i}`}>{part}</span> : null;
+      }).filter(Boolean);
     };
 
     return (
@@ -148,9 +154,9 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
           ),
           li: ({ children }) => (
             <li className="mb-1 text-foreground">
-              {typeof children === 'string'
-                ? renderWithCitations(children)
-                : children}
+              {Children.map(children, (child: any) =>
+                typeof child === 'string' ? renderWithCitations(child) : child
+              )}
             </li>
           ),
           blockquote: ({ children }) => (
@@ -266,12 +272,6 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
               </Button>
             </CollapsibleTrigger>
           )}
-
-          <CollapsibleContent>
-            {search.search_type === 'ai' && search.citations.length > 0 && (
-              <CitationsList citations={search.citations} />
-            )}
-          </CollapsibleContent>
         </Collapsible>
       </CardContent>
     </Card>

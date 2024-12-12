@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 import { PLANS } from '@/lib/stripe-client';
+import createClient from '@/lib/supabase/client';
 
 interface SubscriptionCTAProps {
   title: string;
@@ -19,7 +20,7 @@ export function SubscriptionCTA({
   features,
   className = "",
 }: SubscriptionCTAProps) {
-  const { user, getAuthHeader } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const handleUpgrade = async () => {
@@ -34,13 +35,19 @@ export function SubscriptionCTA({
     }
 
     try {
-      const token = await getAuthHeader();
+      // Get the current session
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.access_token) {
+        throw new Error('No valid session found');
+      }
+
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Idempotency-Key': `${user.id}-${Date.now()}`,
         },
         body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
@@ -53,7 +60,10 @@ export function SubscriptionCTA({
       const { url, sessionId } = await response.json();
       if (!url) throw new Error('No checkout URL received');
       
+      // Store the session ID
       localStorage.setItem('checkoutSessionId', sessionId);
+      
+      // Redirect to checkout
       window.location.href = url;
     } catch (error) {
       console.error('Subscription error:', error);

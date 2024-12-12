@@ -5,8 +5,9 @@ import type { SearchParams, SearchResponse, SearchResultAIContent } from '@/type
 
 // Add new type for citations
 type Citation = {
-  index: number;
-  url: string;
+  citation_index: number;
+  debate_id: string;
+  chunk_text: string;
 };
 
 interface SearchState {

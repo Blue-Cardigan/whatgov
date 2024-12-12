@@ -5,6 +5,39 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Add function to get embedding for query
+async function getQueryEmbedding(query: string) {
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: query,
+  });
+  return response.data[0].embedding;
+}
+
+async function getRelevantChunks(supabase: any, embedding: any, limit = 5) {
+    try {
+      // Format the embedding directly as a string array
+      const formattedEmbedding = `[${embedding.toString()}]`;
+      
+      const { data: chunks, error } = await supabase.rpc('match_chunks', {
+        query_embedding: formattedEmbedding,
+        match_threshold: 0.2,
+        match_count: limit
+      });
+  
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
+  
+      return chunks || [];
+    } catch (error) {
+      console.error('Error matching chunks:', error);
+      throw error;
+    }
+  }
+  
+
 export async function POST(request: Request) {
   const encoder = new TextEncoder();
 
@@ -17,7 +50,6 @@ export async function POST(request: Request) {
 
     // If no assistantId is provided, use the default assistant
     const assistantIDToUse = assistantId || process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
-    console.log('assistantIDToUse', assistantIDToUse);
 
     // If using a custom assistant, verify it exists and belongs to the user
     const supabase = await createServerSupabaseClient();
@@ -27,82 +59,100 @@ export async function POST(request: Request) {
     return new Response('Unauthorized', { status: 401 });
     }
 
+    // Get embedding for query
+    const embedding = await getQueryEmbedding(query);
+    
+    // Get relevant chunks
+    const chunks = await getRelevantChunks(supabase, embedding);
+
+    // Check if chunks array is empty
+    if (!chunks.length) {
+      return new Response('No relevant content found', { status: 404 });
+    }
+
+    // Format chunks as context with the new bracket style
+    const context = chunks.map((chunk: any, index: number) => 
+      `【${index + 1}】From debate ${chunk.debate_id}, chunk ${chunk.chunk_index}:\n${chunk.chunk_text}`
+    ).join('\n\n');
+
+    // Modify the query instructions to use the new bracket style
+    const enhancedQuery = `Context information:\n${context}\n\nUser query: ${query}\n\nPlease answer the query using the provided context. Reference the sources using numbered citations in special brackets (e.g. 【1】, 【2】, etc.). Each citation should correspond to the numbered context items above.`;
+
     const thread = await openai.beta.threads.create();
     await openai.beta.threads.messages.create(thread.id, {
-    role: "user",
-    content: query
+      role: "user",
+      content: enhancedQuery
     });
 
     const stream = new ReadableStream({
-    async start(controller) {
-        try {
-        const runStream = await openai.beta.threads.runs.createAndStream(
-            thread.id, { assistant_id: assistantIDToUse }
-        );
-
-        let citations: string[] = [];
-
-        for await (const part of runStream) {
-            if (part.event === "thread.message.delta") {
-            const content = part.data.delta.content;
-            if (content && content.length > 0) {
-                const firstContent = content[0];
-                if ('text' in firstContent) {
+        async start(controller) {
+          try {
+            const runStream = await openai.beta.threads.runs.createAndStream(
+              thread.id, { assistant_id: assistantIDToUse }
+            );
+      
+            for await (const part of runStream) {
+              if (part.event === "thread.message.delta") {
+                const content = part.data.delta.content;
+                if (content && content.length > 0) {
+                  const firstContent = content[0];
+                  if ('text' in firstContent) {
                     const textContent = firstContent.text?.value;
                     if (textContent) {
-                        controller.enqueue(encoder.encode(
-                            JSON.stringify({ 
-                                type: 'text', 
-                                content: textContent 
-                            }) + '\n'
-                        ));
+                      controller.enqueue(encoder.encode(
+                        JSON.stringify({ 
+                          type: 'text', 
+                          content: textContent 
+                        }) + '\n'
+                      ));
                     }
+                  }
                 }
-            }
-            } else if (part.event === "thread.message.completed") {
-            if (part.data.content[0].type === "text") {
-                const { text } = part.data.content[0];
-                const { annotations } = text;
-                citations = [];
+              } else if (part.event === "thread.message.completed") {
+                if (part.data.content[0].type === "text") {
+                  const { text } = part.data.content[0];
+                  
+                  // Send citations first
+                  controller.enqueue(encoder.encode(
+                    JSON.stringify({ 
+                      type: 'citations', 
+                      content: chunks.map((chunk: any, index: number) => ({
+                        citation_index: index + 1,
+                        debate_id: chunk.debate_id,
+                        chunk_text: chunk.chunk_text
+                      }))
+                    }) + '\n'
+                  ));
 
-                let processedText = text.value;
-                for (let i = 0; i < annotations.length; i++) {
-                const annotation = annotations[i];
-                processedText = processedText.replace(annotation.text, `[${i + 1}]`);
-                
-                if ('file_citation' in annotation) {
-                    const { file_citation } = annotation;
-                    if (file_citation) {
-                        const citedFile = await openai.files.retrieve(file_citation.file_id);
-                        citations.push(`[${i + 1}] ${citedFile.filename}`);
-                    }
+                  // Then send the final text
+                  controller.enqueue(encoder.encode(
+                    JSON.stringify({ 
+                      type: 'finalText', 
+                      content: text.value 
+                    }) + '\n'
+                  ));
+      
+                  // Send debate references
+                  controller.enqueue(encoder.encode(
+                    JSON.stringify({ 
+                      type: 'debateRefs',
+                      content: chunks.map((chunk: any) => ({
+                        debate_id: chunk.debate_id,
+                        chunk_index: chunk.chunk_index
+                      }))
+                    }) + '\n'
+                  ));
                 }
-                }
-
-                controller.enqueue(encoder.encode(
-                JSON.stringify({ 
-                    type: 'finalText', 
-                    content: processedText 
-                }) + '\n'
-                ));
-
-                controller.enqueue(encoder.encode(
-                JSON.stringify({ 
-                    type: 'citations', 
-                    content: citations 
-                }) + '\n'
-                ));
+              }
             }
-            }
+            
+            controller.close();
+          } catch (error) {
+            console.error("Error in stream:", error);
+            controller.error(error);
+          }
         }
-        
-        controller.close();
-        } catch (error) {
-        console.error("Error in stream:", error);
-        controller.error(error);
-        }
-    }
-    });
+      });      
 
     return new Response(stream, {
     headers: {

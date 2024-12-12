@@ -7,20 +7,15 @@ import {
 } from "@/components/ui/tooltip";
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { useState } from 'react';
+import { Citation } from '@/types/search';
 
 interface InlineCitationProps {
-  index: number;
-  citation: string;
+  citation: Citation;
   className?: string;
 }
 
-export function InlineCitation({ index, citation, className }: InlineCitationProps) {
+export function InlineCitation({ citation, className }: InlineCitationProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Extract the extId from citation string (e.g., "[1] 123456.txt" -> "123456")
-  const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
-  if (!match) return null;
-  const extId = match[2];
 
   return (
     <TooltipProvider>
@@ -33,7 +28,7 @@ export function InlineCitation({ index, citation, className }: InlineCitationPro
               className
             )}
           >
-            [{index + 1}]
+            【{citation.citation_index}】
           </button>
         </TooltipTrigger>
         <TooltipContent 
@@ -42,7 +37,7 @@ export function InlineCitation({ index, citation, className }: InlineCitationPro
           onPointerDownOutside={() => setIsOpen(false)}
         >
           <DebateHeader 
-            extId={extId}
+            extId={citation.debate_id}
             className="border rounded-md bg-background"
           />
         </TooltipContent>

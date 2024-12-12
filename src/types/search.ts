@@ -1,5 +1,11 @@
 import type { KeyPoint, Speaker } from "@/types";
 
+export interface Citation {
+    citation_index: number;
+    debate_id: string;
+    chunk_text: string;
+  }
+
 export interface SearchState {
     searchParams: SearchParams;
     results: SearchResponse | null;
@@ -7,7 +13,7 @@ export interface SearchState {
     aiSearch: {
         query: string;
         streamingText: string;
-        citations: Array<{ index: number; url: string }>;
+        citations: Array<{ citation_index: number; debate_id: string, chunk_text: string }>;
         isLoading: boolean;
     };
     searchType?: 'ai' | 'hansard';

@@ -181,7 +181,7 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
           </CardHeader>
 
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-300px)] rounded-md border">
+            <ScrollArea className="h-[calc(90vh)] rounded-md border">
               <div className="divide-y divide-border">
                 {filteredContributions.map((contribution: HansardContribution) => {
                   if (!contribution.Value || contribution.Value.includes('column-number')) {
@@ -202,24 +202,32 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
                     >
                       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                         {/* Speaker info - Reduce minimum width */}
-                        <div className="flex-shrink-0 sm:min-w-[8%] sm:max-w-[30%] sm:border-r sm:pr-6">
+                        <div className="flex-shrink-0 w-[18%] sm:border-r sm:pr-6">
                           {contribution.AttributedTo && (
                             <div className="flex sm:block items-center justify-between gap-2">
                               <div>
                                 <div className="font-medium">
                                   {contribution.AttributedTo.split('(')[0].trim()}
                                 </div>
-                                {party && (
-                                  <div 
-                                    className="text-xs inline-block px-2 py-0.5 rounded-full mt-1"
-                                    style={{
-                                      backgroundColor: partyColours[party]?.color || '#808080',
-                                      color: '#ffffff'
-                                    }}
-                                  >
-                                    {party}
-                                  </div>
-                                )}
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {contribution.AttributedTo
+                                    .match(/\((.*?)\)/g)
+                                    ?.map((match, index) => {
+                                      const label = match.slice(1, -1); // Remove parentheses
+                                      return (
+                                        <div 
+                                          key={index}
+                                          className="text-xs inline-block px-2 py-0.5 rounded-full"
+                                          style={{
+                                            backgroundColor: partyColours[label]?.color || '#808080',
+                                            color: '#ffffff'
+                                          }}
+                                        >
+                                          {label}
+                                        </div>
+                                      );
+                                    })}
+                                </div>
                               </div>
                               {contribution.Timecode && (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

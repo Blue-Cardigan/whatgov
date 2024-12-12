@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bookmark, BookmarkCheck, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { SearchResponse, SearchParams } from '@/types/search';
+import { Citation } from '@/types/search';
 
 interface SaveSearchButtonProps {
   results?: SearchResponse | null;
@@ -15,7 +16,7 @@ interface SaveSearchButtonProps {
   aiSearch?: {
     query: string;
     streamingText: string;
-    citations: Array<{ index: number; url: string }>;
+    citations: Citation[];
   };
   searchType: 'ai' | 'hansard';
   className?: string;
@@ -75,7 +76,11 @@ export function SaveSearchButton({
           ? {
               query: aiSearch?.query || '',
               response: aiSearch?.streamingText || '',
-              citations: aiSearch?.citations.map(c => c.url) || [],
+              citations: aiSearch?.citations.map(c => JSON.stringify({
+                citation_index: c.citation_index,
+                debate_id: c.debate_id,
+                chunk_text: c.chunk_text
+              })) || [],
               query_state: null
             }
           : {

@@ -1,3 +1,5 @@
+import { Citation } from "@/types/search";
+
 export async function streamAssistantResponse(query: string): Promise<ReadableStream<Uint8Array> | null> {
   try {
     const response = await fetch('/api/assistant/stream', {
@@ -17,18 +19,17 @@ export async function streamAssistantResponse(query: string): Promise<ReadableSt
     console.error('Error streaming assistant response:', error);
     throw error;
   }
-}
+} 
 
-// Helper function to parse streaming response
 export function parseStreamingResponse(chunk: string): {
-  type: 'text' | 'finalText' | 'citations' | 'error';
-  content?: string | string[];
+  type: 'text' | 'finalText' | 'citations' | 'debateRefs' | 'error';
+  content: string | Citation[] | any;
 } {
   try {
     const data = JSON.parse(chunk);
     return {
       type: data.type,
-      content: data.content,
+      content: data.content || (data.type === 'citations' ? [] : ''),
     };
   } catch (error) {
     console.error('Error parsing streaming response:', error);

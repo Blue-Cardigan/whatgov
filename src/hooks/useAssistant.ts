@@ -2,18 +2,19 @@ import { useState, useCallback } from 'react';
 import { parseStreamingResponse } from '@/lib/openai-api';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
+import { Citation } from '@/types/search';
 
 export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string>('');
-  const [citations, setCitations] = useState<string[]>([]);
+  const [citations, setCitations] = useState<Citation[]>([]);
   const { hasReachedResearchSearchLimit, recordResearchSearch } = useEngagement();
   const { toast } = useToast();
 
   const performFileSearch = useCallback(async (
     query: string, 
     openaiAssistantId: string | null,
-    onStreamingUpdate?: (text: string, citations: string[]) => void
+    onStreamingUpdate?: (text: string, citations: Citation[]) => void
   ) => {
     // Check limits before proceeding
     if (hasReachedResearchSearchLimit()) {
@@ -50,7 +51,7 @@ export function useAssistant() {
       const decoder = new TextDecoder();
       let buffer = '';
       let currentText = '';
-      let currentCitations: string[] = [];
+      let currentCitations: Citation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -66,24 +67,35 @@ export function useAssistant() {
               const { type, content } = parseStreamingResponse(line);
               
               switch (type) {
-                case 'text':
-                  currentText += content;
-                  setStreamingText(currentText);
-                  onStreamingUpdate?.(currentText, currentCitations);
-                  break;
-                case 'finalText':
-                  currentText = content as string;
-                  setStreamingText(currentText);
-                  onStreamingUpdate?.(currentText, currentCitations);
-                  break;
                 case 'citations':
-                  currentCitations = content as string[];
-                  setCitations(currentCitations);
-                  onStreamingUpdate?.(currentText, currentCitations);
+                  if (Array.isArray(content)) {
+                    currentCitations = content.map((citation) => ({
+                      citation_index: citation.citation_index,
+                      debate_id: citation.debate_id,
+                      chunk_text: citation.chunk_text
+                    }));
+                    currentCitations.sort((a, b) => a.citation_index - b.citation_index);
+                    setCitations(currentCitations);
+                  } else {
+                    console.error('Citations content is not an array:', content);
+                  }
+                  break;
+                case 'text':
+                case 'finalText':
+                  const textContent = typeof content === 'string' ? content : String(content);
+                  currentText = type === 'finalText' ? textContent : currentText + textContent;
+                  setStreamingText(currentText);
                   break;
                 case 'error':
-                  throw new Error(content as string);
+                  throw new Error(typeof content === 'string' ? content : 'Unknown error');
+                  break;
+                // Ignore other message types like debateRefs
+                default:
+                  break;
               }
+              
+              // Update streaming content after processing each line
+              onStreamingUpdate?.(currentText, currentCitations);
             } catch (e) {
               console.error('Error processing line:', e);
             }

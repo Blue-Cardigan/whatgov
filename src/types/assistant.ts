@@ -1,6 +1,6 @@
 export interface StreamResponse {
   text: string;
-  citations: string[];
+  citations: Array<{ citation_index: number; debate_id: string; chunk_text: string }>;
 }
 
 export interface AssistantResponse {

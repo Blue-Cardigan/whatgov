@@ -14,16 +14,21 @@ Professionals
 [/] Limit assistant usage by engagement
 [/] Assistant filter editing
 [/] Export saved searches to file
+[ ] Implement automatic updates (write and sweep) for default assistant
+[ ] Fix keyword list view
 [-] Implement 'Keep this assistant updated with new debates' 
       [-] Check new debates and add to matching assistants
       [ ] Remove old debates at end of week (second option)
+[ ] Implement 'run weekly on Xday' in saved searches. 
+      - Vector stores are updated and the query rerun in one go
+      - Saves updating vector stores every day
 [/] Delete assistants
-[ ] Format saved searches correctly
-[ ] Save query-assistant pairs to rerun
+[/] Format saved searches correctly
+[/] Save query-assistant pairs to rerun
 
 [/] Save hansard searches
 [/] Fix Division generation
-[\] Create Openai files for divisions
+[/] Create Openai files for divisions
 [/] Add divisions to assistants
 [/] Show multiple divisions in postcard/debateview if present
 [ ] Term frequency tracking in hansard search
