@@ -39,6 +39,14 @@ async function getRelevantChunks(supabase: any, embedding: any, limit = 5) {
   
 
 export async function POST(request: Request) {
+  const supabase = await createServerSupabaseClient();
+  
+  // Check authentication
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const encoder = new TextEncoder();
 
   try {
@@ -50,14 +58,6 @@ export async function POST(request: Request) {
 
     // If no assistantId is provided, use the default assistant
     const assistantIDToUse = assistantId || process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
-
-    // If using a custom assistant, verify it exists and belongs to the user
-    const supabase = await createServerSupabaseClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-    return new Response('Unauthorized', { status: 401 });
-    }
 
     // Get embedding for query
     const embedding = await getQueryEmbedding(query);

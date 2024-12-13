@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAssistant } from '@/hooks/useAssistant';
 import { StreamedResponse } from './Assistant/StreamedResponse';
 import { useSearch } from '@/contexts/SearchContext';
-import { LightbulbIcon, PlusCircleIcon, UserCircle2Icon } from 'lucide-react';
+import { LightbulbIcon } from 'lucide-react';
 import { AssistantBuilder } from './Assistant/AssistantBuilder';
 import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";

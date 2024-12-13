@@ -9,6 +9,18 @@ import { Bookmark, BookmarkCheck, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { SearchResponse, SearchParams } from '@/types/search';
 import { Citation } from '@/types/search';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SaveSearchButtonProps {
   results?: SearchResponse | null;
@@ -31,12 +43,51 @@ export function SaveSearchButton({
 }: SaveSearchButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showSchedulePopover, setShowSchedulePopover] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number>(() => {
+    const today = new Date().getDay();
+    // If current day is weekend (0 or 6), default to Monday (1)
+    return today === 0 || today === 6 ? 1 : today;
+  });
+  const [savedSearchId, setSavedSearchId] = useState<number | null>(null);
   const supabase = useSupabase();
   const { user, isEngagedCitizen, isPremium } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
   const canSaveSearches = isEngagedCitizen || isPremium;
+
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+  const handleSaveSchedule = async () => {
+    try {
+      const { error } = await supabase
+        .from('saved_search_schedules')
+        .insert({
+          search_id: savedSearchId, // You'll need to store this when saving the initial search
+          user_id: user!.id,
+          repeat_on: {
+            frequency: 'weekly',
+            dayOfWeek: selectedDay
+          }
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Schedule saved",
+        description: `Search will repeat every ${dayNames[selectedDay]}`,
+      });
+      setShowSchedulePopover(false);
+    } catch (error) {
+      console.error('Failed to save schedule:', error);
+      toast({
+        title: "Failed to save schedule",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSave = async () => {
     if (!user) {
@@ -98,17 +149,25 @@ export function SaveSearchButton({
         )
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('saved_searches')
-        .insert(saveData);
+        .insert(saveData)
+        .select('id')
+        .single();
 
       if (error) throw error;
 
       setIsSaved(true);
+      setSavedSearchId(data.id);
+
       toast({
         title: "Search saved",
         description: "You can find this in your search history",
       });
+
+      if (isEngagedCitizen) {
+        setShowSchedulePopover(true);
+      }
     } catch (error) {
       console.error('Failed to save search:', error);
       toast({
@@ -123,14 +182,53 @@ export function SaveSearchButton({
 
   if (isSaved) {
     return (
-      <Button 
-        variant="outline" 
-        className={className}
-        disabled
-      >
-        <BookmarkCheck className="h-4 w-4 mr-2" />
-        Saved
-      </Button>
+      <Popover open={showSchedulePopover} onOpenChange={setShowSchedulePopover}>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            className={className}
+          >
+            <BookmarkCheck className="h-4 w-4 mr-2" />
+            Saved
+          </Button>
+        </PopoverTrigger>
+        {isEngagedCitizen && (
+          <PopoverContent className="w-80">
+            <div className="space-y-4">
+              <h4 className="font-medium">Schedule Recurring Search</h4>
+              <p className="text-sm text-muted-foreground">
+                Choose which weekday to repeat this search
+              </p>
+              <Select
+                value={selectedDay.toString()}
+                onValueChange={(value) => setSelectedDay(parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select weekday" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dayNames.map((day, index) => (
+                    <SelectItem key={index + 1} value={(index + 1).toString()}>
+                      {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSchedulePopover(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveSchedule}>
+                  Save Schedule
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        )}
+      </Popover>
     );
   }
 

@@ -135,7 +135,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/(stripe|premium)/:path*',
+    '/api/(stripe|premium|assistant)/:path*',
     '/settings/:path*',
   ],
 } 

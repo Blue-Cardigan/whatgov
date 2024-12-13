@@ -4,7 +4,6 @@ create or replace function match_chunks(
   match_count int
 )
 returns table (
-  id bigint,
   debate_id text,
   chunk_index int,
   similarity float,
@@ -15,7 +14,6 @@ as $$
 begin
   return query
   select
-    dfc.id,
     dfc.debate_id,
     dfc.chunk_index,
     1 - (dfc.embedding <=> (query_embedding::vector)) as similarity,

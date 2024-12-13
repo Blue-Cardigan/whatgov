@@ -66,17 +66,26 @@ BEGIN
       d.debate_section_ext_id,
       jsonb_agg(
         jsonb_build_object(
-          'division_id', d.division_id,
           'external_id', d.external_id,
+          'debate_section_ext_id', d.debate_section_ext_id,
           'date', d.date,
           'time', d.time,
+          'has_time', d.has_time,
           'ayes_count', d.ayes_count,
           'noes_count', d.noes_count,
-          'aye_members', d.aye_members,
-          'noe_members', d.noe_members,
+          'house', d.house,
+          'debate_section', d.debate_section,
+          'debate_section_source', d.debate_section_source,
           'division_number', d.division_number,
           'text_before_vote', d.text_before_vote,
           'text_after_vote', d.text_after_vote,
+          'evel_type', d.evel_type,
+          'evel_info', d.evel_info,
+          'evel_ayes_count', d.evel_ayes_count,
+          'evel_noes_count', d.evel_noes_count,
+          'is_committee_division', d.is_committee_division,
+          'aye_members', d.aye_members,
+          'noe_members', d.noe_members,
           'ai_question', d.ai_question,
           'ai_topic', d.ai_topic,
           'ai_context', d.ai_context,
@@ -98,18 +107,11 @@ BEGIN
       OR d.id NOT IN (SELECT debate_id FROM voted_debates)
     )
     AND (
-      (NOT EXISTS (SELECT 1 FROM user_topics) AND dd.divisions_data IS NOT NULL AND dd.divisions_data != '[]'::jsonb)
-      OR
-      (
-        EXISTS (SELECT 1 FROM user_topics)
-        AND (
-          NOT p_divisions_only 
-          OR (
-            dd.divisions_data IS NOT NULL 
-            AND dd.divisions_data != '[]'::jsonb
-            AND jsonb_array_length(dd.divisions_data) > 0
-          )
-        )
+      NOT p_divisions_only
+      OR (
+        dd.divisions_data IS NOT NULL 
+        AND dd.divisions_data != '[]'::jsonb
+        AND jsonb_array_length(dd.divisions_data) > 0
       )
     )
     AND (

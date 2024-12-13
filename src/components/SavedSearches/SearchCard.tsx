@@ -4,10 +4,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Download, Trash2 } from 'lucide-react';
-import { Children, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { exportToPDF } from '@/lib/pdf-export';
-import ReactMarkdown from 'react-markdown';
+import { FormattedMarkdown } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -25,7 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { InlineCitation } from '@/components/ui/inline-citation';
 
 interface SearchCardProps {
   search: SavedSearch;
@@ -64,7 +63,7 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
     };
     
     sessionStorage.setItem('searchState', JSON.stringify(searchState));
-    router.push(`/search?tab=${search.search_type}&execute=true`); // Add execute parameter
+    router.push(`/search?tab=${search.search_type}&execute=true`);
   };
 
   const handleExport = async () => {
@@ -106,72 +105,10 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
     );
   };
 
-  // Replace processText with MarkdownWithCitations component
-  const MarkdownWithCitations = ({ text }: { text: string }) => {
-    const renderWithCitations = (content: string) => {
-      const parts = content.split(/(【\d+】)/g);
-      return parts.map((part, i) => {
-        const citationMatch = part.match(/【(\d+)】/);
-        if (citationMatch && search.citations) {
-          const citationNumber = parseInt(citationMatch[1], 10);
-          try {
-            // Safely parse the citations array from the database
-            const citations = search.citations.map(c => {
-              try {
-                return typeof c === 'string' ? JSON.parse(c) : c;
-              } catch (e) {
-                console.error('Failed to parse citation:', c);
-                return null;
-              }
-            }).filter(Boolean);
-
-            const citation = citations.find(c => c?.citation_index === citationNumber);
-            if (citation) {
-              return (
-                <InlineCitation
-                  key={`citation-${citationNumber}-${i}`}
-                  citation={citation}
-                />
-              );
-            }
-          } catch (e) {
-            console.error('Error processing citations:', e);
-          }
-        }
-        return part ? <span key={`text-${i}`}>{part}</span> : null;
-      }).filter(Boolean);
-    };
-
-    return (
-      <ReactMarkdown
-        components={{
-          p: ({ children }) => (
-            <p className="mb-4 leading-relaxed text-foreground">
-              {typeof children === 'string' 
-                ? renderWithCitations(children)
-                : children}
-            </p>
-          ),
-          li: ({ children }) => (
-            <li className="mb-1 text-foreground">
-              {Children.map(children, (child: any) =>
-                typeof child === 'string' ? renderWithCitations(child) : child
-              )}
-            </li>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-muted pl-4 italic my-4 text-muted-foreground">
-              {typeof children === 'string'
-                ? renderWithCitations(children)
-                : children}
-            </blockquote>
-          ),
-        }}
-      >
-        {text}
-      </ReactMarkdown>
-    );
-  };
+  // Process citations from the saved search
+  const processedCitations = search.citations?.map(citation => 
+    typeof citation === 'string' ? JSON.parse(citation) : citation
+  ).filter(Boolean);
 
   return (
     <Card>
@@ -205,7 +142,6 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      {/* Move onDelete to the AlertDialogAction onClick directly */}
                       <AlertDialogAction onClick={onDelete}>
                         Delete
                       </AlertDialogAction>
@@ -247,8 +183,9 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           {search.search_type === 'ai' ? (
             <div className="prose dark:prose-invert prose-sm max-w-none mb-4">
-              <MarkdownWithCitations 
-                text={isOpen ? search.response : search.response.slice(0, 200) + '...'}
+              <FormattedMarkdown 
+                content={isOpen ? search.response : search.response.slice(0, 200) + '...'}
+                citations={processedCitations}
               />
             </div>
           ) : (

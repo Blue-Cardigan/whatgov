@@ -3,8 +3,10 @@ import { parseStreamingResponse } from '@/lib/openai-api';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
 import { Citation } from '@/types/search';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useAssistant() {
+  const { getAuthHeader } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState<string>('');
   const [citations, setCitations] = useState<Citation[]>([]);
@@ -34,9 +36,15 @@ export function useAssistant() {
       // Record the AI search before making the request
       await recordResearchSearch();
 
+      // Get auth header
+      const authHeader = await getAuthHeader();
+
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authHeader}`
+        },
         body: JSON.stringify({ query, assistantId: openaiAssistantId }),
       });
 
@@ -122,7 +130,7 @@ export function useAssistant() {
     } finally {
       setIsLoading(false);
     }
-  }, [hasReachedResearchSearchLimit, recordResearchSearch, toast]);
+  }, [hasReachedResearchSearchLimit, recordResearchSearch, toast, getAuthHeader]);
 
   return {
     isLoading,

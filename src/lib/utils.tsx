@@ -4,6 +4,10 @@ import { clsx, type ClassValue } from "clsx"
 import { Leaf, Heart, Building2, Microscope, Scale, Globe2, LandPlot, GraduationCap, type LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge"
 import { Contribution } from "@/types/search";
+import ReactMarkdown from "react-markdown";
+import { Children } from 'react';
+import { Citation } from '@/types/search';
+import { InlineCitation } from '@/components/ui/inline-citation';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -14,6 +18,98 @@ export const getThreeFourPortraitUrl = (memberId: number) =>
 
 export const getOneOnePortraitUrl = (memberId: number) => 
   `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=oneone&webversion=true`;
+
+
+// Add this new component for consistent markdown styling
+interface FormattedMarkdownProps {
+  content: string;
+  citations?: Citation[];
+}
+
+export function FormattedMarkdown({ content, citations }: FormattedMarkdownProps) {
+  const renderWithCitations = (text: string) => {
+    if (!citations) return text;
+
+    const parts = text.split(/(【\d+】)/g);
+    return parts.map((part, i) => {
+      const citationMatch = part.match(/【(\d+)】/);
+      if (citationMatch) {
+        const citationNumber = parseInt(citationMatch[1], 10);
+        const citation = citations.find(c => c.citation_index === citationNumber);
+        if (citation) {
+          return (
+            <InlineCitation
+              key={`citation-${citationNumber}-${i}`}
+              citation={citation}
+            />
+          );
+        }
+        return <span key={`unmatched-citation-${i}`}>【{citationNumber}】</span>;
+      }
+      return part ? <span key={`text-${i}`}>{part}</span> : null;
+    }).filter(Boolean);
+  };
+
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            className="text-primary hover:text-primary-foreground hover:bg-primary transition-colors no-underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        ),
+        p: ({ children }) => (
+          <p className="leading-relaxed text-justify mb-4">
+            {typeof children === 'string' 
+              ? renderWithCitations(children)
+              : children}
+          </p>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc pl-6 mb-4">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal pl-6 mb-4">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => (
+          <li className="mb-1">
+            {Children.map(children, (child: any) =>
+              typeof child === 'string' ? renderWithCitations(child) : child
+            )}
+          </li>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-muted pl-4 italic my-4">
+            {typeof children === 'string'
+              ? renderWithCitations(children)
+              : children}
+          </blockquote>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-bold">
+            {children}
+          </strong>
+        ),
+        em: ({ children }) => (
+          <em className="italic">
+            {children}
+          </em>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
 
 // Helper function to safely parse JSON fields
 export function parseKeyPoints(json: Json): KeyPoint[] {

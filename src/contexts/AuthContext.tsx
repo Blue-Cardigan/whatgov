@@ -271,6 +271,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const getAuthHeader = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || '';
+    };
+
     return {
       ...state,
       signIn,
@@ -279,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateProfile,
       resetPassword: async () => ({ success: false }),
       updatePassword: async () => ({ success: false }),
-      getAuthHeader: async () => '',
+      getAuthHeader,
       isPremium: isSubscriptionActive(state.subscription) && 
         state.subscription?.plan === 'PROFESSIONAL',
       isEngagedCitizen: isSubscriptionActive(state.subscription) && 

@@ -30,7 +30,7 @@ export function DivisionContent({
 }: DivisionContentProps) {
   const { profile } = useAuth();
   const { partyVotes } = useMemo(() => {
-    const total = divisions[currentIndex].ayes_count + divisions[currentIndex].noes_count;
+    const total = (divisions[currentIndex]?.ayes_count || 0) + (divisions[currentIndex]?.noes_count || 0);
     const partyVotesMap: PartyVotes = {};
     
     // Process votes in a single pass
@@ -48,8 +48,8 @@ export function DivisionContent({
 
     return {
       totalVotes: total,
-      ayePercentage: Math.round((divisions[currentIndex].ayes_count / total) * 100),
-      noePercentage: Math.round((divisions[currentIndex].noes_count / total) * 100),
+      ayePercentage: Math.round((divisions[currentIndex]?.ayes_count || 0 / total) * 100),
+      noePercentage: Math.round((divisions[currentIndex]?.noes_count || 0 / total) * 100),
       partyVotes: partyVotesMap
     };
   }, [divisions, currentIndex]);

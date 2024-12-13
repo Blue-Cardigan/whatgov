@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { HansardDebateResponse, HansardContribution, HansardNavigatorItem } from "@/types/hansard";
+import { FormattedMarkdown } from '@/lib/utils';
 
 interface DebateViewProps {
   debate: FeedItem;
@@ -355,12 +356,12 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
         {/* Overview Section */}
         <div className="px-6 pb-4">
           <h3 className="text-lg font-semibold mb-4">Overview</h3>
-          <div className="text-sm text-muted-foreground leading-relaxed text-justify">
-            <p>{debate.ai_overview}</p>
+          <div className="text-sm text-muted-foreground">
+            <FormattedMarkdown content={debate.ai_overview || debate.ai_summary} />
           </div>
         </div>
 
-        {/* Analysis Section - Modified */}
+        {/* Analysis Section - Only show if different from overview */}
         {debate.ai_summary && debate.ai_summary !== debate.ai_overview && (
           <div className="px-6 py-4">
             <div className="flex items-center justify-between mb-6">
@@ -376,8 +377,8 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
             </div>
             
             {isEngagedCitizen ? (
-              <div className="text-sm text-muted-foreground leading-relaxed text-justify">
-                <p>{debate.ai_summary}</p>
+              <div className="text-sm text-muted-foreground">
+                <FormattedMarkdown content={debate.ai_summary} />
               </div>
             ) : (
               <AnalysisPreview onUpgrade={() => setShowUpgradeDialog(true)} variant="full" />

@@ -127,20 +127,24 @@ export interface EngagementCount {
 }
 
 export interface Division {
-  division_id: number;
   external_id: string;
+  debate_section_ext_id: string;
   date: string;
   time: string | null;
-  ayes_count: number;
-  noes_count: number;
-  division_number: string | null;
-  ai_question: string | null;
-  ai_topic: string | null;
-  ai_context: string | null;
-  ai_key_arguments: {
-    for: string;
-    against: string;
-  } | null;
+  has_time: boolean | null;
+  ayes_count: number | null;
+  noes_count: number | null;
+  house: string | null;
+  debate_section: string | null;
+  debate_section_source: string | null;
+  division_number: string;
+  text_before_vote: string | null;
+  text_after_vote: string | null;
+  evel_type: number | null;
+  evel_info: string | null;
+  evel_ayes_count: number | null;
+  evel_noes_count: number | null;
+  is_committee_division: boolean | null;
   aye_members: Array<{
     name: string;
     party: string;
@@ -151,6 +155,13 @@ export interface Division {
     party: string;
     member_id: number;
   }> | null;
+  ai_question: string | null;
+  ai_topic: string | null;
+  ai_context: string | null;
+  ai_key_arguments: {
+    for: string;
+    against: string;
+  } | null;
 }
 
 // Add shared types
