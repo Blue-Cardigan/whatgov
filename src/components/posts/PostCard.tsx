@@ -446,6 +446,10 @@ function MetaInformation({ item }: { item: FeedItem }) {
           <Badge 
             variant="secondary"
             className="text-xs font-normal"
+            style={{
+              backgroundColor: `${locationColors[item.location]}`,
+              color: `hsl(var(--muted-foreground))`
+            }}
           >
             {debateType.label}
           </Badge>

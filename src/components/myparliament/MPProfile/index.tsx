@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { MPSearch } from './MPSearch';
 
 export function MPProfile() {
-  const { user, profile, loading, isEngagedCitizen } = useAuth();
+  const { user, profile, loading, isEngagedCitizen, isPremium } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -96,7 +96,18 @@ export function MPProfile() {
 
         setMPData(mpData);
         
-        // Load key points and topics
+        // Check permissions before loading key points
+        const isUserMP = mpData.member_id.toString() === profile?.mp;
+        if (!isEngagedCitizen || (!isPremium && !isUserMP)) {
+          // User doesn't have permission to view key points
+          setKeyPoints([]);
+          setTopics([]);
+          setKeyPointsLoading(false);
+          setTopicsLoading(false);
+          return;
+        }
+        
+        // Load key points and topics for authorized users
         const { data: points } = await getMPKeyPointsByName(mpData.member_id);
         
         if (points) {
@@ -155,7 +166,7 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [searchedMpId, profile?.mp]);
+  }, [searchedMpId, profile?.mp, isEngagedCitizen, isPremium]);
 
   if (loading) {
     return <Card className="p-3 sm:p-4">
@@ -235,20 +246,36 @@ export function MPProfile() {
                 <MPLinks mpData={mpData} />
                 {isEngagedCitizen ? (
                   <>
-                    {!topicsLoading && topics.length > 0 && (
+                    {(isPremium || mpData.member_id.toString() === profile?.mp) ? (
+                      <>
+                        {!topicsLoading && topics.length > 0 && (
+                          <div className="pt-2">
+                            <MPTopics topics={topics} totalMentions={totalMentions} />
+                          </div>
+                        )}
+                        {!keyPointsLoading && keyPoints.length > 0 && (
+                          <div className="pt-2">
+                            <MPKeyPoints keyPoints={keyPoints} />
+                          </div>
+                        )}
+                        {(topicsLoading || keyPointsLoading) && (
+                          <div className="space-y-4">
+                            <Skeleton className="h-[200px] w-full" />
+                            <Skeleton className="h-[150px] w-full" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
                       <div className="pt-2">
-                        <MPTopics topics={topics} totalMentions={totalMentions} />
-                      </div>
-                    )}
-                    {!keyPointsLoading && keyPoints.length > 0 && (
-                      <div className="pt-2">
-                        <MPKeyPoints keyPoints={keyPoints} />
-                      </div>
-                    )}
-                    {(topicsLoading || keyPointsLoading) && (
-                      <div className="space-y-4">
-                        <Skeleton className="h-[200px] w-full" />
-                        <Skeleton className="h-[150px] w-full" />
+                        <SubscriptionCTA
+                          title="Upgrade to view other MPs' activity"
+                          description="Get access to detailed insights for all MPs with a Professional subscription."
+                          features={[
+                            "View key points for any MP",
+                            "Compare MPs' positions on issues",
+                            "Track multiple MPs' activities"
+                          ]}
+                        />
                       </div>
                     )}
                   </>

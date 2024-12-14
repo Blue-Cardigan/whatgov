@@ -457,6 +457,8 @@ export async function getMPKeyPointsByName(
 
   const { data, error, count } = await query;
 
+  console.log(data);
+
   if (error) {
     console.error('Error fetching MP key points:', error);
     return { data: [], count: 0 };

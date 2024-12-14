@@ -10,24 +10,24 @@ SELECT DISTINCT ON (d.id)
     d.parent_ext_id,
     d.parent_title,
     d.ai_key_points AS all_key_points,
-    kp.value ->> 'point'::text AS point,
-    kp.value ->> 'context'::text AS context,
-    (kp.value -> 'speaker'::text) ->> 'memberId'::text AS member_id,
+    kp.value ->> 'point' AS point,
+    kp.value ->> 'context' AS context,
+    (kp.value -> 'speaker') ->> 'memberId' AS member_id,
     m.display_as AS speaker_name,
     m.party AS speaker_party,
     m.constituency AS speaker_constituency,
     m.house AS speaker_house,
     m.full_title AS speaker_full_title,
-    kp.value -> 'support'::text AS support,
-    kp.value -> 'opposition'::text AS opposition,
-    kp.value -> 'keywords'::text AS keywords,
+    kp.value -> 'support' AS support,
+    kp.value -> 'opposition' AS opposition,
+    kp.value -> 'keywords' AS keywords,
     d.ai_topics,
     (
-        SELECT DISTINCT jsonb_agg(DISTINCT subtopic)
+        SELECT DISTINCT jsonb_agg(DISTINCT subtopic.value) AS jsonb_agg
         FROM jsonb_array_elements(d.ai_topics) t(topic),
-             jsonb_array_elements(topic -> 'speakers') s(speaker),
-             jsonb_array_elements_text(s.speaker -> 'subtopics') subtopic
-        WHERE (s.speaker ->> 'memberId') = ((kp.value -> 'speaker'::text) ->> 'memberId'::text)
+        LATERAL jsonb_array_elements(t.topic -> 'speakers') s(speaker),
+        LATERAL jsonb_array_elements_text(s.speaker -> 'subtopics') subtopic(value)
+        WHERE (s.speaker ->> 'memberId') = ((kp.value -> 'speaker') ->> 'memberId')
     ) AS speaker_subtopics,
     d.ai_summary,
     d.ai_tone,
@@ -38,10 +38,9 @@ FROM debates d
 CROSS JOIN LATERAL jsonb_array_elements(d.ai_key_points) kp(value)
 LEFT JOIN members m ON
     CASE
-        WHEN ((kp.value -> 'speaker'::text) ->> 'memberId'::text) ~ '^[0-9]+$'::text 
-        THEN ((kp.value -> 'speaker'::text) ->> 'memberId'::text)::integer
+        WHEN ((kp.value -> 'speaker') ->> 'memberId') ~ '^[0-9]+$' THEN ((kp.value -> 'speaker') ->> 'memberId')::integer
         ELSE NULL::integer
     END = m.member_id
-WHERE ((kp.value -> 'speaker'::text) ->> 'memberId'::text) IS NOT NULL 
-  AND ((kp.value -> 'speaker'::text) ->> 'memberId'::text) <> 'N/A'::text
+WHERE ((kp.value -> 'speaker') ->> 'memberId') IS NOT NULL 
+    AND ((kp.value -> 'speaker') ->> 'memberId') <> 'N/A'
 ORDER BY d.id, d.date DESC;
