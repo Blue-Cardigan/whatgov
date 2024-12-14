@@ -5,7 +5,7 @@ import { Leaf, Heart, Building2, Microscope, Scale, Globe2, LandPlot, Graduation
 import { twMerge } from "tailwind-merge"
 import { Contribution } from "@/types/search";
 import ReactMarkdown from "react-markdown";
-import { Children } from 'react';
+import { Children, ReactNode } from 'react';
 import { Citation } from '@/types/search';
 import { InlineCitation } from '@/components/ui/inline-citation';
 
@@ -82,7 +82,7 @@ export function FormattedMarkdown({ content, citations }: FormattedMarkdownProps
         ),
         li: ({ children }) => (
           <li className="mb-1">
-            {Children.map(children, (child: any) =>
+            {Children.map(children, (child: ReactNode) =>
               typeof child === 'string' ? renderWithCitations(child) : child
             )}
           </li>

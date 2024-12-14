@@ -24,7 +24,7 @@ export interface SavedSearch {
   user_id: string;
   query: string;
   response: string;
-  citations: string[];
+  citations: Citation[];
   created_at: string;
   search_type: 'ai' | 'hansard';
   query_state?: {
@@ -85,13 +85,13 @@ export interface SearchResponse {
     SearchTerms: string[];
     Members: Member[];
     Contributions: Contribution[];
-    WrittenStatements: SearchReferencesItem[];
-    WrittenAnswers: SearchReferencesItem[];
-    Corrections: SearchReferencesItem[];
+    WrittenStatements: Contribution[];
+    WrittenAnswers: Contribution[];
+    Corrections: Contribution[];
     Petitions: SearchDebateItem[];
     Debates: SearchDebateItem[];
-    Divisions: DivisionOverview[];
-    Committees: SearchCommitteeItem[];
+    Divisions: SearchDebateItem[];
+    Committees: SearchDebateItem[];
     aiContent?: Record<string, SearchResultAIContent>;
 }
 
@@ -202,8 +202,8 @@ export interface SearchDebateItem {
     SittingDate: string;
     House: string;
     Title: string;
-    Rank: number;
     DebateSectionExtId: string;
+    Value: string;
 }
 
 export interface SearchCommitteeItem {

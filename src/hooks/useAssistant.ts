@@ -77,8 +77,8 @@ export function useAssistant() {
               switch (type) {
                 case 'citations':
                   if (Array.isArray(content)) {
-                    currentCitations = content.map((citation) => ({
-                      citation_index: citation.citation_index,
+                    currentCitations = (content as Citation[]).map((citation) => ({
+                      citation_index: Number(citation.citation_index),
                       debate_id: citation.debate_id,
                       chunk_text: citation.chunk_text
                     }));

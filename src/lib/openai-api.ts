@@ -21,9 +21,12 @@ export async function streamAssistantResponse(query: string): Promise<ReadableSt
   }
 } 
 
+// Add this type definition
+type StreamingResponseContent = string | Citation[] | { [key: string]: string }[];
+
 export function parseStreamingResponse(chunk: string): {
   type: 'text' | 'finalText' | 'citations' | 'debateRefs' | 'error';
-  content: string | Citation[] | any;
+  content: StreamingResponseContent;
 } {
   try {
     const data = JSON.parse(chunk);

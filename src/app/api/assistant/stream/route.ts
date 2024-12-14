@@ -1,9 +1,36 @@
 import OpenAI from 'openai';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Add these type definitions at the top of the file
+type DebateChunk = {
+  debate_id: string;
+  chunk_index: number;
+  chunk_text: string;
+  similarity?: number;
+};
+
+// Define the types
+type MatchChunksResponse = {
+  debate_id: string;
+  chunk_index: number;
+  similarity: number;
+  chunk_text: string;
+};
+
+type Database = {
+  public: {
+    Functions: {
+      match_chunks: {
+        Returns: MatchChunksResponse[];
+      };
+    };
+  };
+};
 
 // Add function to get embedding for query
 async function getQueryEmbedding(query: string) {
@@ -14,35 +41,41 @@ async function getQueryEmbedding(query: string) {
   return response.data[0].embedding;
 }
 
-async function getRelevantChunks(supabase: any, embedding: any, limit = 5) {
+async function getRelevantChunks(
+  supabaseClient: SupabaseClient<Database>,
+  embedding: number[],
+  limit = 5
+): Promise<MatchChunksResponse[]> {
     try {
-      // Format the embedding directly as a string array
       const formattedEmbedding = `[${embedding.toString()}]`;
       
-      const { data: chunks, error } = await supabase.rpc('match_chunks', {
-        query_embedding: formattedEmbedding,
-        match_threshold: 0.2,
-        match_count: limit
-      });
-  
+      const { data: chunks, error } = await supabaseClient.rpc(
+        'match_chunks',
+        {
+          query_embedding: formattedEmbedding,
+          match_threshold: 0.2,
+          match_count: limit
+        }
+      );
+
       if (error) {
         console.error('RPC Error:', error);
         throw error;
       }
-  
+
       return chunks || [];
     } catch (error) {
       console.error('Error matching chunks:', error);
       throw error;
     }
-  }
+}
   
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient();
+  const supabaseClient = await createServerSupabaseClient();
   
   // Check authentication
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
   if (userError || !user) {
     return new Response('Unauthorized', { status: 401 });
   }
@@ -63,7 +96,7 @@ export async function POST(request: Request) {
     const embedding = await getQueryEmbedding(query);
     
     // Get relevant chunks
-    const chunks = await getRelevantChunks(supabase, embedding);
+    const chunks = await getRelevantChunks(supabaseClient, embedding);
 
     // Check if chunks array is empty
     if (!chunks.length) {
@@ -71,7 +104,7 @@ export async function POST(request: Request) {
     }
 
     // Format chunks as context with the new bracket style
-    const context = chunks.map((chunk: any, index: number) => 
+    const context = chunks.map((chunk: DebateChunk, index: number) => 
       `【${index + 1}】From debate ${chunk.debate_id}, chunk ${chunk.chunk_index}:\n${chunk.chunk_text}`
     ).join('\n\n');
 
@@ -116,7 +149,7 @@ export async function POST(request: Request) {
                   controller.enqueue(encoder.encode(
                     JSON.stringify({ 
                       type: 'citations', 
-                      content: chunks.map((chunk: any, index: number) => ({
+                      content: chunks.map((chunk: DebateChunk, index: number) => ({
                         citation_index: index + 1,
                         debate_id: chunk.debate_id,
                         chunk_text: chunk.chunk_text
@@ -136,7 +169,7 @@ export async function POST(request: Request) {
                   controller.enqueue(encoder.encode(
                     JSON.stringify({ 
                       type: 'debateRefs',
-                      content: chunks.map((chunk: any) => ({
+                      content: chunks.map((chunk: DebateChunk) => ({
                         debate_id: chunk.debate_id,
                         chunk_index: chunk.chunk_index
                       }))

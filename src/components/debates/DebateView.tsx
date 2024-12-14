@@ -191,7 +191,6 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
 
                   const content = stripHtmlTags(contribution.Value);
                   const isQuestion = contribution.HRSTag === 'Question';
-                  const party = contribution.AttributedTo?.match(/\((.*?)\)/)?.[1];
 
                   return (
                     <div 

@@ -127,10 +127,10 @@ export function SaveSearchButton({
           ? {
               query: aiSearch?.query || '',
               response: aiSearch?.streamingText || '',
-              citations: aiSearch?.citations.map(c => JSON.stringify({
-                citation_index: c.citation_index,
-                debate_id: c.debate_id,
-                chunk_text: c.chunk_text
+              citations: aiSearch?.citations?.map(citation => ({
+                citation_index: citation.citation_index,
+                debate_id: citation.debate_id,
+                chunk_text: citation.chunk_text
               })) || [],
               query_state: null
             }

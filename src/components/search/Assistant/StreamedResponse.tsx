@@ -1,4 +1,5 @@
 import { Citation } from '@/types/search';
+import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { SaveSearchButton } from '../SaveSearchButton';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Children, useState } from 'react';
+import { Children, ReactNode, useState } from 'react';
 import { InlineCitation } from '@/components/ui/inline-citation';
-import { FormattedMarkdown } from '@/lib/utils';
 
 interface StreamedResponseProps {
   streamingText: string;
@@ -112,6 +112,104 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     );
   };
 
+  const MarkdownWithCitations = ({ text }: { text: string }) => {
+    const renderWithCitations = (content: string) => {
+      const parts = content.split(/(【\d+】)/g);
+      return parts.map((part, i) => {
+        const citationMatch = part.match(/【(\d+)】/);
+        if (citationMatch) {
+          const citationNumber = parseInt(citationMatch[1], 10);
+          const citation = citations.find(c => c.citation_index === citationNumber);
+          if (citation) {
+            return (
+              <InlineCitation
+                key={`citation-${citationNumber}-${i}`}
+                citation={citation}
+              />
+            );
+          }
+          return <span key={`unmatched-citation-${i}`}>【{citationNumber}】</span>;
+        }
+        return part ? <span key={`text-${i}`}>{part}</span> : null;
+      }).filter(Boolean);
+    };
+
+    return (
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              className="text-primary hover:text-primary-foreground hover:bg-primary transition-colors no-underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          ),
+          h1: ({ children }) => (
+            <h1 className="text-2xl font-bold mt-6 mb-4 text-foreground">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-xl font-bold mt-5 mb-3 text-foreground">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-lg font-bold mt-4 mb-2 text-foreground">
+              {children}
+            </h3>
+          ),
+          p: ({ children }) => (
+            <p className="mb-4 leading-relaxed text-foreground">
+              {typeof children === 'string' 
+                ? renderWithCitations(children)
+                : children}
+            </p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc pl-6 mb-4 text-foreground">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-6 mb-4 text-foreground">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="mb-1 text-foreground">
+              {Children.map(children, (child: ReactNode) =>
+                typeof child === 'string' ? renderWithCitations(child) : child
+              )}
+            </li>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-muted pl-4 italic my-4 text-muted-foreground">
+              {typeof children === 'string'
+                ? renderWithCitations(children)
+                : children}
+            </blockquote>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-bold text-foreground">
+              {children}
+            </strong>
+          ),
+          em: ({ children }) => (
+            <em className="italic text-foreground">
+              {children}
+            </em>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
+  };
+
   if (isLoading && !streamingText) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -172,10 +270,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
         </div>
       </div>
 
-      <FormattedMarkdown 
-        content={streamingText} 
-        citations={citations}
-      />
+      <MarkdownWithCitations text={streamingText} />
 
       <CitationsList citations={citations} />
     </div>

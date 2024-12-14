@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, FileText, AlertCircle, MessageSquare } from "lucide-react";
 import { Contribution } from "@/types/search";
-import * as React from 'react';
+import { useCallback, useMemo } from 'react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { SearchParams } from '@/types/search';
 import type { SearchResultAIContent } from "@/types/search";
 import { ResultCard } from './ResultCard';
 import { SaveSearchButton } from '../SaveSearchButton';
+import type { SearchResponse } from '@/types/search';
 
 // Add new interface for grouped results
 interface GroupedContributions {
@@ -39,17 +40,17 @@ export function SearchResults({
   hasMore: boolean;
   aiContent?: Record<string, SearchResultAIContent>;
 }) {
-  const handleSortOrderChange = React.useCallback((orderBy: SearchParams['orderBy']) => {
+  const handleSortOrderChange = useCallback((orderBy: SearchParams['orderBy']) => {
     onSearch({ orderBy });
   }, [onSearch]);
 
   // Memoize helper functions
-  const getTotalResults = React.useCallback(() => {
+  const getTotalResults = useCallback(() => {
     if (!totalResults) return "0";
     return totalResults.toLocaleString();
   }, [totalResults]);
 
-  const getResultTypeIcon = React.useCallback((section: string) => {
+  const getResultTypeIcon = useCallback((section: string) => {
     switch (section) {
       case 'Written Statements':
         return <FileText className="h-4 w-4" />;
@@ -63,7 +64,7 @@ export function SearchResults({
   }, []);
 
   // Add grouping logic
-  const groupedResults = React.useMemo(() => {
+  const groupedResults = useMemo(() => {
     const groups = results.reduce((acc, contribution) => {
       const key = contribution.DebateSectionExtId;
       if (!acc[key]) {
@@ -82,8 +83,8 @@ export function SearchResults({
   }, [results]);
 
   // Update the categorization to match the API response structure
-  const getResultMetadata = React.useCallback(() => {
-    const metadata = {
+  const getResultMetadata = useCallback((): SearchResponse => {
+    const metadata: SearchResponse = {
       TotalMembers: new Set(results.map(c => c.MemberId).filter(Boolean)).size,
       TotalContributions: totalResults,
       TotalWrittenStatements: 0,
@@ -95,14 +96,14 @@ export function SearchResults({
       TotalDivisions: 0,
       SearchTerms: searchParams.searchTerm ? [searchParams.searchTerm] : [],
       Members: [],
-      Contributions: [],
-      WrittenStatements: [] as Contribution[],
-      WrittenAnswers: [] as Contribution[],
-      Corrections: [] as Contribution[],
-      Petitions: [] as any[],
+      Contributions: results,
+      WrittenStatements: [],
+      WrittenAnswers: [],
+      Corrections: [],
+      Petitions: [],
       Debates: [],
-      Divisions: [] as any[],
-      Committees: [] as any[]
+      Divisions: [],
+      Committees: []
     };
 
     // Categorize contributions based on their section
@@ -120,7 +121,6 @@ export function SearchResults({
           metadata.Corrections.push(contribution);
           metadata.TotalCorrections++;
           break;
-        // Add other categories as needed
       }
     });
 
@@ -196,7 +196,7 @@ export function SearchResults({
         ) : !groupedResults?.length ? (
           <EmptyState searchTerm={searchParams.searchTerm} />
         ) : (
-          groupedResults.map((group) => (
+          groupedResults.map((group: GroupedContributions) => (
             <ResultCard
               key={group.debateExtId}
               result={group.firstContribution}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
 import type { SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
 
 // Add new type for citations
@@ -55,10 +55,10 @@ const initialState: SearchState = {
 
 const SearchContext = createContext<{
   state: SearchState;
-  dispatch: React.Dispatch<SearchAction>;
+  dispatch: Dispatch<SearchAction>;
 } | null>(null);
 
-export function SearchProvider({ children }: { children: React.ReactNode }) {
+export function SearchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(searchReducer, initialState);
 
   // Load state from sessionStorage on mount

@@ -196,11 +196,7 @@ export function Search({ initialTab }: SearchProps) {
     return `${remaining} AI ${remaining === 1 ? 'search' : 'searches'} remaining this month`;
   };
 
-  const [selectedOpenAIAssistantId, setSelectedOpenAIAssistantId] = useState<string | null>(null);
-
-  const handleAssistantChange = (_assistantId: string | null, openaiAssistantId: string | null) => {
-    setSelectedOpenAIAssistantId(openaiAssistantId);
-  };
+  const [selectedOpenAIAssistantId] = useState<string | null>(null);
 
   const handleFileSearch = useCallback(async (overrideQuery?: string) => {
     const queryToUse = overrideQuery || fileQuery;

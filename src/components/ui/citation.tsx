@@ -8,7 +8,7 @@ interface CitationProps {
   showNumber?: boolean;
 }
 
-export function Citation({ citation, index, className, showNumber = true }: CitationProps) {
+export function Citation({ citation, className, showNumber = true }: CitationProps) {
   // Extract the extId from citation string (e.g., "[1] 123456.txt" -> "123456")
   const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
   if (!match) return null;
