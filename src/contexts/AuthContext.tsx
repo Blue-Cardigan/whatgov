@@ -6,7 +6,6 @@ import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types/supabase';
 import type { Subscription } from '@/lib/supabase/subscription';
-import { isSubscriptionActive } from '@/lib/supabase/subscription';
 import { signInWithEmail, signUpWithEmail } from '@/lib/supabase/auth';
 import { 
   getSubscriptionFromCache, 

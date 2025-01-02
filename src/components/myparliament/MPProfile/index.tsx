@@ -236,7 +236,7 @@ export function MPProfile() {
               />
             ) : (
               <div className="text-sm text-muted-foreground">
-                Upgrade to Professional to search and view other MPs' profiles
+                Upgrade to Professional to search and view other MPs&apos; profiles
               </div>
             )}
           </div>
