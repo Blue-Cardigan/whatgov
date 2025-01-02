@@ -58,9 +58,7 @@ export function MPProfile() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [keyPointsLoading, setKeyPointsLoading] = useState(true);
-  console.log(mpData);
-  console.log(profile?.mp);
-
+  
   // Effect to handle URL search param changes
   useEffect(() => {
     if (currentSearchTerm) {

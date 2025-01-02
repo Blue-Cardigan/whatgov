@@ -286,9 +286,7 @@ export async function getMPKeyPointsById(
     .eq('member_id', mpId.toString())
     .order('debate_date', { ascending: false })
     .range(offset, offset + limit - 1);
-
-  console.log(query);
-
+    
   // Add date filters if provided
   if (startDate) {
     query = query.gte('debate_date', startDate.toISOString());
@@ -458,8 +456,6 @@ export async function getMPKeyPointsByName(
   query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
-
-  console.log(data);
 
   if (error) {
     console.error('Error fetching MP key points:', error);
