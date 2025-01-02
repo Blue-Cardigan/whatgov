@@ -1,4 +1,16 @@
-Key value: Quick and simple search of simple debates - no trawling through thousands of words of copy
+Rewrite:
+[/] Remove voting and feed functionality
+[ ] Save MP searches with keywords (using hansard search?)
+[ ] Display MP searches in saved searches page
+[ ] Replace default date filter with current week, instead of current parliament
+[ ] Implement overnight search update
+[ ] Implement notifications for unread debates
+[ ] Rework Calendar: 
+      [ ] Calendar display style
+      [ ] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
+      [ ] Subscribe to calendar items
+[ ] Add voting history of each MP
+
 
 Professionals
 [ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)
@@ -29,9 +41,6 @@ Professionals
 [/] Add divisions to assistants
 [/] Show multiple divisions in postcard/debateview if present
 [ ] Term frequency tracking in hansard search
-[ ] Add full voting history of each MP
-[ ] Add bill progress/schedule
-[ ] Add Order Paper
 
 [ ] Newsletter sending from backend
    1) Generate a 'this week' intro from summaries

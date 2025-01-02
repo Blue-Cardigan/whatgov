@@ -8,7 +8,6 @@ import { AnalysisPreview } from '../posts/DebateContent';
 import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
 import { DivisionContent } from '../posts/DivisionContent';
-import { CommentsContent } from '../posts/CommentsContent';
 import { KeyPointsContent } from '../posts/KeyPointsContent';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -437,18 +436,7 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
                 </div>
               </TabsContent>
             )}
-
-            {debate.ai_comment_thread?.length > 0 && (
-              <TabsContent value="comments" className="mt-6">
-                <div className="bg-card rounded-lg border">
-                  <CommentsContent 
-                    comments={debate.ai_comment_thread}
-                    isActive={true}
-                  />
-                </div>
-              </TabsContent>
-            )}
-
+            
             {showKeyPointsTab && (
               <TabsContent value="keyPoints" className="mt-6">
                 <div className="bg-card rounded-lg border">

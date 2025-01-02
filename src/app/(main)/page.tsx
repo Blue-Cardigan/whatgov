@@ -3,7 +3,7 @@ import { DebateSkeleton } from '@/components/debates/DebateSkeleton'
 
 // Lazy load UpcomingDebates component
 const UpcomingDebates = dynamic(
-  () => import('@/components/myparliament/UpcomingDebates').then(mod => mod.UpcomingDebates),
+  () => import('@/components/UpcomingDebates').then(mod => mod.UpcomingDebates),
   {
     loading: () => (
       <div className="min-h-screen flex flex-col md:pr-20">

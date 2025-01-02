@@ -75,7 +75,7 @@ export function AssistantBuilder({
   assistantId,
   onAssistantChange
 }: AssistantBuilderProps) {
-  const { isPremium } = useAuth();
+  const { isProfessional } = useAuth();
   const { hasReachedAssistantLimit, getRemainingAssistants } = useEngagement();
   
   const [assistantName, setAssistantName] = useState("");
@@ -103,10 +103,10 @@ export function AssistantBuilder({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   useEffect(() => {
-    if (isOpen && !isPremium) {
+    if (isOpen && !isProfessional) {
       setIsOpen(false);
     }
-  }, [isOpen, isPremium, setIsOpen]);
+  }, [isOpen, isProfessional, setIsOpen]);
 
   useEffect(() => {
     async function loadAssistant() {
@@ -212,7 +212,7 @@ export function AssistantBuilder({
     }
   }, [keywordInput, keywords]);
 
-  if (!isPremium) {
+  if (!isProfessional) {
     return null;
   }
 
@@ -471,7 +471,7 @@ export function AssistantBuilder({
             <DialogDescription>
               Configure your custom AI assistant to analyze parliamentary debates based on your specific requirements.
             </DialogDescription>
-            {!isPremium && (
+            {!isProfessional && (
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span>{getRemainingAssistants()} assistants remaining</span>
                 <UpgradePopover feature="assistant">

@@ -133,17 +133,20 @@ export function SearchResults({
 
     return (
       <SaveSearchButton 
-        searchParams={{
-          searchTerm: searchParams.searchTerm || '',
-          startDate: searchParams.startDate,
-          endDate: searchParams.endDate,
-          house: searchParams.house || 'Commons',
-          enableAI: searchParams.enableAI,
-          skip: searchParams.skip,
-          take: searchParams.take,
-          orderBy: searchParams.orderBy
+        hansardSearch={{
+          query: searchParams.searchTerm || '',
+          queryState: {
+            searchTerm: searchParams.searchTerm || '',
+            startDate: searchParams.startDate,
+            endDate: searchParams.endDate,
+            house: searchParams.house || 'Commons',
+            enableAI: searchParams.enableAI,
+            skip: searchParams.skip,
+            take: searchParams.take,
+            orderBy: searchParams.orderBy
+          },
+          results: getResultMetadata()
         }}
-        results={getResultMetadata()}
         searchType="hansard"
       />
     );

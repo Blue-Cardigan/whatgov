@@ -2,7 +2,6 @@
 
 import createClient from './client'
 import type { MPData } from '@/types'
-import type { DemographicStats } from '@/types/VoteStats'
 
 type RawMPData = {
   member_id: number
@@ -373,23 +372,6 @@ export async function getRecentKeyPoints(
   };
 }
 
-export const getDemographicVoteStats = async (
-  debateId?: string,
-  topic?: string,
-  days: number = 14
-): Promise<DemographicStats> => {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase.rpc('get_demographic_vote_stats', {
-    p_debate_id: debateId || null,
-    p_topic: topic || null,
-    p_days: days
-  });
-
-  if (error) throw error;
-  return data as DemographicStats;
-};
-
 // Helper function for MP data transformation
 function transformMPData(data: RawMPData): MPData {
   let parsedMedia = null;
@@ -456,8 +438,6 @@ export async function getMPKeyPointsByName(
   query = query.range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
-
-  console.log(data);
 
   if (error) {
     console.error('Error fetching MP key points:', error);

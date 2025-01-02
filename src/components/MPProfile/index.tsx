@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/myparliament";
-import type { MPKeyPointDetails } from "@/lib/supabase/myparliament";
+import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/mpsearch";
+import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { useAuth } from "@/contexts/AuthContext";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPKeyPoints } from "./MPKeyPoints";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { MPSearch } from './MPSearch';
 
 export function MPProfile() {
-  const { user, profile, loading, isEngagedCitizen, isPremium } = useAuth();
+  const { user, profile, loading, isEngagedCitizen, isProfessional } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -98,7 +98,7 @@ export function MPProfile() {
         
         // Check permissions before loading key points
         const isUserMP = mpData.member_id.toString() === profile?.mp;
-        if (!isEngagedCitizen || (!isPremium && !isUserMP)) {
+        if (!isEngagedCitizen || (!isProfessional && !isUserMP)) {
           // User doesn't have permission to view key points
           setKeyPoints([]);
           setTopics([]);
@@ -166,7 +166,7 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [searchedMpId, profile?.mp, isEngagedCitizen, isPremium]);
+  }, [searchedMpId, profile?.mp, isEngagedCitizen, isProfessional]);
 
   if (loading) {
     return <Card className="p-3 sm:p-4">
@@ -246,7 +246,7 @@ export function MPProfile() {
                 <MPLinks mpData={mpData} />
                 {isEngagedCitizen ? (
                   <>
-                    {(isPremium || mpData.member_id.toString() === profile?.mp) ? (
+                    {(isProfessional || mpData.member_id.toString() === profile?.mp) ? (
                       <>
                         {!topicsLoading && topics.length > 0 && (
                           <div className="pt-2">

@@ -10,7 +10,7 @@ import { Speaker } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { DateRange } from "react-day-picker"
-import { searchMembers } from "@/lib/supabase/myparliament";
+import { searchMembers } from "@/lib/supabase/mpsearch";
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";

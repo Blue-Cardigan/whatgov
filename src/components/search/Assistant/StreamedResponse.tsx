@@ -210,7 +210,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     );
   };
 
-  if (isLoading && !streamingText) {
+  if (isLoading && query) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="flex flex-col items-center gap-4">
@@ -221,11 +221,10 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     );
   }
 
-  if (!streamingText) {
+  if (!query || !streamingText) {
     return (
       <div className="text-muted-foreground text-center py-8">
         <p>Enter a query to search through parliamentary records...</p>
-        <p className="text-sm mt-2">Example: &ldquo;What has been said about climate change this week?&rdquo;</p>
       </div>
     );
   }

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
-import { lookupPostcode } from "@/lib/supabase/myparliament";
+import { lookupPostcode } from "@/lib/supabase/mpsearch";
 import { ChartBarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";

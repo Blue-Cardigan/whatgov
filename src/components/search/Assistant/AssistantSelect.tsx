@@ -37,7 +37,7 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedAssistantId, setSelectedAssistantId] = useState<string>('default');
   const supabase = useSupabase();
-  const { user, isPremium } = useAuth();
+  const { user, isProfessional } = useAuth();
 
   const fetchAssistants = useCallback(async () => {
     if (!user) return;
@@ -100,7 +100,7 @@ export function AssistantSelect({ onAssistantChange }: AssistantSelectProps) {
     }
   };
 
-  if (!isPremium) {
+  if (!isProfessional) {
     return null;
   }
 

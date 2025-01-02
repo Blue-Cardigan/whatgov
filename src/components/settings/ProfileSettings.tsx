@@ -12,7 +12,7 @@ import { TOPICS } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, Loader2, User, MapPin, Cake, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/utils";
-import { lookupPostcode } from "@/lib/supabase/myparliament";
+import { lookupPostcode } from "@/lib/supabase/mpsearch";
 import { AnimatePresence, motion } from "framer-motion";
 import type { UserProfile } from '@/types/supabase';
 import createClient from '@/lib/supabase/client';

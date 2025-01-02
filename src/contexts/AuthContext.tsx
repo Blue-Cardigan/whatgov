@@ -49,7 +49,7 @@ interface AuthContextValue extends AuthState {
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   getAuthHeader: () => Promise<string>;
-  isPremium: boolean;
+  isProfessional: boolean;
   isEngagedCitizen: boolean;
   refreshSubscription: () => Promise<void>;
 }
@@ -115,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update useMemo dependencies to include updateState
   const value = useMemo(() => {
+
+    const hasActiveSubscription = state.subscription?.status === 'active' || 
+                                 state.subscription?.status === 'trialing';
+
     const signIn = async (email: string, password: string) => {
       try {
         const { error, status, user } = await signInWithEmail(email, password);
@@ -285,9 +289,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword: async () => ({ success: false }),
       updatePassword: async () => ({ success: false }),
       getAuthHeader,
-      isPremium: isSubscriptionActive(state.subscription) && 
+      isProfessional: hasActiveSubscription && 
         state.subscription?.plan === 'PROFESSIONAL',
-      isEngagedCitizen: isSubscriptionActive(state.subscription) && 
+      isEngagedCitizen: hasActiveSubscription && 
         ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan || ''),
       refreshSubscription: async () => {
         if (state.user?.id) {
@@ -295,7 +299,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-  }, [state, router, fetchProfile, fetchSubscription, supabase, updateState]);
+  }, [
+    state,
+    router, 
+    fetchProfile, 
+    fetchSubscription, 
+    supabase, 
+    updateState
+  ]);
 
   // Update useEffect dependencies to include updateState
   useEffect(() => {

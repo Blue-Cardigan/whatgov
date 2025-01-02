@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MPKeyPointDetails } from "@/lib/supabase/myparliament";
+import { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
