@@ -15,7 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { MPSearch } from './MPSearch';
 
 export function MPProfile() {
@@ -30,8 +29,14 @@ export function MPProfile() {
   // Get current search params
   const currentSearchTerm = searchParams.get('mp') || '';
 
-  // Handle search updates
+  // Add check for search permissions
+  const canSearchMPs = isPremium;
+
+  // Handle search updates - add permission check
   const handleSearch = useCallback((searchTerm: string) => {
+    // Block search if user doesn't have permission
+    if (!canSearchMPs) return;
+
     const newParams = new URLSearchParams(searchParams);
     
     if (searchTerm) {
@@ -42,9 +47,8 @@ export function MPProfile() {
       setSearchedMpId(null);
     }
 
-    // Update URL with search params
     router.push(`${pathname}?${newParams.toString()}`);
-  }, [pathname, router, searchParams]);
+  }, [pathname, router, searchParams, canSearchMPs]);
 
   const [mpData, setMPData] = useState<MPData | null>(null);
   const [keyPoints, setKeyPoints] = useState<MPKeyPointDetails[]>([]);
@@ -54,6 +58,8 @@ export function MPProfile() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [keyPointsLoading, setKeyPointsLoading] = useState(true);
+  console.log(mpData);
+  console.log(profile?.mp);
 
   // Effect to handle URL search param changes
   useEffect(() => {
@@ -97,7 +103,7 @@ export function MPProfile() {
         setMPData(mpData);
         
         // Check permissions before loading key points
-        const isUserMP = mpData.member_id.toString() === profile?.mp;
+        const isUserMP = mpData.display_as === profile?.mp;
         if (!isEngagedCitizen || (!isPremium && !isUserMP)) {
           // User doesn't have permission to view key points
           setKeyPoints([]);
@@ -107,8 +113,8 @@ export function MPProfile() {
           return;
         }
         
-        // Load key points and topics for authorized users
-        const { data: points } = await getMPKeyPointsByName(mpData.member_id);
+        // Load key points for authorized users
+        const { data: points } = await getMPKeyPointsByName(mpData.display_as);
         
         if (points) {
           setKeyPoints(points);
@@ -205,12 +211,12 @@ export function MPProfile() {
   return (
     <Card className="p-3 sm:p-4">
       <div className="space-y-5 sm:space-y-6">
-        {/* Add Search Section */}
+        {/* Search Section - Update to show permission message */}
         <div className="border-b pb-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">MP Profile</h2>
-              {profile?.mp && (
+              {profile?.mp && searchedMpId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -218,19 +224,21 @@ export function MPProfile() {
                     setSearchedMpId(null);
                     handleSearch('');
                   }}
-                  className={cn(
-                    "gap-2",
-                    !searchedMpId && "hidden"
-                  )}
                 >
                   Back to My MP
                 </Button>
               )}
             </div>
-            <MPSearch
-              initialValue={currentSearchTerm}
-              onSearch={handleSearch}
-            />
+            {canSearchMPs ? (
+              <MPSearch
+                initialValue={currentSearchTerm}
+                onSearch={handleSearch}
+              />
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Upgrade to Professional to search and view other MPs' profiles
+              </div>
+            )}
           </div>
         </div>
 
@@ -246,7 +254,8 @@ export function MPProfile() {
                 <MPLinks mpData={mpData} />
                 {isEngagedCitizen ? (
                   <>
-                    {(isPremium || mpData.member_id.toString() === profile?.mp) ? (
+                    {/* Show data if it's their MP or they're premium */}
+                    {(mpData.display_as === profile?.mp || isPremium) ? (
                       <>
                         {!topicsLoading && topics.length > 0 && (
                           <div className="pt-2">

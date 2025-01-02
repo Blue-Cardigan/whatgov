@@ -287,6 +287,8 @@ export async function getMPKeyPointsById(
     .order('debate_date', { ascending: false })
     .range(offset, offset + limit - 1);
 
+  console.log(query);
+
   // Add date filters if provided
   if (startDate) {
     query = query.gte('debate_date', startDate.toISOString());

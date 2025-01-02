@@ -115,6 +115,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update useMemo dependencies to include updateState
   const value = useMemo(() => {
+    // Add internal subscription verification
+    const verifySubscription = (subscription: Subscription | null): boolean => {
+      try {
+        if (!subscription) return false;
+        
+        return (subscription.status === 'active' || subscription.status === 'trialing') && 
+          (!subscription.current_period_end || 
+           new Date(subscription.current_period_end).getTime() + 259200000 > Date.now());
+      } catch (error) {
+        console.error('Error verifying subscription:', error);
+        return false;
+      }
+    };
+
     const signIn = async (email: string, password: string) => {
       try {
         const { error, status, user } = await signInWithEmail(email, password);
@@ -285,9 +299,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword: async () => ({ success: false }),
       updatePassword: async () => ({ success: false }),
       getAuthHeader,
-      isPremium: isSubscriptionActive(state.subscription) && 
+      isPremium: verifySubscription(state.subscription) && 
         state.subscription?.plan === 'PROFESSIONAL',
-      isEngagedCitizen: isSubscriptionActive(state.subscription) && 
+      isEngagedCitizen: verifySubscription(state.subscription) && 
         ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan || ''),
       refreshSubscription: async () => {
         if (state.user?.id) {
