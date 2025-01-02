@@ -1,31 +1,34 @@
-import { SearchIcon } from 'lucide-react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback, useEffect } from 'react';
+import { Search } from 'lucide-react';
+import { useSearch } from '@/contexts/SearchContext';
 
 interface MPSearchProps {
-  initialValue: string;
   onSearch: (searchTerm: string) => void;
+  initialValue?: string;
 }
 
-export function MPSearch({ initialValue, onSearch }: MPSearchProps) {
+export function MPSearch({ onSearch, initialValue = '' }: MPSearchProps) {
   const [searchTerm, setSearchTerm] = useState(initialValue);
+  const { dispatch } = useSearch();
 
   useEffect(() => {
     setSearchTerm(initialValue);
   }, [initialValue]);
 
-  const handleSubmit = useCallback((e?: React.FormEvent) => {
-    e?.preventDefault();
-    onSearch(searchTerm);
-  }, [searchTerm, onSearch]);
-
-  // Handle Enter key press
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSubmit();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      onSearch(searchTerm.trim());
+      dispatch({
+        type: 'SET_MP_SEARCH',
+        payload: { query: searchTerm.trim(), keywords: [] }
+      });
     }
-  }, [handleSubmit]);
+  };
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
@@ -34,12 +37,11 @@ export function MPSearch({ initialValue, onSearch }: MPSearchProps) {
         placeholder="Search for an MP..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        onKeyPress={handleKeyPress}
         className="flex-1"
       />
-      <Button type="submit" size="default" className="gap-2">
-        <SearchIcon className="h-4 w-4" />
-        <span>Search</span>
+      <Button type="submit">
+        <Search className="h-4 w-4 mr-2" />
+        Search
       </Button>
     </form>
   );

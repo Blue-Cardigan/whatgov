@@ -1,9 +1,9 @@
 import dynamic from 'next/dynamic'
 import { DebateSkeleton } from '@/components/debates/DebateSkeleton'
 
-// Lazy load non-critical components
-const DebateFeed = dynamic(
-  () => import('@/components/debates/DebateFeed').then(mod => mod.DebateFeed),
+// Lazy load UpcomingDebates component
+const UpcomingDebates = dynamic(
+  () => import('@/components/myparliament/UpcomingDebates').then(mod => mod.UpcomingDebates),
   {
     loading: () => (
       <div className="min-h-screen flex flex-col md:pr-20">
@@ -24,7 +24,7 @@ export const metadata = {
 export default function DebatesPage() {
   return (
     <>
-      <DebateFeed />
+      <UpcomingDebates />
     </>
   );
 }

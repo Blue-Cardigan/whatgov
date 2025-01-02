@@ -18,11 +18,23 @@ import { promptTemplates } from '@/lib/assistant-prompts';
 import { UpgradePopover } from "@/components/ui/upgrade-popover";
 // import { AssistantSelect } from '@/components/search/Assistant/AssistantSelect';
 import { HansardSearch } from './Hansard';
+import { MPSearch } from '@/components/myparliament/MPProfile/MPSearch';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { SaveSearchButton } from './SaveSearchButton';
+import { MPProfileCard } from '@/components/myparliament/MPProfile/MPProfileCard';
+import { MPKeyPoints } from '@/components/myparliament/MPProfile/MPKeyPoints';
+import { MPLinks } from '@/components/myparliament/MPProfile/MPLinks';
+import { MPTopics } from '@/components/myparliament/MPProfile/MPTopics';
+import { SubscriptionCTA } from '@/components/ui/subscription-cta';
+import { getMPData, getMPKeyPointsByName, MPKeyPointDetails } from "@/lib/supabase/myparliament";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { AiTopic, MPData } from "@/types";
 
 const PAGE_SIZE = 10;
 
 interface SearchProps {
-  initialTab?: 'ai' | 'hansard';
+  initialTab?: 'ai' | 'hansard' | 'mp';
 }
 
 export function Search({ initialTab }: SearchProps) {
@@ -38,11 +50,27 @@ export function Search({ initialTab }: SearchProps) {
     performFileSearch, 
     isLoading: aiLoading
   } = useAssistant();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Update the tab handling to accept an initial tab from URL or saved search
-  const [activeTab, setActiveTab] = useState<'ai' | 'hansard'>(
+  const [activeTab, setActiveTab] = useState<'ai' | 'hansard' | 'mp'>(
     initialTab || state.searchType || 'ai'
   );
+
+  // Add MP search specific state
+  const [mpSearchQuery, setMpSearchQuery] = useState('');
+
+  // Add MP Profile related state
+  const [mpData, setMPData] = useState<MPData | null>(null);
+  const [keyPoints, setKeyPoints] = useState<MPKeyPointDetails[]>([]);
+  const [topics, setTopics] = useState<AiTopic[]>([]);
+  const [totalMentions, setTotalMentions] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [keyPointsLoading, setKeyPointsLoading] = useState(true);
 
   useEffect(() => {
     if (initialTab) {
@@ -53,10 +81,29 @@ export function Search({ initialTab }: SearchProps) {
 
   // Create a handler function for tab changes
   const handleTabChange = (value: string) => {
-    if (value === 'ai' || value === 'hansard') {
+    if (value === 'ai' || value === 'hansard' || value === 'mp') {
       setActiveTab(value);
       dispatch({ type: 'SET_SEARCH_TYPE', payload: value });
       
+      // Clear other search states when switching tabs
+      if (value === 'mp') {
+        dispatch({ type: 'CLEAR_AI_SEARCH' });
+        dispatch({ type: 'SET_PARAMS', payload: { 
+          searchTerm: '',
+          skip: 0,
+          take: PAGE_SIZE,
+          orderBy: 'SittingDateDesc'
+        }});
+        // Initialize MP search if there's a query parameter
+        const mpQuery = searchParams.get('mp');
+        if (mpQuery) {
+          setMpSearchQuery(mpQuery);
+          dispatch({
+            type: 'SET_MP_SEARCH',
+            payload: { query: mpQuery, keywords: [] }
+          });
+        }
+      }
       // Clear the other search type's state when switching tabs
       if (value === 'ai') {
         dispatch({ type: 'SET_PARAMS', payload: { 
@@ -89,8 +136,14 @@ export function Search({ initialTab }: SearchProps) {
             Committees: [],
           }
         });
-      } else {
+      } else if (value === 'hansard') {
         dispatch({ type: 'CLEAR_AI_SEARCH' });
+        dispatch({ type: 'SET_PARAMS', payload: { 
+          searchTerm: '',
+          skip: 0,
+          take: PAGE_SIZE,
+          orderBy: 'SittingDateDesc'
+        }});
       }
     }
   };
@@ -344,6 +397,89 @@ export function Search({ initialTab }: SearchProps) {
     }
   };
 
+  // Add MP search handler
+  const handleMPSearch = (searchTerm: string) => {
+    setMpSearchQuery(searchTerm);
+    dispatch({
+      type: 'SET_MP_SEARCH',
+      payload: { query: searchTerm, keywords: [] }
+    });
+  };
+
+  // Update effect to remove profile dependency
+  useEffect(() => {
+    async function fetchData() {
+      if (!state.mpSearch?.query) {
+        setProfileLoading(false);
+        setTopicsLoading(false);
+        setKeyPointsLoading(false);
+        return;
+      }
+      
+      try {
+        // Reset states
+        setError(null);
+        setProfileLoading(true);
+        setKeyPointsLoading(true);
+        setTopicsLoading(true);
+
+        // Load MP profile data
+        const mpData = await getMPData(state.mpSearch.query);
+        
+        if (!mpData) {
+          setError(`No MP found matching "${state.mpSearch.query}"`);
+          setMPData(null);
+          setKeyPoints([]);
+          setTopics([]);
+          return;
+        }
+
+        setMPData(mpData);
+        
+        // Check permissions for key points
+        if (!isEngagedCitizen || !isPremium) {
+          setKeyPoints([]);
+          setTopics([]);
+          setKeyPointsLoading(false);
+          setTopicsLoading(false);
+          return;
+        }
+        
+        // Load key points and topics for authorized users
+        const { data: points } = await getMPKeyPointsByName(mpData.member_id);
+        
+        if (points) {
+          setKeyPoints(points);
+          
+          // Process topics
+          const topicsMap = new Map<string, AiTopic>();
+          let mentionsCount = 0;
+          
+          points.forEach(point => {
+            mentionsCount++;
+            if (Array.isArray(point.ai_topics)) {
+              point.ai_topics.forEach(topic => {
+                // ... existing topic processing logic ...
+              });
+            }
+          });
+
+          setTopics(Array.from(topicsMap.values()));
+          setTotalMentions(mentionsCount);
+        }
+      } catch (e) {
+        console.error('Error fetching MP data:', e);
+        setError('Error loading MP data');
+      } finally {
+        setProfileLoading(false);
+        setTopicsLoading(false);
+        setKeyPointsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [state.mpSearch?.query, isEngagedCitizen, isPremium]);
+
   return (
     <>
       <Tabs 
@@ -351,12 +487,15 @@ export function Search({ initialTab }: SearchProps) {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2 mt-4 mb-4">
+        <TabsList className="grid w-full grid-cols-3 mt-4 mb-4">
           <TabsTrigger value="ai">
             AI Research Assistant
           </TabsTrigger>
           <TabsTrigger value="hansard">
             Hansard Search
+          </TabsTrigger>
+          <TabsTrigger value="mp">
+            MP Search
           </TabsTrigger>
         </TabsList>
 
@@ -491,6 +630,88 @@ export function Search({ initialTab }: SearchProps) {
 
         <TabsContent value="hansard">
           <HansardSearch />
+        </TabsContent>
+
+        <TabsContent value="mp">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">MP Search</h1>
+                <p className="text-muted-foreground">
+                  Search for MPs and view their profiles
+                </p>
+              </div>
+              {state.mpSearch?.query && (
+                <SaveSearchButton
+                  searchType="mp"
+                  mpSearch={state.mpSearch}
+                  className="mt-4"
+                />
+              )}
+            </div>
+
+            <div className="space-y-6">
+              <MPSearch
+                onSearch={handleMPSearch}
+                initialValue={mpSearchQuery || state.mpSearch?.query || ''}
+              />
+
+              {error ? (
+                <div className="text-red-500 text-center py-4">
+                  {error}
+                </div>
+              ) : (
+                <>
+                  <MPProfileCard mpData={mpData} loading={profileLoading} />
+                  {!profileLoading && mpData && (
+                    <>
+                      <MPLinks mpData={mpData} />
+                      {isEngagedCitizen ? (
+                        <>
+                          {(isPremium) ? (
+                            <>
+                              {!topicsLoading && topics.length > 0 && (
+                                <MPTopics topics={topics} totalMentions={totalMentions} />
+                              )}
+                              {!keyPointsLoading && keyPoints.length > 0 && (
+                                <MPKeyPoints keyPoints={keyPoints} />
+                              )}
+                              {(topicsLoading || keyPointsLoading) && (
+                                <div className="space-y-4">
+                                  <Skeleton className="h-[200px] w-full" />
+                                  <Skeleton className="h-[150px] w-full" />
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <SubscriptionCTA
+                              title="Upgrade to view other MPs' activity"
+                              description="Get access to detailed insights for all MPs with a Professional subscription."
+                              features={[
+                                "View key points for any MP",
+                                "Compare MPs' positions on issues",
+                                "Track multiple MPs' activities"
+                              ]}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <SubscriptionCTA
+                          title="Upgrade to track an MP's activity"
+                          description="Get detailed insights into an MP's parliamentary contributions, voting record, and key positions on important issues."
+                          features={[
+                            "See which topics an MP speaks on",
+                            "Track their votes in Parliamentary Divisions",
+                            "Read their key points and speeches"
+                          ]}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
       

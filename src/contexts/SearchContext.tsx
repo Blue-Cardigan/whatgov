@@ -21,7 +21,12 @@ interface SearchState {
     citations: Citation[];
     isLoading: boolean;
   };
-  searchType?: 'ai' | 'hansard';
+  searchType?: 'ai' | 'hansard' | 'mp';
+  mpSearch?: {
+    query: string;
+    mpId?: string;
+    keywords: string[];
+  };
 }
 
 type SearchAction =
@@ -33,7 +38,9 @@ type SearchAction =
   | { type: 'SET_AI_LOADING'; payload: boolean }
   | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[] } }
   | { type: 'CLEAR_AI_SEARCH' }
-  | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' };
+  | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
+  | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
+  | { type: 'CLEAR_MP_SEARCH' };
 
 const initialState: SearchState = {
   results: null,
@@ -50,7 +57,12 @@ const initialState: SearchState = {
     citations: [],
     isLoading: false
   },
-  searchType: undefined
+  searchType: undefined,
+  mpSearch: {
+    query: '',
+    mpId: undefined,
+    keywords: []
+  }
 };
 
 const SearchContext = createContext<{
@@ -93,7 +105,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         citations: state.aiSearch.citations,
         isLoading: state.aiSearch.isLoading
       },
-      searchType: state.searchType
+      searchType: state.searchType,
+      mpSearch: state.mpSearch
     }));
   }, [
     state.results, 
@@ -102,7 +115,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     state.aiSearch.streamingText,
     state.aiSearch.citations,
     state.aiSearch.isLoading,
-    state.searchType
+    state.searchType,
+    state.mpSearch
   ]);
 
   return (
@@ -178,6 +192,19 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         searchType: action.payload
+      };
+    case 'SET_MP_SEARCH':
+      return {
+        ...state,
+        mpSearch: {
+          ...action.payload,
+          keywords: action.payload.keywords || []
+        }
+      };
+    case 'CLEAR_MP_SEARCH':
+      return {
+        ...state,
+        mpSearch: initialState.mpSearch
       };
     default:
       return state;

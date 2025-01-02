@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  ScrollText, Search, BookOpen, Settings, 
+  Search, Calendar, Settings, 
   Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare, Bookmark 
 } from "lucide-react";
 import {
@@ -176,9 +176,9 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     {
-      title: "Feed",
+      title: "Calendar",
       href: "/",
-      icon: ScrollText
+      icon: Calendar
     },
     {
       title: "Search",
@@ -189,12 +189,7 @@ export function Sidebar({ className }: SidebarProps) {
       title: "Saved Searches",
       href: "/saved",
       icon: Bookmark
-    },
-    {
-      title: "My Parliament",
-      href: "/myparliament",
-      icon: BookOpen
-    },
+    }
   ];
 
   const renderNavItem = (item: typeof navItems[0]) => (

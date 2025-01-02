@@ -16,7 +16,8 @@ export interface SearchState {
         citations: Array<{ citation_index: number; debate_id: string, chunk_text: string }>;
         isLoading: boolean;
     };
-    searchType?: 'ai' | 'hansard';
+    searchType?: 'ai' | 'hansard' | 'mp';
+    mpSearch: MPSearchData;
 }
 
 export interface SavedSearch {
@@ -26,7 +27,7 @@ export interface SavedSearch {
   response: string;
   citations: Citation[];
   created_at: string;
-  search_type: 'ai' | 'hansard';
+  search_type: 'ai' | 'hansard' | 'mp';
   query_state?: {
     parts?: string;
     startDate?: string;
@@ -34,6 +35,7 @@ export interface SavedSearch {
     house?: 'Commons' | 'Lords';
     enableAI?: boolean;
   };
+  mp_data?: MPSearchData;
 }
 
 
@@ -210,4 +212,10 @@ export interface SearchCommitteeItem {
     House: string;
     Title: string;
     DebateSection: string;
+}
+
+export interface MPSearchData {
+  query: string;
+  mpId?: string;
+  keywords: string[];
 }

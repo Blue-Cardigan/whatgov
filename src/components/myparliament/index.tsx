@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, BarChart2, CalendarClock, User2 } from 'lucide-react';
+import { BarChart2, User2 } from 'lucide-react';
 import { useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { MenuItem } from './MenuItem';
@@ -129,28 +129,6 @@ function MyParliamentContent() {
       bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
       borderColor: "group-hover:border-emerald-200 dark:group-hover:border-emerald-500/30",
       isPremium: false,
-    },
-    {
-      id: "upcoming",
-      title: "Upcoming Questions",
-      description: "See what's coming up",
-      icon: <CalendarClock className="h-6 w-6" />,
-      color: "text-amber-500",
-      bgColor: "bg-amber-50 dark:bg-amber-500/10",
-      borderColor: "group-hover:border-amber-200 dark:group-hover:border-amber-500/30",
-      isPremium: false,
-    },
-    {
-      id: "alerts",
-      title: "Search Alerts",
-      description: "Subscribe to searches",
-      icon: <AlertCircle className="h-6 w-6" />,
-      color: "text-muted-foreground",
-      bgColor: "bg-muted",
-      borderColor: "group-hover:border-muted",
-      isPremium: false,
-      isDisabled: true,
-      badge: "Coming soon"
     }
   ];
 
@@ -164,12 +142,10 @@ function MyParliamentContent() {
             item={item}
             isActive={item.id === activeTab}
             onSelect={() => {
-              if (!item.isDisabled) {
-                if (item.isPremium) {
-                  handlePremiumFeature();
-                } else {
+              if (item.isPremium) {
+                handlePremiumFeature();
+              } else {
                   setActiveTab(item.id);
-                }
               }
             }}
           />
@@ -181,7 +157,6 @@ function MyParliamentContent() {
         <Suspense fallback={<div className="animate-pulse h-[500px] bg-muted rounded-lg" />}>
           {activeTab === "activity" && <VoteStats />}
           {activeTab === "mp" && <MPProfile />}
-          {activeTab === "upcoming" && <UpcomingDebates />}
           {activeTab === "stats" && <VoteStats />}
         </Suspense>
       </div>
