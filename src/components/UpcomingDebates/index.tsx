@@ -10,7 +10,7 @@ import { useCalendarData } from '@/hooks/useCalendarData';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { WeekView, CalendarDay } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
-import { isQuestionSaved } from "@/lib/supabase/saved-searches";
+import { isItemSaved } from "@/lib/supabase/saved-searches";
 import type { TimeSlot } from '@/types/calendar';
 
 // Add context for saved questions
@@ -183,8 +183,8 @@ export function UpcomingDebates() {
                 if (!sessionDate || !minister || !q.text) return;
 
                 try {
-                  const isSaved = await isQuestionSaved({
-                    text: q.text,
+                  const isSaved = await isItemSaved('question', {
+                    title: q.text,
                     date: sessionDate,
                     minister: minister
                   });

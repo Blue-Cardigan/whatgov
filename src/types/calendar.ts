@@ -45,16 +45,9 @@ export interface TimeSlot {
     };
     DateTabled: string;
   };
-  bill?: {
-    id: number;
-    title: string;
-    summary?: string;
-    currentHouse: string;
-    isAct: boolean;
-    sponsors: PublishedBill['sponsors'];
-    stage: number;
-  };
+  bill?: BillTimeSlot;
   time?: TimeInfo;
+  duration?: number;
 }
 
 export interface DaySchedule {
@@ -145,18 +138,23 @@ export interface MemberForDate {
   
   export interface PublishedBill {
     billId: number;
-    shortTitle: string;
-    currentHouse: string;
+    title?: string;
+    shortTitle?: string;
+    longTitle: string;
+    currentHouse: 'Commons' | 'Lords';
+    originatingHouse: 'Commons' | 'Lords';
     lastUpdate: string;
     isAct: boolean;
-    summary?: string;
+    isDefeated: boolean;
+    billWithdrawn?: string | null;
+    summary?: string | null;
     sponsors: Array<{
       member?: {
         memberId: number;
         name: string;
         party: string;
         partyColour: string;
-        house: string;
+        house: 'Commons' | 'Lords';
         memberPhoto?: string;
         memberPage?: string;
         memberFrom: string;
@@ -167,6 +165,22 @@ export interface MemberForDate {
       };
       sortOrder: number;
     }>;
+    currentStage: {
+      id: number;
+      stageId: number;
+      sessionId: number;
+      description: string;
+      abbreviation: string;
+      house: 'Commons' | 'Lords';
+      sortOrder: number;
+      stageSittings?: Array<{
+        id: number;
+        stageId: number;
+        billStageId: number;
+        billId: number;
+        date: string;
+      }>;
+    };
   }
   
   export interface PublishedBillSitting {
@@ -183,3 +197,18 @@ export interface MemberForDate {
     bills: PublishedBill[];
     billSittings: PublishedBillSitting[];
   }
+
+export interface BillTimeSlot {
+  id: number;
+  title: string;
+  longTitle: string;
+  summary?: string;
+  currentHouse: 'Commons' | 'Lords';
+  originatingHouse: 'Commons' | 'Lords';
+  isAct: boolean;
+  isDefeated: boolean;
+  sponsors: PublishedBill['sponsors'];
+  currentStage?: PublishedBill['currentStage'];
+  stage: number;
+  sittings?: PublishedBillSitting[];
+}

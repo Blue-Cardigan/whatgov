@@ -20,19 +20,31 @@ export interface SearchState {
     mpSearch: MPSearchData;
 }
 
+export type SearchType = 'ai' | 'hansard' | 'mp' | 'question' | 'bill' | 'edm';
+
+export interface BillQueryState {
+  billId: number;
+  title: string;
+  currentHouse: 'Commons' | 'Lords';
+  originatingHouse: 'Commons' | 'Lords';
+  date: string;
+  stage?: string;
+}
+
+export interface EDMQueryState {
+  edmId: number;
+  title: string;
+  primarySponsor: string;
+  date: string;
+}
+
 export interface SaveSearchParams {
   query: string;
   response: string;
   citations: string[];
-  queryState?: any;
-  searchType: 'ai' | 'hansard' | 'mp' | 'question';
+  queryState: any;
+  searchType: SearchType;
   mpData?: MPSearchData;
-  metadata?: {
-    questionId?: string;
-    department?: string;
-    deadline?: string;
-    [key: string]: any;  // Allow for additional metadata fields
-  };
 }
 
 export interface SavedSearch {

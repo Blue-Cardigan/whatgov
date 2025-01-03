@@ -85,6 +85,11 @@ export function SaveSearchButton({
               topics: mpSearch.topics
             }),
             citations: [],
+            queryState: {
+              searchTerm: mpSearch.query,
+              startDate: new Date('2024-07-04').toISOString(),
+              endDate: new Date().toISOString()
+            },
             searchType: 'mp'
           });
           break;

@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, addWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, addMinutes, setHours, setMinutes } from 'date-fns';
 import type { 
   PublishedEarlyDayMotion, 
   PublishedOralQuestion, 
@@ -16,6 +16,7 @@ export class CalendarApi {
   static readonly DEFAULT_CACHE_TTL = 300; // 5 minutes
   static readonly NEXT_WEEK_CACHE_TTL = 1800; // 30 minutes
   static readonly MAX_RETRIES = 2;
+  static readonly MAX_ITEMS_PER_REQUEST = 40;
 
   static async getWeeklyEvents(
     forNextWeek: boolean = false,
@@ -98,8 +99,10 @@ export class CalendarApi {
           }>(`/api/hansard/questions?${params.toString()}`),
           
           this.fetchWithErrorHandling<{
-            bills: PublishedBill[];
-            sittings: PublishedBillSitting[];
+            data: {
+              bills: PublishedBill[];
+              sittings: PublishedBillSitting[];
+            }
           }>(`/api/hansard/bills?${params.toString()}`)
         ]);
 
@@ -108,39 +111,24 @@ export class CalendarApi {
         allData.oralQuestions = [...allData.oralQuestions, ...(questionsResponse.oralQuestions || [])];
         allData.questionTimes = [...allData.questionTimes, ...(questionsResponse.questionTimes || [])];
 
-        // Merge bills data
-        allData.bills = [...allData.bills, ...(billsResponse.bills || [])];
-        allData.billSittings = [...allData.billSittings, ...(billsResponse.sittings || [])];
+        // Merge bills data - note the data property in the response
+        allData.bills = [...allData.bills, ...(billsResponse.data.bills || [])];
+        allData.billSittings = [...allData.billSittings, ...(billsResponse.data.sittings || [])];
 
-        console.log('billSittings', allData.billSittings);
-        console.log('bills', allData.bills);
+        // Check if we received a full page of results
+        const hasMoreQuestions = questionsResponse.oralQuestions?.length === this.MAX_ITEMS_PER_REQUEST;
+        const hasMoreBills = billsResponse.data.bills?.length === this.MAX_ITEMS_PER_REQUEST;
+        
+        hasMore = hasMoreQuestions || hasMoreBills;
+        skip += this.MAX_ITEMS_PER_REQUEST;
 
-        // Check if we received a full page of results from either endpoint
-        const hasFullPage = 
-          questionsResponse.earlyDayMotions?.length === 40 ||
-          questionsResponse.oralQuestions?.length === 40 ||
-          questionsResponse.questionTimes?.length === 40 ||
-          billsResponse.bills?.length === 40 ||
-          billsResponse.sittings?.length === 40;
-
-        if (!hasFullPage) {
-          hasMore = false;
-        } else {
-          skip += 40;
-        }
       } catch (error) {
-        console.error('Error fetching Hansard data page:', error);
+        console.error('Error fetching data:', error);
         hasMore = false;
       }
     }
 
-    return {
-      oralQuestions: this.validateAndProcessQuestions(allData.oralQuestions),
-      earlyDayMotions: this.validateAndProcessEDMs(allData.earlyDayMotions),
-      questionTimes: this.validateAndProcessTimes(allData.questionTimes),
-      bills: this.validateAndProcessBills(allData.bills),
-      billSittings: this.validateAndProcessBillSittings(allData.billSittings)
-    };
+    return allData;
   }
 
   private static getEmptyHansardData(): HansardData {
@@ -151,104 +139,6 @@ export class CalendarApi {
       bills: [],
       billSittings: []
     };
-  }
-
-  private static validateAndProcessQuestions(
-    questions: PublishedOralQuestion[]
-  ): PublishedOralQuestion[] {
-    if (!Array.isArray(questions)) return [];
-
-    return questions
-      .filter(q => 
-        q.QuestionText && 
-        q.AnsweringWhen && 
-        q.AnsweringBody && 
-        q.AskingMember
-      )
-      .map(q => ({
-        ...q,
-        AnsweringWhen: new Date(q.AnsweringWhen).toISOString()
-      }))
-      .sort((a, b) => 
-        new Date(a.AnsweringWhen).getTime() - new Date(b.AnsweringWhen).getTime()
-      );
-  }
-
-  private static validateAndProcessEDMs(
-    edms: PublishedEarlyDayMotion[]
-  ): PublishedEarlyDayMotion[] {
-    if (!Array.isArray(edms)) return [];
-
-    return edms
-      .filter(edm => 
-        edm.Title && 
-        edm.DateTabled && 
-        edm.PrimarySponsor
-      )
-      .map(edm => ({
-        ...edm,
-        // Compare Status with string values instead of number
-        Status: edm.Status === 'Published' ? 'Published' as const : 'Withdrawn' as const,
-        DateTabled: new Date(edm.DateTabled).toISOString()
-      }))
-      .sort((a, b) => 
-        new Date(b.DateTabled).getTime() - new Date(a.DateTabled).getTime()
-      );
-  }
-
-  private static validateAndProcessTimes(
-    times: PublishedOralQuestionTime[]
-  ): PublishedOralQuestionTime[] {
-    if (!Array.isArray(times)) return [];
-
-    return times
-      .filter(time => 
-        time.AnsweringWhen && 
-        time.DeadlineWhen &&
-        time.AnsweringBodyNames
-      )
-      .map(time => ({
-        ...time,
-        AnsweringWhen: new Date(time.AnsweringWhen).toISOString(),
-        DeadlineWhen: new Date(time.DeadlineWhen).toISOString()
-      }))
-      .sort((a, b) => 
-        new Date(a.AnsweringWhen).getTime() - new Date(b.AnsweringWhen).getTime()
-      );
-  }
-
-  private static validateAndProcessBills(
-    bills: PublishedBill[]
-  ): PublishedBill[] {
-    if (!Array.isArray(bills)) return [];
-
-    return bills
-      .filter(bill => 
-        bill.shortTitle && 
-        bill.billId
-      )
-      .sort((a, b) => 
-        new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()
-      );
-  }
-
-  private static validateAndProcessBillSittings(
-    sittings: PublishedBillSitting[]
-  ): PublishedBillSitting[] {
-    if (!Array.isArray(sittings)) return [];
-
-    return sittings
-      .filter(sitting => 
-        sitting.date && 
-        sitting.billId
-      )
-      .map(sitting => ({
-        ...sitting,
-        date: new Date(sitting.date).toISOString()
-      }))
-      .sort((a, b) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
   }
 
   private static calculateWeekDates(baseDate: Date, forNextWeek: boolean) {
@@ -441,35 +331,76 @@ export class CalendarApi {
       });
     }
 
-    // Process bill sittings
-    if (Array.isArray(data.billSittings)) {
-      data.billSittings.forEach((sitting) => {
-        if (!sitting.date) return;
-
-        const date = new Date(sitting.date);
-        const dateKey = format(date, 'yyyy-MM-dd');
-
-        if (!dayMap.has(dateKey)) {
-          dayMap.set(dateKey, { date, timeSlots: [] });
-        }
-
-        const day = dayMap.get(dateKey)!;
-        const bill = data.bills?.find(b => b.billId === sitting.billId);
+    // Process bills by house
+    if (data.bills && data.billSittings) {
+      // First, group all sittings by bill and date
+      const billSittingGroups = data.billSittings.reduce((acc, sitting) => {
+        const dateKey = format(new Date(sitting.date), 'yyyy-MM-dd');
+        const key = `${sitting.billId}-${dateKey}`;
         
-        if (bill) {
-          day.timeSlots.push({
-            type: 'bill',
-            bill: {
-              id: bill.billId,
-              title: bill.shortTitle,
-              summary: bill.summary,
-              currentHouse: bill.currentHouse,
-              isAct: bill.isAct,
-              sponsors: bill.sponsors,
-              stage: sitting.stageId
-            }
+        if (!acc.has(key)) {
+          acc.set(key, {
+            billId: sitting.billId,
+            date: dateKey,
+            sittings: []
           });
         }
+        
+        acc.get(key)!.sittings.push(sitting);
+        return acc;
+      }, new Map<string, {
+        billId: number;
+        date: string;
+        sittings: PublishedBillSitting[];
+      }>());
+
+      // Then process each group of sittings
+      billSittingGroups.forEach((group) => {
+        const dateKey = group.date;
+        if (!dayMap.has(dateKey)) {
+          dayMap.set(dateKey, { date: new Date(dateKey), timeSlots: [] });
+        }
+        
+        const bill = data.bills.find(b => b.billId === group.billId);
+        if (!bill) return;
+
+        const day = dayMap.get(dateKey)!;
+        const houseGroup = bill.currentHouse.toLowerCase() as 'commons' | 'lords';
+
+        // Sort sittings by stage order
+        const sortedSittings = group.sittings.sort((a, b) => {
+          const stageA = bill.currentStage?.sortOrder || 0;
+          const stageB = bill.currentStage?.sortOrder || 0;
+          return stageA - stageB;
+        });
+
+        // Calculate duration based on number of sittings
+        const durationInMinutes = Math.max(30, sortedSittings.length * 30);
+        const startTime = setHours(setMinutes(new Date(dateKey), 0), 12.5);
+
+        day.timeSlots.push({
+          type: 'bill',
+          time: {
+            substantive: format(startTime, 'HH:mm'),
+            topical: null,
+            deadline: format(addMinutes(startTime, durationInMinutes), 'HH:mm')
+          },
+          duration: durationInMinutes,
+          bill: {
+            id: bill.billId,
+            title: bill.shortTitle || bill.title || '',
+            longTitle: bill.longTitle || '',
+            summary: bill.summary || '',
+            currentHouse: bill.currentHouse,
+            originatingHouse: bill.originatingHouse,
+            isAct: bill.isAct,
+            isDefeated: bill.isDefeated,
+            sponsors: bill.sponsors,
+            currentStage: bill.currentStage,
+            stage: sortedSittings[0].stageId,
+            sittings: sortedSittings
+          }
+        });
       });
     }
 

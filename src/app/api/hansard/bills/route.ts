@@ -51,30 +51,80 @@ export async function GET(request: NextRequest) {
     
     // Extract billIds from the items array
     const billIds = new Set(
-      sittingsData.items?.map((sitting: any) => sitting.billId) || []
+      sittingsData.items?.map((sitting: any) => sitting.billId).filter(Boolean) || []
     );
-
-    console.log('Found bill IDs:', billIds);
 
     // Fetch bill details for each unique billId
-    const billPromises = Array.from(billIds).map(billId =>
-      fetch(`${baseUrl}/api/v1/Bills/${billId}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+    const billPromises = Array.from(billIds).map(async billId => {
+      try {
+        const response = await fetch(`${baseUrl}/Bills/${billId}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to fetch bill ${billId}: ${response.status}`);
+          return null;
         }
-      })
-      .then(res => res.ok ? res.json() : null)
-      .catch(() => null)
-    );
+
+        const billData = await response.json();
+        
+        // Transform the bill data into our expected format
+        return {
+          billId: billData.billId,
+          title: billData.shortTitle,
+          longTitle: billData.longTitle,
+          summary: billData.summary,
+          currentHouse: billData.currentHouse,
+          originatingHouse: billData.originatingHouse,
+          isAct: billData.isAct,
+          isDefeated: billData.isDefeated,
+          sponsors: billData.sponsors.map((sponsor: any) => ({
+            member: sponsor.member ? {
+              memberId: sponsor.member.memberId,
+              name: sponsor.member.name,
+              party: sponsor.member.party,
+              partyColour: sponsor.member.partyColour,
+              house: sponsor.member.house,
+              memberPhoto: sponsor.member.memberPhoto,
+              memberPage: sponsor.member.memberPage,
+              memberFrom: sponsor.member.memberFrom
+            } : undefined,
+            organisation: sponsor.organisation ? {
+              name: sponsor.organisation.name,
+              url: sponsor.organisation.url
+            } : undefined,
+            sortOrder: sponsor.sortOrder
+          })),
+          currentStage: billData.currentStage ? {
+            description: billData.currentStage.description,
+            abbreviation: billData.currentStage.abbreviation,
+            house: billData.currentStage.house,
+            sortOrder: billData.currentStage.sortOrder
+          } : undefined
+        };
+      } catch (error) {
+        console.error(`Error fetching bill ${billId}:`, error);
+        return null;
+      }
+    });
 
     const billsData = await Promise.all(billPromises);
-    const validBills = billsData.filter(bill => bill !== null);
+    const validBills = billsData.filter((bill): bill is NonNullable<typeof bill> => bill !== null);
+
+    console.log('Processed bills:', validBills);
 
     return NextResponse.json({
       data: {
         bills: validBills,
-        sittings: sittingsData.items || []  // Return the items array
+        sittings: sittingsData.items?.map((sitting: any) => ({
+          id: sitting.id,
+          stageId: sitting.stageId,
+          billId: sitting.billId,
+          date: sitting.date
+        })) || []
       }
     });
 

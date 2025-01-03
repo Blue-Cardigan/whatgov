@@ -8,52 +8,78 @@ interface QuestionIdentifier {
   minister: string;
 }
 
-// Update function to check if a question is saved
-export async function isQuestionSaved(question: QuestionIdentifier): Promise<boolean> {
+// Add type checking functions
+export async function isItemSaved(
+  type: 'bill' | 'edm' | 'question',
+  identifier: { 
+    id?: number;
+    title?: string;
+    date?: string;
+    minister?: string;
+  }
+): Promise<boolean> {
   const supabase = createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
-  // Use containment operator @> for JSONB query
-  const { count, error } = await supabase
+  const query = supabase
     .from('saved_searches')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
-    .eq('search_type', 'question')
-    .contains('query_state', {
-      question_text: question.text,
-      answer_date: question.date,
-      answering_minister: question.minister
+    .eq('search_type', type);
+
+  if (type === 'bill' && identifier.id) {
+    query.eq('query_state->billId', identifier.id);
+  } else if (type === 'edm' && identifier.id) {
+    query.eq('query_state->edmId', identifier.id);
+  } else if (type === 'question' && identifier.title && identifier.date && identifier.minister) {
+    query.contains('query_state', {
+      question_text: identifier.title,
+      answer_date: identifier.date,
+      answering_minister: identifier.minister
     });
+  }
+
+  const { count, error } = await query;
 
   if (error) {
-    console.error('Error checking saved question:', error);
+    console.error('Error checking saved item:', error);
     return false;
   }
 
   return (count ?? 0) > 0;
 }
 
-// Update saveSearch function
+// Update saveSearch to handle bills and EDMs
 export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch> {
   const supabase = createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Check if question is already saved using the same fields
-  const { count: existingCount } = await supabase
+  // Check if item is already saved
+  let existingQuery = supabase
     .from('saved_searches')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
-    .eq('search_type', 'question')
-    .eq('query_state->question_text', params.queryState.questionText)
-    .eq('query_state->answer_date', params.queryState.answerDate)
-    .eq('query_state->answering_minister', params.queryState.answeringMinister);
+    .eq('search_type', params.searchType);
+
+  if (params.searchType === 'bill') {
+    existingQuery = existingQuery.eq('query_state->billId', params.queryState.billId);
+  } else if (params.searchType === 'edm') {
+    existingQuery = existingQuery.eq('query_state->edmId', params.queryState.edmId);
+  } else if (params.searchType === 'question') {
+    existingQuery = existingQuery
+      .eq('query_state->question_text', params.queryState.questionText)
+      .eq('query_state->answer_date', params.queryState.answerDate)
+      .eq('query_state->answering_minister', params.queryState.answeringMinister);
+  }
+
+  const { count: existingCount } = await existingQuery;
 
   if (existingCount && existingCount > 0) {
-    throw new Error('Question already saved');
+    throw new Error('Item already saved');
   }
 
   const { data, error } = await supabase
@@ -61,17 +87,9 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
     .insert({
       user_id: user.id,
       query: params.query,
-      response: '', // Leave empty as requested
+      response: params.response,
       citations: params.citations,
-      query_state: {
-        question_text: params.queryState.questionText,
-        answer_date: params.queryState.answerDate,
-        answering_minister: params.queryState.answeringMinister,
-        department: params.queryState.department,
-        deadline: params.queryState.deadline,
-        question_id: params.queryState.questionId,
-        uin: params.queryState.uin
-      },
+      query_state: params.queryState,
       search_type: params.searchType,
     })
     .select()
