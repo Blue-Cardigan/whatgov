@@ -235,7 +235,6 @@ function SessionPopover({ session, size, style }: SessionPopoverProps) {
           style={style}
         >
           <div className="flex flex-col gap-1 min-w-0">
-            {/* Time display for compact view */}
             {size === 'compact' && timeDisplay && (
               <div className="text-[10px] font-medium text-primary/70">
                 {timeDisplay}
@@ -244,14 +243,28 @@ function SessionPopover({ session, size, style }: SessionPopoverProps) {
             
             <div className="flex items-center gap-2">
               <ProfileImage
-                src={session.type === 'oral-questions' 
-                  ? session.minister?.PhotoUrl 
-                  : session.edm?.PrimarySponsor.PhotoUrl}
-                alt={session.type === 'oral-questions'
-                  ? (session.minister?.Name || 'Minister')
-                  : (session.edm?.PrimarySponsor.Name || 'Member')}
+                src={
+                  session.type === 'oral-questions' 
+                    ? session.minister?.PhotoUrl 
+                    : session.type === 'edm'
+                    ? session.edm?.PrimarySponsor.PhotoUrl
+                    : session.bill?.sponsors[0]?.member?.memberPhoto
+                }
+                alt={
+                  session.type === 'oral-questions'
+                    ? (session.minister?.Name || 'Minister')
+                    : session.type === 'edm'
+                    ? (session.edm?.PrimarySponsor.Name || 'Member')
+                    : (session.bill?.sponsors[0]?.member?.name || 'Sponsor')
+                }
                 size={size === 'compact' ? 20 : 24}
-                party={session.type === 'edm' ? session.edm?.PrimarySponsor.Party : undefined}
+                party={
+                  session.type === 'edm' 
+                    ? session.edm?.PrimarySponsor.Party 
+                    : session.type === 'bill'
+                    ? session.bill?.sponsors[0]?.member?.party
+                    : undefined
+                }
               />
               <div className="flex-1 min-w-0">
                 <div className={cn(
@@ -260,20 +273,23 @@ function SessionPopover({ session, size, style }: SessionPopoverProps) {
                 )}>
                   {session.type === 'oral-questions' 
                     ? session.department 
-                    : 'Early Day Motion'}
+                    : session.type === 'edm'
+                    ? 'Early Day Motion'
+                    : session.bill?.title}
                 </div>
                 {size === 'normal' && (
                   <div className="text-xs truncate text-muted-foreground">
                     {session.type === 'oral-questions'
                       ? `${session.questions?.length || 0} questions`
-                      : session.edm?.Title}
+                      : session.type === 'edm'
+                      ? session.edm?.Title
+                      : `${session.bill?.currentHouse} - Stage ${session.bill?.stage}`}
                   </div>
                 )}
               </div>
             </div>
           </div>
           
-          {/* Hover indicator */}
           <div className="absolute inset-0 border-2 border-primary opacity-0 group-hover:opacity-100 transition-opacity rounded-[inherit]" />
         </Button>
       </PopoverTrigger>
@@ -283,8 +299,10 @@ function SessionPopover({ session, size, style }: SessionPopoverProps) {
       >
         {session.type === 'oral-questions' ? (
           <OralQuestionsContent session={session} />
-        ) : (
+        ) : session.type === 'edm' ? (
           <EDMContent session={session} />
+        ) : (
+          <BillContent session={session as TimeSlot & { type: 'bill'; bill: NonNullable<TimeSlot['bill']> }} />
         )}
       </PopoverContent>
     </Popover>
@@ -398,6 +416,80 @@ function EDMContent({ session }: { session: TimeSlot }) {
       <div className="p-4">
         <h3 className="font-medium mb-2">{session.edm?.Title}</h3>
         <p className="text-sm text-muted-foreground">{session.edm?.Text}</p>
+      </div>
+    </div>
+  );
+}
+
+function BillContent({ session }: { session: TimeSlot & { type: 'bill'; bill: NonNullable<TimeSlot['bill']> } }) {
+  return (
+    <div className="flex flex-col max-h-[400px] overflow-y-auto">
+      <div className="p-4 border-b bg-muted">
+        <div className="flex items-center gap-3">
+          <ProfileImage
+            src={session.bill.sponsors[0]?.member?.memberPhoto}
+            alt={session.bill.sponsors[0]?.member?.name || 'Sponsor'}
+            size={40}
+            party={session.bill.sponsors[0]?.member?.party}
+          />
+          <div>
+            <h4 className="font-medium text-sm">{session.bill.title}</h4>
+            <p className="text-xs text-muted-foreground">
+              {session.bill.currentHouse} - Stage {session.bill.stage}
+            </p>
+            {session.bill.isAct && (
+              <p className="text-xs text-green-600 font-medium mt-1">
+                Enacted into law
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-4">
+        {session.bill.summary && (
+          <>
+            <h3 className="font-medium mb-2">Summary</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {session.bill.summary}
+            </p>
+          </>
+        )}
+        
+        {session.bill.sponsors.length > 0 && (
+          <>
+            <h3 className="font-medium mb-2">Sponsors</h3>
+            <div className="space-y-2">
+              {session.bill.sponsors.map((sponsor, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 bg-muted/50 rounded-full px-2 py-1"
+                >
+                  {sponsor.member ? (
+                    <>
+                      <ProfileImage
+                        src={sponsor.member.memberPhoto}
+                        alt={sponsor.member.name}
+                        size={24}
+                        party={sponsor.member.party}
+                      />
+                      <div className="text-xs">
+                        <span className="font-medium">{sponsor.member.name}</span>
+                        <span className="text-muted-foreground ml-1">
+                          {sponsor.member.memberFrom}
+                        </span>
+                      </div>
+                    </>
+                  ) : sponsor.organisation && (
+                    <div className="text-xs">
+                      <span className="font-medium">{sponsor.organisation.name}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -5,21 +5,23 @@ import { CACHE_KEYS } from '@/lib/redis/config';
 import { CalendarApi } from '@/lib/calendar-api';
 import type { HansardData } from '@/types/calendar';
 
-export function useQuestionsData() {
+export function useCalendarData() {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const { 
-    data, 
+    data: rawData, 
     isLoading, 
     error, 
     isFetching
   } = useQuery<HansardData>({
-    queryKey: ['monthlyDebates', format(currentDate, 'yyyy-MM')],
+    queryKey: ['monthlyHansardData', format(currentDate, 'yyyy-MM')],
     queryFn: () => CalendarApi.getMonthlyEvents(currentDate),
     staleTime: CACHE_KEYS.upcomingDebates.ttl * 500,
     cacheTime: CACHE_KEYS.upcomingDebates.ttl * 1000,
     refetchOnWindowFocus: false,
   });
+
+  const processedData = rawData ? CalendarApi.processScheduleData(rawData) : [];
 
   const goToPreviousMonth = useCallback(() => {
     setCurrentDate(date => new Date(date.getFullYear(), date.getMonth() - 1, 1));
@@ -30,7 +32,8 @@ export function useQuestionsData() {
   }, []);
 
   return {
-    data,
+    rawData,
+    processedData,
     isLoading,
     isFetching,
     error,

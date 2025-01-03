@@ -6,7 +6,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, Search, HelpCircle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuestionsData } from '@/hooks/useQuestionsData';
+import { useCalendarData } from '@/hooks/useCalendarData';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { WeekView, CalendarDay } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
@@ -26,13 +26,13 @@ export const SavedQuestionsContext = createContext<SavedQuestionsContextType>({
 
 export function UpcomingDebates() {
   const { 
-    data,
+    rawData,
     isFetching,
     currentDate,
     setCurrentDate,
     goToPreviousMonth,
     goToNextMonth
-  } = useQuestionsData();
+  } = useCalendarData();
 
   const [view, setView] = useState<'week' | 'month'>('month');
   const [savedQuestions, setSavedQuestions] = useState<Set<string>>(new Set());
@@ -96,10 +96,10 @@ export function UpcomingDebates() {
 
   // Process schedule data using CalendarApi
   const schedule = useMemo(() => {
-    if (!data) return [];
-    const processed = CalendarApi.processScheduleData(data);
+    if (!rawData) return [];
+    const processed = CalendarApi.processScheduleData(rawData);
     return processed;
-  }, [data]);
+  }, [rawData]);
 
   // Get month days
   const monthDays = useMemo(() => {

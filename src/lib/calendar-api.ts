@@ -3,6 +3,8 @@ import type {
   PublishedEarlyDayMotion, 
   PublishedOralQuestion, 
   PublishedOralQuestionTime,
+  PublishedBill,
+  PublishedBillSitting,
   HansardData,
   TimeSlot,
   DaySchedule,
@@ -72,7 +74,9 @@ export class CalendarApi {
     let allData: HansardData = {
       earlyDayMotions: [],
       oralQuestions: [],
-      questionTimes: []
+      questionTimes: [],
+      bills: [],
+      billSittings: []
     };
 
     let skip = 0;
@@ -86,24 +90,38 @@ export class CalendarApi {
       });
 
       try {
-        const response = await this.fetchWithErrorHandling<{
-          earlyDayMotions: PublishedEarlyDayMotion[];
-          oralQuestions: PublishedOralQuestion[];
-          questionTimes: PublishedOralQuestionTime[];
-        }>(`/api/hansard/questions?${params.toString()}`);
+        const [questionsResponse, billsResponse] = await Promise.all([
+          this.fetchWithErrorHandling<{
+            earlyDayMotions: PublishedEarlyDayMotion[];
+            oralQuestions: PublishedOralQuestion[];
+            questionTimes: PublishedOralQuestionTime[];
+          }>(`/api/hansard/questions?${params.toString()}`),
+          
+          this.fetchWithErrorHandling<{
+            bills: PublishedBill[];
+            sittings: PublishedBillSitting[];
+          }>(`/api/hansard/bills?${params.toString()}`)
+        ]);
 
-        console.log(response);
+        // Merge questions data
+        allData.earlyDayMotions = [...allData.earlyDayMotions, ...(questionsResponse.earlyDayMotions || [])];
+        allData.oralQuestions = [...allData.oralQuestions, ...(questionsResponse.oralQuestions || [])];
+        allData.questionTimes = [...allData.questionTimes, ...(questionsResponse.questionTimes || [])];
 
-        // Merge new data with existing data
-        allData.earlyDayMotions = [...allData.earlyDayMotions, ...(response.earlyDayMotions || [])];
-        allData.oralQuestions = [...allData.oralQuestions, ...(response.oralQuestions || [])];
-        allData.questionTimes = [...allData.questionTimes, ...(response.questionTimes || [])];
+        // Merge bills data
+        allData.bills = [...allData.bills, ...(billsResponse.bills || [])];
+        allData.billSittings = [...allData.billSittings, ...(billsResponse.sittings || [])];
 
-        // Check if we received a full page of results
+        console.log('billSittings', allData.billSittings);
+        console.log('bills', allData.bills);
+
+        // Check if we received a full page of results from either endpoint
         const hasFullPage = 
-          response.earlyDayMotions?.length === 40 ||
-          response.oralQuestions?.length === 40 ||
-          response.questionTimes?.length === 40;
+          questionsResponse.earlyDayMotions?.length === 40 ||
+          questionsResponse.oralQuestions?.length === 40 ||
+          questionsResponse.questionTimes?.length === 40 ||
+          billsResponse.bills?.length === 40 ||
+          billsResponse.sittings?.length === 40;
 
         if (!hasFullPage) {
           hasMore = false;
@@ -119,7 +137,9 @@ export class CalendarApi {
     return {
       oralQuestions: this.validateAndProcessQuestions(allData.oralQuestions),
       earlyDayMotions: this.validateAndProcessEDMs(allData.earlyDayMotions),
-      questionTimes: this.validateAndProcessTimes(allData.questionTimes)
+      questionTimes: this.validateAndProcessTimes(allData.questionTimes),
+      bills: this.validateAndProcessBills(allData.bills),
+      billSittings: this.validateAndProcessBillSittings(allData.billSittings)
     };
   }
 
@@ -127,7 +147,9 @@ export class CalendarApi {
     return {
       oralQuestions: [],
       earlyDayMotions: [],
-      questionTimes: []
+      questionTimes: [],
+      bills: [],
+      billSittings: []
     };
   }
 
@@ -192,6 +214,40 @@ export class CalendarApi {
       }))
       .sort((a, b) => 
         new Date(a.AnsweringWhen).getTime() - new Date(b.AnsweringWhen).getTime()
+      );
+  }
+
+  private static validateAndProcessBills(
+    bills: PublishedBill[]
+  ): PublishedBill[] {
+    if (!Array.isArray(bills)) return [];
+
+    return bills
+      .filter(bill => 
+        bill.shortTitle && 
+        bill.billId
+      )
+      .sort((a, b) => 
+        new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()
+      );
+  }
+
+  private static validateAndProcessBillSittings(
+    sittings: PublishedBillSitting[]
+  ): PublishedBillSitting[] {
+    if (!Array.isArray(sittings)) return [];
+
+    return sittings
+      .filter(sitting => 
+        sitting.date && 
+        sitting.billId
+      )
+      .map(sitting => ({
+        ...sitting,
+        date: new Date(sitting.date).toISOString()
+      }))
+      .sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
       );
   }
 
@@ -382,6 +438,38 @@ export class CalendarApi {
             DateTabled: edm.DateTabled
           }
         });
+      });
+    }
+
+    // Process bill sittings
+    if (Array.isArray(data.billSittings)) {
+      data.billSittings.forEach((sitting) => {
+        if (!sitting.date) return;
+
+        const date = new Date(sitting.date);
+        const dateKey = format(date, 'yyyy-MM-dd');
+
+        if (!dayMap.has(dateKey)) {
+          dayMap.set(dateKey, { date, timeSlots: [] });
+        }
+
+        const day = dayMap.get(dateKey)!;
+        const bill = data.bills?.find(b => b.billId === sitting.billId);
+        
+        if (bill) {
+          day.timeSlots.push({
+            type: 'bill',
+            bill: {
+              id: bill.billId,
+              title: bill.shortTitle,
+              summary: bill.summary,
+              currentHouse: bill.currentHouse,
+              isAct: bill.isAct,
+              sponsors: bill.sponsors,
+              stage: sitting.stageId
+            }
+          });
+        }
       });
     }
 
