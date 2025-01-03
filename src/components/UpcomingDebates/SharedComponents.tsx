@@ -2,15 +2,6 @@ import { useState } from "react";
 import Image from "next/image";
 import { User2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { partyColours } from "@/lib/utils";
-
-interface ProfileImageProps {
-  src?: string | null;
-  alt: string;
-  size?: number;
-  fallbackClassName?: string;
-  party?: string;
-}
 
 export function ProfileImage({ 
   src, 
@@ -18,9 +9,16 @@ export function ProfileImage({
   size = 40,
   fallbackClassName = "",
   party,
-}: ProfileImageProps) {
+}: { 
+  src?: string | null; 
+  alt: string; 
+  size?: number;
+  fallbackClassName?: string;
+  party?: string;
+}) {
   const [imageError, setImageError] = useState(false);
   
+  // Get initials from name
   const initials = alt
     .split(' ')
     .map(word => word[0])
@@ -28,10 +26,18 @@ export function ProfileImage({
     .slice(0, 2)
     .toUpperCase();
 
-  // Use party colors from utils
-  const partyColor = party && partyColours[party] 
-    ? `bg-opacity-10 text-[${partyColours[party].color}]` 
-    : 'bg-muted text-muted-foreground';
+  // Map party to background color
+  const partyColors: Record<string, string> = {
+    'Conservative': 'bg-blue-100 text-blue-700',
+    'Labour': 'bg-red-100 text-red-700',
+    'Scottish National Party': 'bg-yellow-100 text-yellow-700',
+    'Liberal Democrat': 'bg-orange-100 text-orange-700',
+    'Green Party': 'bg-green-100 text-green-700',
+    'Independent': 'bg-gray-100 text-gray-700',
+    'default': 'bg-muted text-muted-foreground'
+  };
+
+  const partyColor = party ? (partyColors[party] || partyColors.default) : partyColors.default;
 
   const shouldTryImage = src && 
     typeof src === 'string' && 

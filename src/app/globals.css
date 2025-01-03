@@ -141,6 +141,22 @@ body {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  .calendar-grid {
+    background-size: 60px 60px;
+    background-image: 
+      linear-gradient(to right, theme('colors.gray.100/10') 1px, transparent 1px),
+      linear-gradient(to bottom, theme('colors.gray.100/10') 1px, transparent 1px);
+  }
+  
+  .calendar-event {
+    transition: all 0.2s ease;
+  }
+  
+  .calendar-event:hover {
+    transform: scale(1.02);
+    z-index: 20;
+  }
 }
 
 .snap-x {

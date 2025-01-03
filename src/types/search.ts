@@ -20,6 +20,21 @@ export interface SearchState {
     mpSearch: MPSearchData;
 }
 
+export interface SaveSearchParams {
+  query: string;
+  response: string;
+  citations: string[];
+  queryState?: any;
+  searchType: 'ai' | 'hansard' | 'mp' | 'question';
+  mpData?: MPSearchData;
+  metadata?: {
+    questionId?: string;
+    department?: string;
+    deadline?: string;
+    [key: string]: any;  // Allow for additional metadata fields
+  };
+}
+
 export interface SavedSearch {
   id: string;
   user_id: string;
@@ -27,13 +42,19 @@ export interface SavedSearch {
   response: string;
   citations: Citation[];
   created_at: string;
-  search_type: 'ai' | 'hansard' | 'mp';
+  search_type: 'ai' | 'hansard' | 'mp' | 'question';
   query_state?: {
     parts?: string;
     startDate?: string;
     endDate?: string;
     house?: 'Commons' | 'Lords';
     enableAI?: boolean;
+  };
+  metadata?: {
+    questionId?: string;
+    department?: string;
+    deadline?: string;
+    [key: string]: any;
   };
   mp_data?: MPSearchData;
 }
@@ -218,4 +239,30 @@ export interface MPSearchData {
   query: string;
   mpId?: string;
   keywords: string[];
+}
+
+export interface SavedQuestionData {
+  id: string;  // Unique identifier
+  department: string;
+  minister?: {
+    MnisId: number;
+    Name: string;
+    Party: string;
+  };
+  ministerTitle?: string;
+  question?: {
+    text: string;
+    askingMembers: Array<{
+      Name: string;
+      Party?: string;
+      Constituency?: string;
+    }>;
+  };
+  time?: {
+    substantive: string | null;
+    topical: string | null;
+    deadline: string;
+  };
+  type: 'oral-question';
+  savedAt: string;
 }

@@ -23,8 +23,10 @@ export const metadata = {
 
 export default function DebatesPage() {
   return (
-    <>
-      <UpcomingDebates />
-    </>
+    <main className="min-h-[calc(100vh-4rem)] flex flex-col p-4 md:p-6">
+      <div className="flex-1">
+        <UpcomingDebates />
+      </div>
+    </main>
   );
 }
