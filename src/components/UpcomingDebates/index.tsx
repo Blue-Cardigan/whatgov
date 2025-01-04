@@ -12,6 +12,7 @@ import { WeekView, CalendarDay } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
 import { isItemSaved } from "@/lib/supabase/saved-searches";
 import type { TimeSlot } from '@/types/calendar';
+import { MonthSkeleton, WeekSkeleton } from './CalendarSkeleton';
 
 // Add context for saved questions
 interface SavedQuestionsContextType {
@@ -34,7 +35,7 @@ export function UpcomingDebates() {
     goToNextMonth
   } = useCalendarData();
 
-  const [view, setView] = useState<'week' | 'month'>('month');
+  const [view, setView] = useState<'week' | 'month'>('week');
   const [savedQuestions, setSavedQuestions] = useState<Set<string>>(new Set());
 
   // Modify navigation functions to handle both week and month views
@@ -281,47 +282,48 @@ export function UpcomingDebates() {
           </div>
         </div>
 
-        {view === 'week' ? (
-          <WeekView currentDate={currentDate} schedule={schedule} />
+        {isFetching ? (
+          view === 'week' ? <WeekSkeleton /> : <MonthSkeleton />
         ) : (
-          <Card className={cn(
-            "overflow-hidden border-gray-200 rounded-xl shadow-sm",
-            isFetching && "opacity-70 transition-opacity duration-200"
-          )}>
-            <div className="grid grid-cols-5 border-b border-gray-200">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
-                <div key={day} className="py-2 text-center text-sm font-medium text-gray-500">
-                  {day}
-                </div>
-              ))}
-            </div>
+          view === 'week' ? (
+            <WeekView currentDate={currentDate} schedule={schedule} />
+          ) : (
+            <Card className="overflow-hidden border-gray-200 rounded-xl shadow-sm">
+              <div className="grid grid-cols-5 border-b border-gray-200">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+                  <div key={day} className="py-2 text-center text-sm font-medium text-gray-500">
+                    {day}
+                  </div>
+                ))}
+              </div>
 
-            <div>
-              {weeks.map((week, weekIndex) => (
-                <div key={weekIndex} className="grid grid-cols-5 border-b border-gray-200 last:border-0">
-                  {week.map((date, dayIndex) => {
-                    if (!date) return (
-                      <div key={dayIndex} className="h-8" />
-                    );
+              <div>
+                {weeks.map((week, weekIndex) => (
+                  <div key={weekIndex} className="grid grid-cols-5 border-b border-gray-200 last:border-0">
+                    {week.map((date, dayIndex) => {
+                      if (!date) return (
+                        <div key={dayIndex} className="h-8" />
+                      );
 
-                    const daySchedule = schedule.find(day => 
-                      format(day.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-                    );
+                      const daySchedule = schedule.find(day => 
+                        format(day.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+                      );
 
-                    return (
-                      <CalendarDay
-                        key={format(date, 'yyyy-MM-dd')}
-                        date={date}
-                        sessions={daySchedule?.timeSlots || []}
-                        isToday={isToday(date)}
-                        isCurrentMonth={isSameMonth(date, currentDate)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </Card>
+                      return (
+                        <CalendarDay
+                          key={format(date, 'yyyy-MM-dd')}
+                          date={date}
+                          sessions={daySchedule?.timeSlots || []}
+                          isToday={isToday(date)}
+                          isCurrentMonth={isSameMonth(date, currentDate)}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )
         )}
       </div>
     </SavedQuestionsContext.Provider>

@@ -22,12 +22,12 @@ const searchTypes = [
     id: 'ai', 
     label: 'AI Assistant', 
     icon: <LightbulbIcon className="h-4 w-4" />,
-    description: "Searches all of Hansard to provide a detailed response",
+    description: "Analyses contributions from the current Parliament",
     placeholder: "Ask a question about parliamentary debates...",
     examples: [
-      "What has been said about climate change?",
-      "Summarize recent discussions on education",
-      "What are the main arguments about immigration?"
+      "Who opposes Assisted Dying?",
+      "Which MPs think Unions have too much power?",
+      "Which Lords agree with the two child benefit cap?"
     ],
     showHouse: true, 
     showDate: true 
@@ -45,7 +45,7 @@ const searchTypes = [
     id: 'mp', 
     label: 'MP Search', 
     icon: <UserIcon className="h-4 w-4" />,
-    description: "Find and analyze MP activities",
+    description: "Search MP votes and contributions",
     placeholder: "Search for an MP by name...",
     showHouse: false, 
     showDate: true 

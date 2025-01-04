@@ -1,17 +1,11 @@
 import dynamic from 'next/dynamic'
-import { DebateSkeleton } from '@/components/debates/DebateSkeleton'
+import { MonthSkeleton } from '@/components/UpcomingDebates/CalendarSkeleton'
 
 // Lazy load UpcomingDebates component
 const UpcomingDebates = dynamic(
   () => import('@/components/UpcomingDebates').then(mod => mod.UpcomingDebates),
   {
-    loading: () => (
-      <div className="min-h-screen flex flex-col md:pr-20">
-        <div className="container max-w-xl mx-auto px-4 flex-1">
-          <DebateSkeleton />
-        </div>
-      </div>
-    ),
+    loading: () => <MonthSkeleton />,
     ssr: true
   }
 )

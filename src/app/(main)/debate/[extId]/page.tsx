@@ -21,14 +21,16 @@ interface GenerateMetadataProps {
 async function getDebateFromServer(extId: string) {
   const supabase = await createServerSupabaseClient();
   
-  const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
-    p_ext_id: extId
-  });
+  const { data: debate, error } = await supabase
+    .from('debates')
+    .select('*')
+    .eq('ext_id', extId)
+    .single();
 
   if (error) throw error;
-  if (!debates || debates.length === 0) return null;
+  if (!debate) return null;
 
-  return debates[0];
+  return debate;
 }
 
 export default async function DebatePage({ params }: DebatePageProps) {

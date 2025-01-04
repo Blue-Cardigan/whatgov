@@ -207,7 +207,7 @@ export class CalendarApi {
   static processScheduleData(data: HansardData): DaySchedule[] {
     const dayMap = new Map<string, DaySchedule>();
 
-    // First, process question times to ensure they're always shown
+    // Process question times first (no changes needed here)
     if (Array.isArray(data.questionTimes)) {
       data.questionTimes.forEach((time) => {
         if (!time.AnsweringWhen) return;
@@ -239,7 +239,7 @@ export class CalendarApi {
       });
     }
 
-    // Then process actual questions to add them to existing time slots
+    // Process oral questions (no changes needed here)
     if (Array.isArray(data.oralQuestions)) {
       data.oralQuestions.forEach((question: PublishedOralQuestion) => {
         if (!question.AnsweringWhen) return;
@@ -300,7 +300,7 @@ export class CalendarApi {
       });
     }
 
-    // Process EDMs
+    // Process EDMs (no changes needed here)
     if (Array.isArray(data.earlyDayMotions)) {
       data.earlyDayMotions.forEach((edm: PublishedEarlyDayMotion) => {
         if (!edm.DateTabled) return;
@@ -333,7 +333,6 @@ export class CalendarApi {
 
     // Process bills by house
     if (data.bills && data.billSittings) {
-      // First, group all sittings by bill and date
       const billSittingGroups = data.billSittings.reduce((acc, sitting) => {
         const dateKey = format(new Date(sitting.date), 'yyyy-MM-dd');
         const key = `${sitting.billId}-${dateKey}`;
@@ -354,7 +353,7 @@ export class CalendarApi {
         sittings: PublishedBillSitting[];
       }>());
 
-      // Then process each group of sittings
+      // Process each group of sittings
       billSittingGroups.forEach((group) => {
         const dateKey = group.date;
         if (!dayMap.has(dateKey)) {
@@ -365,7 +364,6 @@ export class CalendarApi {
         if (!bill) return;
 
         const day = dayMap.get(dateKey)!;
-        const houseGroup = bill.currentHouse.toLowerCase() as 'commons' | 'lords';
 
         // Sort sittings by stage order
         const sortedSittings = group.sittings.sort((a, b) => {
@@ -374,18 +372,15 @@ export class CalendarApi {
           return stageA - stageB;
         });
 
-        // Calculate duration based on number of sittings
-        const durationInMinutes = Math.max(30, sortedSittings.length * 30);
-        const startTime = setHours(setMinutes(new Date(dateKey), 0), 12.5);
-
+        // Create time slot without making up times
         day.timeSlots.push({
           type: 'bill',
-          time: {
-            substantive: format(startTime, 'HH:mm'),
+          // Only include time information if it's actually provided
+          time: sortedSittings[0].time ? {
+            substantive: sortedSittings[0].time,
             topical: null,
-            deadline: format(addMinutes(startTime, durationInMinutes), 'HH:mm')
-          },
-          duration: durationInMinutes,
+            deadline: null
+          } : undefined,
           bill: {
             id: bill.billId,
             title: bill.shortTitle || bill.title || '',
@@ -404,7 +399,24 @@ export class CalendarApi {
       });
     }
 
+    // Sort time slots within each day
     return Array.from(dayMap.values())
+      .map(day => ({
+        ...day,
+        timeSlots: day.timeSlots.sort((a, b) => {
+          // Items with times come first
+          if (a.time?.substantive && !b.time?.substantive) return -1;
+          if (!a.time?.substantive && b.time?.substantive) return 1;
+          
+          // If both have times, sort by time
+          if (a.time?.substantive && b.time?.substantive) {
+            return a.time.substantive.localeCompare(b.time.substantive);
+          }
+          
+          // If neither have times, maintain their order but ensure spacing
+          return 0;
+        })
+      }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 }

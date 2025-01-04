@@ -11,6 +11,7 @@ import type { DaySchedule, TimeSlot } from '@/types/calendar';
 import { CalendarApi } from '@/lib/calendar-api';
 import { useMemo, useState } from "react";
 import { SaveCalendarItemButton } from './SaveCalendarItemButton';
+import { UntimedItems } from "./UntimedItems";
 
 export function CalendarDay({ 
   date, 
@@ -26,18 +27,26 @@ export function CalendarDay({
   const [showAll, setShowAll] = useState(false);
   const MAX_VISIBLE_ITEMS = 5;
   
-  const hasMoreItems = sessions.length > MAX_VISIBLE_ITEMS;
+  // Separate timed and untimed sessions
+  const { timedSessions, untimedSessions } = useMemo(() => {
+    return {
+      timedSessions: sessions.filter(s => s.time?.substantive || s.time?.topical),
+      untimedSessions: sessions.filter(s => !s.time?.substantive && !s.time?.topical)
+    };
+  }, [sessions]);
+  
+  const hasMoreItems = timedSessions.length > MAX_VISIBLE_ITEMS;
   const visibleTimeSlots = showAll 
-    ? sessions 
-    : sessions.slice(0, MAX_VISIBLE_ITEMS);
+    ? timedSessions 
+    : timedSessions.slice(0, MAX_VISIBLE_ITEMS);
 
   return (
     <div className={cn(
-      "min-h-[6rem] p-2",
+      "min-h-[6rem] p-2 flex flex-col",
       isToday && "border-t",
       !isCurrentMonth && "border-l first:border-l-0"
     )}>
-      <div className="flex flex-col h-full">
+      <div className="flex-1">
         <time
           dateTime={format(date, 'yyyy-MM-dd')}
           className={cn(
@@ -64,7 +73,7 @@ export function CalendarDay({
               onClick={() => setShowAll(true)}
               className="text-xs text-muted-foreground hover:text-foreground mt-1"
             >
-              +{sessions.length - MAX_VISIBLE_ITEMS} more
+              +{timedSessions.length - MAX_VISIBLE_ITEMS} more
             </Button>
           )}
           
@@ -80,6 +89,10 @@ export function CalendarDay({
           )}
         </div>
       </div>
+
+      {untimedSessions.length > 0 && (
+        <UntimedItems items={untimedSessions} />
+      )}
     </div>
   );
 }
@@ -157,13 +170,18 @@ export function WeekView({ currentDate, schedule }: {
               format(day.date, 'yyyy-MM-dd') === format(currentDay, 'yyyy-MM-dd')
             );
 
+            // Separate timed and untimed sessions
+            const timedSessions = daySchedule?.timeSlots.filter(s => s.time?.substantive || s.time?.topical) || [];
+            const untimedSessions = daySchedule?.timeSlots.filter(s => !s.time?.substantive && !s.time?.topical) || [];
+
             return (
               <div 
                 key={dayIndex} 
                 className={cn(
-                  "relative border-l min-h-[720px]",
+                  "relative border-l flex flex-col",
                   isToday(currentDay) && "bg-primary/5"
                 )}
+                style={{ minHeight: '720px' }}
               >
                 {/* Current time indicator */}
                 {isToday(currentDay) && (
@@ -187,35 +205,42 @@ export function WeekView({ currentDate, schedule }: {
                   />
                 ))}
 
-                {/* Events */}
-                {daySchedule?.timeSlots.map((session, sessionIndex) => {
-                  // Get the earliest time between substantive and topical
-                  const startTimeStr = session.time?.substantive || session.time?.topical || '11:30';
-                  // If both exist, use the later one as end time, otherwise add 1 hour to start time
-                  const endTimeStr = (session.time?.substantive && session.time?.topical) 
-                    ? (session.time.topical > session.time.substantive ? session.time.topical : session.time.substantive)
-                    : startTimeStr.split(':').map((part, i) => i === 0 ? String(Number(part) + 1).padStart(2, '0') : part).join(':');
+                {/* Untimed Items */}
+                {untimedSessions.length > 0 && (
+                  <UntimedItems items={untimedSessions} />
+                )}
 
-                  const startTime = new Date(`${format(currentDay, 'yyyy-MM-dd')}T${startTimeStr}`);
-                  const endTime = new Date(`${format(currentDay, 'yyyy-MM-dd')}T${endTimeStr}`);
-                  const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-                  const duration = (endTime.getHours() * 60 + endTime.getMinutes()) - startMinutes;
-                  
-                  return (
-                    <SessionPopover 
-                      key={sessionIndex}
-                      session={session}
-                      size="compact"
-                      style={{
-                        position: 'absolute',
-                        top: `${(startMinutes - 8 * 60)}px`,
-                        height: `${duration}px`,
-                        left: '4px',
-                        right: '4px',
-                      }}
-                    />
-                  );
-                })}
+                {/* Timed Events */}
+                <div className="flex-1 relative">
+                  {timedSessions.map((session, sessionIndex) => {
+                    // Get the earliest time between substantive and topical
+                    const startTimeStr = session.time?.substantive || session.time?.topical || '11:30';
+                    // If both exist, use the later one as end time, otherwise add 1 hour to start time
+                    const endTimeStr = (session.time?.substantive && session.time?.topical) 
+                      ? (session.time.topical > session.time.substantive ? session.time.topical : session.time.substantive)
+                      : startTimeStr.split(':').map((part, i) => i === 0 ? String(Number(part) + 1).padStart(2, '0') : part).join(':');
+
+                    const startTime = new Date(`${format(currentDay, 'yyyy-MM-dd')}T${startTimeStr}`);
+                    const endTime = new Date(`${format(currentDay, 'yyyy-MM-dd')}T${endTimeStr}`);
+                    const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+                    const duration = (endTime.getHours() * 60 + endTime.getMinutes()) - startMinutes;
+                    
+                    return (
+                      <SessionPopover 
+                        key={sessionIndex}
+                        session={session}
+                        size="compact"
+                        style={{
+                          position: 'absolute',
+                          top: `${(startMinutes - 8 * 60)}px`,
+                          height: `${duration}px`,
+                          left: '4px',
+                          right: '4px',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -231,7 +256,7 @@ interface SessionPopoverProps {
   style?: React.CSSProperties;
 }
 
-function SessionPopover({ session, size = 'normal', style }: SessionPopoverProps) {
+export function SessionPopover({ session, size = 'normal', style }: SessionPopoverProps) {
   const height = session.duration 
     ? `${Math.max(40, session.duration / 2)}px`  // Convert minutes to pixels
     : 'auto';

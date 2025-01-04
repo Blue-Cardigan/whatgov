@@ -114,8 +114,6 @@ export async function GET(request: NextRequest) {
     const billsData = await Promise.all(billPromises);
     const validBills = billsData.filter((bill): bill is NonNullable<typeof bill> => bill !== null);
 
-    console.log('Processed bills:', validBills);
-
     return NextResponse.json({
       data: {
         bills: validBills,

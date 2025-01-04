@@ -1,15 +1,19 @@
 Rewrite:
 [/] Remove voting and feed functionality
+[ ] Update the assistant daily (Add a new vector store each week?). 
+      [ ] Add a summary/analysis at the start of each
+      [ ] Ensure Member names etc. are included.
+[ ] List an MP's recent votes and contributions in basic search results
+[ ] Add keyword search within an MP's contributions
 [ ] Save MP searches with keywords (using hansard search?)
 [ ] Display MP searches in saved searches page
-[ ] Replace default date filter with current week, instead of current parliament
+[/] Replace default date filter with current week, instead of current parliament
 [ ] Implement overnight search update
 [ ] Implement notifications for unread debates
 [ ] Rework Calendar: 
-      [ ] Calendar display style
-      [ ] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
-      [ ] Subscribe to calendar items
-[ ] Add voting history of each MP
+      [/] Calendar display style
+      [-] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
+      [/] Save calendar items
 
 
 Professionals

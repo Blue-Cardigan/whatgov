@@ -187,6 +187,7 @@ export async function POST(request: Request) {
         }
       });      
 
+    console.log("Stream created");
     return new Response(stream, {
     headers: {
         'Content-Type': 'text/event-stream',

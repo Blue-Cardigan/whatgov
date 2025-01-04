@@ -18,6 +18,7 @@ import type { MPData, AiTopic } from "@/types";
 import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { useAssistant } from '@/hooks/useAssistant';
 import type { Citation } from '@/types/search';
+import { SaveSearchButton } from './SaveSearchButton';
 
 const PAGE_SIZE = 10;
 
@@ -43,7 +44,8 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   const [streamingState, setStreamingState] = useState({
     text: '',
     citations: [] as Citation[],
-    isComplete: false
+    isComplete: false,
+    isSearching: false
   });
 
   const handleStreamingUpdate = useCallback((text: string, citations: Citation[]) => {
@@ -73,7 +75,8 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           setStreamingState({
             text: '',
             citations: [],
-            isComplete: false
+            isComplete: false,
+            isSearching: true
           });
 
           await performFileSearch(
@@ -154,101 +157,115 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     setError(null);
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Search Header */}
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 py-4 border-b">
-        <QueryBuilder
-          searchParams={{
-            searchTerm: state.searchParams.searchTerm || '',
-            startDate: state.searchParams.startDate,
-            endDate: state.searchParams.endDate,
-            house: state.searchParams.house
-          }}
-          onSearch={performSearch}
-          searchType={activeSearchType}
-          onSearchTypeChange={handleSearchTypeChange}
-        />
-      </div>
+  const renderResults = () => {
+    if (loading && !streamingState.text) {
+      return <div className="flex justify-center py-8">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>;
+    }
 
-      {/* Results Section */}
-      <div className="min-h-[300px] pb-8">
-        {/* Loading State */}
-        {loading && !streamingState.text && (
-          <div className="flex justify-center items-center py-12">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-muted-foreground">Searching parliamentary records...</p>
+    if (error) {
+      return <div className="text-red-500 text-center py-4">{error}</div>;
+    }
+
+    switch (activeSearchType) {
+      case 'ai':
+        return (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              {streamingState.isComplete && (
+                <SaveSearchButton
+                  aiSearch={{
+                    query: state.searchParams.searchTerm || '',
+                    streamingText: streamingState.text,
+                    citations: streamingState.citations,
+                    queryState: {
+                      searchTerm: state.searchParams.searchTerm || '',
+                      startDate: state.searchParams.startDate,
+                      endDate: state.searchParams.endDate,
+                      house: state.searchParams.house
+                    }
+                  }}
+                  searchType="ai"
+                />
+              )}
             </div>
+            <StreamedResponse
+              streamingText={streamingState.text}
+              citations={streamingState.citations}
+              isLoading={streamingState.isSearching && !streamingState.isComplete}
+              query={state.searchParams.searchTerm || ''}
+            />
           </div>
-        )}
+        );
 
-        {/* Error State */}
-        {error && (
-          <div className="text-red-500 text-center py-8 space-y-2">
-            <p className="font-semibold">Search Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
+      case 'hansard':
+        return (
+          <SearchResults
+            results={state.results?.Contributions || []}
+            isLoading={state.isLoading}
+            totalResults={state.results?.TotalContributions || 0}
+            searchParams={state.searchParams}
+            onSearch={performSearch}
+            onLoadMore={() => {/* Implement load more logic */}}
+            hasMore={Boolean(state.results?.TotalContributions && 
+              state.results.Contributions.length < state.results.TotalContributions)}
+            aiContent={state.results?.aiContent}
+          />
+        );
 
-        {/* Results Content */}
-        {!loading && !error && (
-          <div className="space-y-6">
-            {activeSearchType === 'ai' && (
-              <StreamedResponse
-                streamingText={streamingState.text}
-                citations={streamingState.citations}
-                isLoading={!streamingState.isComplete}
-                query={state.searchParams.searchTerm || ''}
-              />
-            )}
+      case 'mp':
+        return (
+          mpData && (
+            <div className="space-y-6">
+              <MPProfileCard mpData={mpData} />
+              <MPLinks mpData={mpData} />
+              {isProfessional || isEngagedCitizen ? (
+                <>
+                  {topics.length > 0 && (
+                    <MPTopics topics={topics} totalMentions={totalMentions} />
+                  )}
+                  {keyPoints.length > 0 && (
+                    <MPKeyPoints keyPoints={keyPoints} />
+                  )}
+                </>
+              ) : (
+                <SubscriptionCTA
+                  title={isEngagedCitizen ? "Upgrade to view other MPs' activity" : "Upgrade to track MP activity"}
+                  description={isEngagedCitizen 
+                    ? "Get access to detailed insights for all MPs with a Professional subscription."
+                    : "Get detailed insights into MPs' parliamentary contributions, voting records, and key positions."}
+                  features={[
+                    "View key points for any MP",
+                    "Compare MPs' positions on issues",
+                    "Track multiple MPs' activities"
+                  ]}
+                />
+              )}
+            </div>
+          )
+        );
 
-            {activeSearchType === 'hansard' && (
-              <SearchResults
-                results={state.results?.Contributions || []}
-                isLoading={state.isLoading}
-                totalResults={state.results?.TotalContributions || 0}
-                searchParams={state.searchParams}
-                onSearch={performSearch}
-                onLoadMore={() => {/* Implement load more logic */}}
-                hasMore={Boolean(state.results?.TotalContributions && 
-                  state.results.Contributions.length < state.results.TotalContributions)}
-                aiContent={state.results?.aiContent}
-              />
-            )}
+      default:
+        return null;
+    }
+  };
 
-            {activeSearchType === 'mp' && mpData && (
-              <div className="space-y-8">
-                <MPProfileCard mpData={mpData} />
-                <MPLinks mpData={mpData} />
-                
-                {isProfessional || isEngagedCitizen ? (
-                  <div className="grid gap-8 md:grid-cols-2">
-                    {topics.length > 0 && (
-                      <MPTopics topics={topics} totalMentions={totalMentions} />
-                    )}
-                    {keyPoints.length > 0 && (
-                      <MPKeyPoints keyPoints={keyPoints} />
-                    )}
-                  </div>
-                ) : (
-                  <SubscriptionCTA
-                    title={isEngagedCitizen ? "Upgrade to view other MPs' activity" : "Upgrade to track MP activity"}
-                    description={isEngagedCitizen 
-                      ? "Get access to detailed insights for all MPs with a Professional subscription."
-                      : "Get detailed insights into MPs' parliamentary contributions, voting records, and key positions."}
-                    features={[
-                      "View key points for any MP",
-                      "Compare MPs' positions on issues",
-                      "Track multiple MPs' activities"
-                    ]}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+  return (
+    <div className="space-y-8 mt-8">
+      <QueryBuilder
+        searchParams={{
+          searchTerm: state.searchParams.searchTerm || '',
+          startDate: state.searchParams.startDate,
+          endDate: state.searchParams.endDate,
+          house: state.searchParams.house
+        }}
+        onSearch={performSearch}
+        searchType={activeSearchType}
+        onSearchTypeChange={handleSearchTypeChange}
+      />
+
+      {renderResults()}
     </div>
   );
 }
