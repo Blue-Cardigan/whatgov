@@ -22,18 +22,6 @@ export async function isItemSaved(
     .eq('user_id', user.id)
     .eq('search_type', type);
 
-  if (type === 'bill' && identifier.id) {
-    query.eq('query_state->billId', identifier.id);
-  } else if (type === 'edm' && identifier.id) {
-    query.eq('query_state->edmId', identifier.id);
-  } else if (type === 'question' && identifier.title && identifier.date && identifier.minister) {
-    query.contains('query_state', {
-      question_text: identifier.title,
-      answer_date: identifier.date,
-      answering_minister: identifier.minister
-    });
-  }
-
   const { count, error } = await query;
 
   if (error) {
@@ -57,18 +45,7 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .eq('search_type', params.searchType);
-
-  if (params.searchType === 'bill') {
-    existingQuery = existingQuery.eq('query_state->billId', params.queryState.billId);
-  } else if (params.searchType === 'edm') {
-    existingQuery = existingQuery.eq('query_state->edmId', params.queryState.edmId);
-  } else if (params.searchType === 'question') {
-    existingQuery = existingQuery
-      .eq('query_state->question_text', params.queryState.questionText)
-      .eq('query_state->answer_date', params.queryState.answerDate)
-      .eq('query_state->answering_minister', params.queryState.answeringMinister);
-  }
-
+    
   const { count: existingCount } = await existingQuery;
 
   if (existingCount && existingCount > 0) {

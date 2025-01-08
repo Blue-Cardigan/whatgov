@@ -7,61 +7,86 @@ import { useToast } from "@/hooks/use-toast";
 import type { TimeSlot } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 import { isCalendarItemSaved, saveCalendarItem, deleteCalendarItem } from "@/lib/supabase/saved-calendar-items";
-import { isFuture } from "date-fns";
+
+// Define the Question type explicitly
+type Question = {
+  id: number;
+  UIN: number;
+  text: string;
+  askingMembers: {
+    Name: string;
+    Constituency: string;
+    Party: string;
+    PhotoUrl?: string;
+  }[];
+};
 
 interface SaveCalendarItemButtonProps {
   session: TimeSlot;
+  question?: Question;  // Use the explicit Question type
   className?: string;
 }
 
-export function SaveCalendarItemButton({ session, className }: SaveCalendarItemButtonProps) {
+export function SaveCalendarItemButton({ session, question, className }: SaveCalendarItemButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const { toast } = useToast();
 
-  // Check if event is in the future
-  const isFutureEvent = useMemo(() => {
-    if (!session.time?.substantive) return false;
-
-    // Create a date object for today with the session's time
-    const [hours, minutes] = session.time.substantive.split(':').map(Number);
-    const sessionDate = new Date();
-    sessionDate.setHours(hours, minutes, 0, 0);
-
-    // For events, use the actual date from the event
-    if (session.type === 'event' && session.event?.startTime) {
-      return isFuture(new Date(session.event.startTime));
+  // Generate the appropriate eventId based on whether it's a question or session
+  const eventId = useMemo(() => {
+    if (session.type === 'event' && session.event?.id) {
+      return session.event.id;
+    } else if (session.type === 'oral-questions') {
+      if (question) {
+        // For individual questions
+        return `oq-${session.department}-${session.time?.substantive}-q${question.id}`;
+      } else {
+        // For entire session
+        return `oq-${session.department}-${session.time?.substantive}`;
+      }
+    } else if (session.type === 'edm' && session.edm?.id) {
+      return `edm-${session.edm.id}`;
     }
-
-    // For other types, compare just the time if it's today
-    return isFuture(sessionDate);
-  }, [session]);
+    return '';
+  }, [session, question]);
 
   const handleToggle = async () => {
-    if (!isFutureEvent) return;
+    if (!eventId) return;
     
     try {
       setIsSaving(true);
       
       if (isSaved) {
-        const eventId = session.type === 'event' 
-          ? session.event?.id 
-          : `oq-${session.department}-${session.time?.substantive}`;
-          
-        await deleteCalendarItem(eventId ?? '');
+        await deleteCalendarItem(eventId);
         setIsSaved(false);
 
         toast({
-          title: "Event removed",
-          description: "Event removed from your saved items"
+          title: question ? "Question removed" : "Event removed",
+          description: question 
+            ? "Question removed from your saved items"
+            : "Event removed from your saved items"
         });
       } else {
-        await saveCalendarItem(session);
+        // Create modified session object for saving
+        const saveData: TimeSlot = {
+          ...session,
+          // If this is an individual question, create a new session with just this question
+          questions: question ? [{
+            id: question.id,
+            UIN: question.UIN,
+            text: question.text,
+            askingMembers: question.askingMembers
+          }] : session.questions
+        };
+        
+        await saveCalendarItem(saveData);
         setIsSaved(true);
         
         toast({
-          title: "Event saved",
-          description: "Event added to your saved items"
+          title: question ? "Question saved" : "Event saved",
+          description: question 
+            ? "Question added to your saved items"
+            : "Event added to your saved items"
         });
       }
     } catch (error) {
@@ -79,20 +104,13 @@ export function SaveCalendarItemButton({ session, className }: SaveCalendarItemB
   // Check if item is already saved on mount
   useEffect(() => {
     const checkSavedStatus = async () => {
-      if (!session.event?.id && !session.department) return;
-      
-      const eventId = session.type === 'event' 
-        ? session.event?.id 
-        : `oq-${session.department}-${session.time?.substantive}`;
-        
-      const saved = await isCalendarItemSaved(eventId ?? '');
+      if (!eventId) return;
+      const saved = await isCalendarItemSaved(eventId);
       setIsSaved(saved);
     };
 
     checkSavedStatus();
-  }, [session]);
-
-  if (!isFutureEvent) return null;
+  }, [eventId]);
 
   return (
     <Button

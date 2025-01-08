@@ -200,7 +200,7 @@ export class CalendarApi {
   static processScheduleData(data: HansardData): DaySchedule[] {
     const dayMap = new Map<string, DaySchedule>();
 
-    // Process question times first (no changes needed here)
+    // First, create the structure with question times
     if (Array.isArray(data.questionTimes)) {
       data.questionTimes.forEach((time) => {
         if (!time.AnsweringWhen) return;
@@ -218,9 +218,8 @@ export class CalendarApi {
         const timeSlot: TimeSlot = {
           type: 'oral-questions',
           department: time.AnsweringBodyNames,
-          minister: undefined, // We don't have minister details in question times
           ministerTitle: time.AnsweringMinisterTitles,
-          questions: [], // Start with empty questions array
+          questions: [], // Initialize as undefined instead of empty array
           time: {
             substantive: time.SubstantiveTime || null,
             topical: time.TopicalTime || null,
@@ -232,41 +231,37 @@ export class CalendarApi {
       });
     }
 
-    // Process oral questions (no changes needed here)
+    // Then populate the questions into their corresponding time slots
     if (Array.isArray(data.oralQuestions)) {
       data.oralQuestions.forEach((question: PublishedOralQuestion) => {
         if (!question.AnsweringWhen) return;
 
         const date = new Date(question.AnsweringWhen);
         const dateKey = format(date, 'yyyy-MM-dd');
+        const day = dayMap.get(dateKey);
 
-        if (!dayMap.has(dateKey)) {
-          dayMap.set(dateKey, { date, timeSlots: [] });
-        }
+        if (!day) return;
 
-        const day = dayMap.get(dateKey)!;
-        let timeSlot = day.timeSlots.find(
+        // Find the matching time slot for this question
+        const timeSlot = day.timeSlots.find(
           slot => slot.type === 'oral-questions' && 
                   slot.department === question.AnsweringBody
         );
 
-        if (!timeSlot) {
-          timeSlot = {
-            type: 'oral-questions',
-            department: question.AnsweringBody,
-            minister: question.AnsweringMinister,
-            ministerTitle: question.AnsweringMinisterTitle,
-            questions: []
-          };
-          day.timeSlots.push(timeSlot);
+        if (!timeSlot) return;
+
+        // Initialize questions array if it doesn't exist
+        if (!timeSlot.questions) {
+          timeSlot.questions = [];
         }
 
-        // Update minister info if we have it
-        if (question.AnsweringMinister) {
+        // Update minister info if not already set
+        if (!timeSlot.minister && question.AnsweringMinister) {
           timeSlot.minister = question.AnsweringMinister;
         }
 
-        const existingQuestion = timeSlot.questions?.find(q => 
+        // Add question to existing array or create new one
+        const existingQuestion = timeSlot.questions.find(q => 
           q.text === question.QuestionText
         );
 
@@ -277,7 +272,7 @@ export class CalendarApi {
             Party: question.AskingMember.Party,
             PhotoUrl: question.AskingMember.PhotoUrl
           });
-        } else if (timeSlot.questions && question.AskingMember) {
+        } else if (question.AskingMember) {
           timeSlot.questions.push({
             id: question.Id,
             UIN: question.UIN,

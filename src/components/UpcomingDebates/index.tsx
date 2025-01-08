@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, Search } from "lucide-react";
 import { WeekView } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
-import { isItemSaved } from "@/lib/supabase/saved-searches";
+import { isCalendarItemSaved } from "@/lib/supabase/saved-calendar-items";
 import type { TimeSlot } from '@/types/calendar';
 import { WeekSkeleton } from './CalendarSkeleton';
 import { CalendarFilters, type EventFilters } from './CalendarFilters';
@@ -104,28 +104,24 @@ export function UpcomingDebates() {
             .filter((slot): slot is TimeSlot & { type: 'oral-questions', questions: NonNullable<TimeSlot['questions']> } => 
               slot.type === 'oral-questions' && !!slot.questions
             )
-            .flatMap(slot => 
-              slot.questions.map(async q => {
-                const sessionDate = slot.time?.substantive || slot.time?.topical;
-                const minister = slot.minister?.Name;
-                
-                if (!sessionDate || !minister || !q.text) return;
+            .map(async slot => {
+              const sessionDate = slot.time?.substantive || slot.time?.topical;
+              
+              if (!sessionDate || !slot.department) return;
 
-                try {
-                  const isSaved = await isItemSaved('question', {
-                    title: q.text,
-                    date: sessionDate,
-                    minister: minister
-                  });
-                  
-                  if (isSaved) {
-                    savedKeys.add(`${q.text}|${sessionDate}|${minister}`);
-                  }
-                } catch (error) {
-                  console.error('Error checking saved status:', error);
+              // Generate eventId in the same format as saveCalendarItem
+              const eventId = `oq-${slot.department}-${sessionDate}`;
+              
+              try {
+                const isSaved = await isCalendarItemSaved(eventId);
+                if (isSaved) {
+                  // Store the eventId as the key instead of the previous composite key
+                  savedKeys.add(eventId);
                 }
-              })
-            )
+              } catch (error) {
+                console.error('Error checking saved status:', error);
+              }
+            })
         )
       );
 

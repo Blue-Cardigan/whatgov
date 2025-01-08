@@ -32,9 +32,13 @@ export async function saveCalendarItem(session: TimeSlot) {
   if (session.type === 'event' && session.event) {
     eventId = session.event.id;
   } else if (session.type === 'oral-questions') {
-    eventId = `oq-${session.department}-${session.time?.substantive}`;
-  } else if (session.type === 'edm') {
-    eventId = `edm-${session.edm?.id}`;
+    if (session.questions?.length === 1) {
+      eventId = `oq-${session.department}-${session.time?.substantive}-q${session.questions[0].id}`;
+    } else {
+      eventId = `oq-${session.department}-${session.time?.substantive}`;
+    }
+  } else if (session.type === 'edm' && session.edm?.id) {
+    eventId = `edm-${session.edm.id}`;
   }
 
   const { data, error } = await supabase

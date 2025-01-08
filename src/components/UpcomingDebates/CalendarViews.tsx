@@ -25,12 +25,20 @@ export function WeekView({ currentDate, schedule }: {
 
   // Updated function to process events and handle overlaps
   const processEventsWithOverlap = (daySchedule: DaySchedule) => {
-    // Filter out 'Oral questions' from event type sessions
+    // Get timed sessions, including oral questions with proper timing
     const timedSessions = daySchedule?.timeSlots.filter(s => {
-      // Skip event sessions that are oral questions
-      if (s.type === 'event' && 
-          s.event?.category?.toLowerCase() === 'oral questions' || s.event?.category?.toLowerCase().includes('prime minister')) {
-        return false;
+      // Include oral questions that have timing information
+      if (s.type === 'oral-questions' && s.time?.substantive) {
+        return true;
+      }
+      // Include other event types with timing, except duplicates
+      if (s.type === 'event') {
+        // Skip event sessions that duplicate oral questions
+        if (s.event?.category?.toLowerCase() === 'oral questions' || 
+            s.event?.category?.toLowerCase().includes('prime minister')) {
+          return false;
+        }
+        return s.time?.substantive || s.time?.topical;
       }
       return s.time?.substantive || s.time?.topical;
     }) || [];
@@ -137,7 +145,17 @@ export function WeekView({ currentDate, schedule }: {
             );
 
             const eventGroups = daySchedule ? processEventsWithOverlap(daySchedule) : [];
-            const untimedSessions = daySchedule?.timeSlots.filter(s => !s.time?.substantive && !s.time?.topical) || [];
+            const untimedSessions = daySchedule?.timeSlots.filter(s => {
+              // Include sessions without timing information
+              if (!s.time?.substantive && !s.time?.topical) {
+                return true;
+              }
+              // Exclude oral questions without timing (they should be handled by timed sessions)
+              if (s.type === 'oral-questions') {
+                return false;
+              }
+              return false;
+            }) || [];
 
             return (
               <div 
