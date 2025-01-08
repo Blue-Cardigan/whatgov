@@ -2,12 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Bookmark } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { TimeSlot } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 import { isCalendarItemSaved, saveCalendarItem, deleteCalendarItem } from "@/lib/supabase/saved-calendar-items";
-import { isFuture, parseISO } from "date-fns";
+import { isFuture } from "date-fns";
 
 interface SaveCalendarItemButtonProps {
   session: TimeSlot;
@@ -20,9 +20,22 @@ export function SaveCalendarItemButton({ session, className }: SaveCalendarItemB
   const { toast } = useToast();
 
   // Check if event is in the future
-  const isFutureEvent = session.time?.substantive 
-    ? isFuture(parseISO(session.time.substantive))
-    : false;
+  const isFutureEvent = useMemo(() => {
+    if (!session.time?.substantive) return false;
+
+    // Create a date object for today with the session's time
+    const [hours, minutes] = session.time.substantive.split(':').map(Number);
+    const sessionDate = new Date();
+    sessionDate.setHours(hours, minutes, 0, 0);
+
+    // For events, use the actual date from the event
+    if (session.type === 'event' && session.event?.startTime) {
+      return isFuture(new Date(session.event.startTime));
+    }
+
+    // For other types, compare just the time if it's today
+    return isFuture(sessionDate);
+  }, [session]);
 
   const handleToggle = async () => {
     if (!isFutureEvent) return;

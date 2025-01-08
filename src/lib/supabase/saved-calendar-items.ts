@@ -28,22 +28,13 @@ export async function saveCalendarItem(session: TimeSlot) {
   if (!user) throw new Error('User not authenticated');
 
   let eventId = '';
-  let title = '';
-  let description = '';
-  let eventDate = session.time?.substantive || new Date().toISOString();
 
   if (session.type === 'event' && session.event) {
     eventId = session.event.id;
-    title = session.event.title;
-    description = session.event.description || '';
   } else if (session.type === 'oral-questions') {
     eventId = `oq-${session.department}-${session.time?.substantive}`;
-    title = `${session.department} Oral Questions`;
-    description = session.questions?.map(q => q.text).join('\n') || '';
   } else if (session.type === 'edm') {
     eventId = `edm-${session.edm?.id}`;
-    title = session.edm?.Title || '';
-    description = session.edm?.Text || '';
   }
 
   const { data, error } = await supabase
@@ -51,10 +42,8 @@ export async function saveCalendarItem(session: TimeSlot) {
     .insert({
       user_id: user.id,
       event_id: eventId,
-      title,
-      description,
-      event_type: session.type,
-      event_date: eventDate
+      event_data: session,
+      created_at: new Date().toISOString()
     })
     .select()
     .single();

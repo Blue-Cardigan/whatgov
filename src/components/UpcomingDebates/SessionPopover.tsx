@@ -72,9 +72,6 @@ function OralQuestionsContent({ session }: { session: TimeSlot & { type: 'oral-q
               <div key={index} className="p-4 border-b last:border-b-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm mb-2">{question.text}</p>
-                  <SaveCalendarItemButton 
-                    session={session}
-                  />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {question.askingMembers.map((member, memberIndex) => (
@@ -156,7 +153,6 @@ function EventContent({ session }: { session: TimeSlot & { type: 'event'; event:
                 </span>
               )}
             </div>
-            <SaveCalendarItemButton session={session} />
           </div>
         </div>
   

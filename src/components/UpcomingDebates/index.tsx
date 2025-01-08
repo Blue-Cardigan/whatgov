@@ -45,7 +45,6 @@ export function UpcomingDebates() {
 
   // Get start of week for consistent querying
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
 
   const { data: schedule = [], isFetching } = useQuery({
     queryKey: ['calendar', weekStart.toISOString()],
