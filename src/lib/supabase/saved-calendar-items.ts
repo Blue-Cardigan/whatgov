@@ -27,40 +27,34 @@ export async function saveCalendarItem(session: TimeSlot) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Get event details based on session type
-  let eventDetails = {
-    event_id: '',
-    event_type: session.type,
-    event_date: session.time?.substantive || new Date().toISOString(),
-    event_title: '',
-    event_location: '',
-    event_category: '',
-    event_house: ''
-  };
+  let eventId = '';
+  let title = '';
+  let description = '';
+  let eventDate = session.time?.substantive || new Date().toISOString();
 
   if (session.type === 'event' && session.event) {
-    eventDetails = {
-      ...eventDetails,
-      event_id: session.event.id,
-      event_title: session.event.title,
-      event_location: session.event.location || '',
-      event_category: session.event.category || '',
-      event_house: session.event.house || ''
-    };
+    eventId = session.event.id;
+    title = session.event.title;
+    description = session.event.description || '';
   } else if (session.type === 'oral-questions') {
-    eventDetails = {
-      ...eventDetails,
-      event_id: `oq-${session.department}-${session.time?.substantive}`,
-      event_title: `${session.department} Oral Questions`,
-      event_house: 'Commons'
-    };
+    eventId = `oq-${session.department}-${session.time?.substantive}`;
+    title = `${session.department} Oral Questions`;
+    description = session.questions?.map(q => q.text).join('\n') || '';
+  } else if (session.type === 'edm') {
+    eventId = `edm-${session.edm?.id}`;
+    title = session.edm?.Title || '';
+    description = session.edm?.Text || '';
   }
 
   const { data, error } = await supabase
     .from('saved_calendar_items')
     .insert({
       user_id: user.id,
-      ...eventDetails
+      event_id: eventId,
+      title,
+      description,
+      event_type: session.type,
+      event_date: eventDate
     })
     .select()
     .single();

@@ -1,11 +1,10 @@
 import dynamic from 'next/dynamic'
-import { MonthSkeleton } from '@/components/UpcomingDebates/CalendarSkeleton'
-
+import { WeekSkeleton } from '@/components/UpcomingDebates/CalendarSkeleton'
 // Lazy load UpcomingDebates component
 const UpcomingDebates = dynamic(
   () => import('@/components/UpcomingDebates').then(mod => mod.UpcomingDebates),
   {
-    loading: () => <MonthSkeleton />,
+    loading: () => <WeekSkeleton />,
     ssr: true
   }
 )

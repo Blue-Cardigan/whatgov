@@ -1,95 +1,10 @@
 import { format, isToday } from "date-fns";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { DaySchedule, TimeSlot } from '@/types/calendar';
 import { CalendarApi } from '@/lib/calendar-api';
-import { useMemo, useState } from "react";
 import { UntimedItems } from "./UntimedItems";
 import { SessionPopover } from "./SessionPopover";
-
-export function CalendarDay({ 
-  date, 
-  sessions,
-  isToday,
-  isCurrentMonth,
-}: { 
-  date: Date;
-  sessions: TimeSlot[];
-  isToday: boolean;
-  isCurrentMonth: boolean;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const MAX_VISIBLE_ITEMS = 5;
-  
-  // Separate timed and untimed sessions
-  const { timedSessions, untimedSessions } = useMemo(() => {
-    return {
-      timedSessions: sessions.filter(s => s.time?.substantive || s.time?.topical),
-      untimedSessions: sessions.filter(s => !s.time?.substantive && !s.time?.topical)
-    };
-  }, [sessions]);
-  
-  const hasMoreItems = timedSessions.length > MAX_VISIBLE_ITEMS;
-  const visibleTimeSlots = showAll 
-    ? timedSessions 
-    : timedSessions.slice(0, MAX_VISIBLE_ITEMS);
-
-  return (
-    <div className={cn(
-      "min-h-[6rem] p-2 flex flex-col",
-      isToday && "border-t",
-      !isCurrentMonth && "border-l first:border-l-0"
-    )}>
-      <div className="flex-1">
-        <time
-          dateTime={format(date, 'yyyy-MM-dd')}
-          className={cn(
-            "ml-auto text-sm",
-            isToday && "rounded-full bg-primary text-primary-foreground w-7 h-7 flex items-center justify-center"
-          )}
-        >
-          {isCurrentMonth ? format(date, 'd') : format(date, 'EEE d')}
-        </time>
-
-        <div className="flex flex-col gap-1 mt-1">
-          {visibleTimeSlots.map((session, idx) => (
-            <SessionPopover 
-              key={`${session.type}-${idx}`}
-              session={session}
-              size="compact"
-            />
-          ))}
-          
-          {hasMoreItems && !showAll && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAll(true)}
-              className="text-xs text-muted-foreground hover:text-foreground mt-1"
-            >
-              +{timedSessions.length - MAX_VISIBLE_ITEMS} more
-            </Button>
-          )}
-          
-          {showAll && hasMoreItems && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowAll(false)}
-              className="text-xs text-muted-foreground hover:text-foreground mt-1"
-            >
-              Show less
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {untimedSessions.length > 0 && (
-        <UntimedItems items={untimedSessions} />
-      )}
-    </div>
-  );
-}
 
 export function WeekView({ currentDate, schedule }: { 
   currentDate: Date; 

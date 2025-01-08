@@ -22,6 +22,8 @@ export interface EventFilters {
   'Legislation': boolean;
   'Bills': boolean;
   'EDMs': boolean;
+  'Ministerial Statement': boolean;
+  'Backbench Business': boolean;
 }
 
 interface CalendarFiltersProps {

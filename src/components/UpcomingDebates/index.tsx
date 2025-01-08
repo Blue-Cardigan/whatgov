@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect, createContext, useContext } from "react";
-import { Card } from "@/components/ui/card";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
+import { useState, useMemo, useEffect, createContext } from "react";
+import { format, addWeeks, startOfWeek, isFuture, differenceInWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Search, Settings } from "lucide-react";
-import { useCalendarData } from '@/hooks/useCalendarData';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { WeekView, CalendarDay } from "./CalendarViews";
+import { ChevronRight, ChevronLeft, Search } from "lucide-react";
+import { WeekView } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
 import { isItemSaved } from "@/lib/supabase/saved-searches";
 import type { TimeSlot } from '@/types/calendar';
-import { MonthSkeleton, WeekSkeleton } from './CalendarSkeleton';
+import { WeekSkeleton } from './CalendarSkeleton';
 import { CalendarFilters, type EventFilters } from './CalendarFilters';
+import { useQuery } from '@tanstack/react-query';
 
 // Add context for saved questions
 interface SavedQuestionsContextType {
@@ -26,16 +24,8 @@ export const SavedQuestionsContext = createContext<SavedQuestionsContextType>({
 });
 
 export function UpcomingDebates() {
-  const { 
-    rawData,
-    isFetching,
-    currentDate,
-    setCurrentDate,
-    goToPreviousMonth,
-    goToNextMonth
-  } = useCalendarData();
-
-  const [view, setView] = useState<'week' | 'month'>('week');
+  const [view, setView] = useState<'week'>('week');
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [savedQuestions, setSavedQuestions] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<EventFilters>({
     'Oral Questions': true,
@@ -49,132 +39,57 @@ export function UpcomingDebates() {
     'Bills': true,
     'EDMs': true,
     'Oral evidence': false,
+    'Ministerial Statement': true,
+    'Backbench Business': true,
   });
 
-  // Modify navigation functions to handle both week and month views
-  const handlePrevious = () => {
-    if (view === 'week') {
-      // Move back one week
-      setCurrentDate(prev => {
-        const newDate = new Date(prev);
-        newDate.setDate(prev.getDate() - 7);
-        return newDate;
-      });
-    } else {
-      // Move back one month
-      goToPreviousMonth();
+  // Get start of week for consistent querying
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+
+  const { data: schedule = [], isFetching } = useQuery({
+    queryKey: ['calendar', weekStart.toISOString()],
+    queryFn: async () => {
+      // Calculate week offset from current week
+      const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+      const weekDiff = differenceInWeeks(weekStart, currentWeekStart);
+      
+      const data = await CalendarApi.getWeeklyEvents(weekDiff);
+      return CalendarApi.processScheduleData(data);
     }
+  });
+
+  // Handle navigation
+  const handlePrevious = () => {
+    setCurrentDate(prev => addWeeks(prev, -1));
   };
 
   const handleNext = () => {
-    if (view === 'week') {
-      // Move forward one week
-      setCurrentDate(prev => {
-        const newDate = new Date(prev);
-        newDate.setDate(prev.getDate() + 7);
-        return newDate;
-      });
-    } else {
-      // Move forward one month
-      goToNextMonth();
-    }
+    setCurrentDate(prev => addWeeks(prev, 1));
   };
 
-  // Add function to handle Today button
-  const goToToday = () => {
+  const handleToday = () => {
     setCurrentDate(new Date());
   };
 
   // Format the date range for the header
   const dateRangeText = useMemo(() => {
-    if (view === 'week') {
-      const weekStart = new Date(currentDate);
-      weekStart.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Monday
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 4); // Friday
+    const weekStart = new Date(currentDate);
+    weekStart.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Monday
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 4); // Friday
 
-      const isSameMonth = weekStart.getMonth() === weekEnd.getMonth();
-      const isSameYear = weekStart.getFullYear() === weekEnd.getFullYear();
+    const isSameMonth = weekStart.getMonth() === weekEnd.getMonth();
+    const isSameYear = weekStart.getFullYear() === weekEnd.getFullYear();
 
-      if (isSameMonth && isSameYear) {
-        return `${format(weekStart, 'MMMM yyyy')}`;
-      } else if (isSameYear) {
-        return `${format(weekStart, 'MMM')} - ${format(weekEnd, 'MMM yyyy')}`;
-      } else {
-        return `${format(weekStart, 'MMM yyyy')} - ${format(weekEnd, 'MMM yyyy')}`;
-      }
+    if (isSameMonth && isSameYear) {
+      return `${format(weekStart, 'MMMM yyyy')}`;
+    } else if (isSameYear) {
+      return `${format(weekStart, 'MMM')} - ${format(weekEnd, 'MMM yyyy')}`;
     } else {
-      return format(currentDate, 'MMMM yyyy');
+      return `${format(weekStart, 'MMM yyyy')} - ${format(weekEnd, 'MMM yyyy')}`;
     }
-  }, [currentDate, view]);
-
-  // Process schedule data using CalendarApi
-  const schedule = useMemo(() => {
-    if (!rawData) return [];
-    const processed = CalendarApi.processScheduleData(rawData);
-    console.log('processed', processed);
-    return processed;
-  }, [rawData]);
-
-  // Get month days
-  const monthDays = useMemo(() => {
-    const start = startOfMonth(currentDate);
-    const end = endOfMonth(currentDate);
-    return eachDayOfInterval({ start, end });
   }, [currentDate]);
-
-  // Group days into weeks with proper typing
-  const weeks = useMemo(() => {
-    const weeks: (Date | null)[][] = [];
-    let currentWeek: (Date | null)[] = [];
-
-    if (view === 'week') {
-      // For weekly view, only show current week
-      const today = new Date();
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - today.getDay() + 1);
-
-      for (let i = 0; i < 5; i++) {
-        const day = new Date(monday);
-        day.setDate(monday.getDate() + i);
-        currentWeek.push(day);
-      }
-      weeks.push(currentWeek);
-    } else {
-      // Fix for monthly view
-      const firstDay = monthDays[0];
-      // Adjust for Monday start (convert Sunday from 0 to 7)
-      const dayOfWeek = firstDay.getDay() || 7;
-      // Calculate empty days needed before the first day (subtract 1 for Monday start)
-      const emptyDays = dayOfWeek - 1;
-      
-      // Add empty days at start of first week
-      for (let i = 0; i < emptyDays; i++) {
-        currentWeek.push(null);
-      }
-
-      monthDays.forEach(day => {
-        // Skip weekend days (6 = Saturday, 0 = Sunday)
-        if (day.getDay() === 6 || day.getDay() === 0) return;
-
-        if (currentWeek.length === 5) {
-          weeks.push(currentWeek);
-          currentWeek = [];
-        }
-        currentWeek.push(day);
-      });
-
-      // Fill remaining days in last week
-      while (currentWeek.length < 5) {
-        currentWeek.push(null);
-      }
-      if (currentWeek.length) {
-        weeks.push(currentWeek);
-      }
-    }
-
-    return weeks;
-  }, [monthDays, view]);
 
   // Add effect to check saved status when schedule changes
   useEffect(() => {
@@ -231,9 +146,6 @@ export function UpcomingDebates() {
         if (slot.type === 'oral-questions') {
           return filters['Oral Questions'];
         }
-        if (slot.type === 'bill') {
-          return filters['Bills'];
-        }
         if (slot.type === 'edm') {
           return filters['EDMs'];
         }
@@ -250,6 +162,12 @@ export function UpcomingDebates() {
           if (category === 'debate') {
             return filters['Main Chamber'];
           }
+          if (category === 'ministerial statement') {
+            return filters['Ministerial Statement'];
+          }
+          if (category === 'backbench business') {
+            return filters['Backbench Business'];
+          }
           if (category?.includes('introduction')) {
             return filters['Introduction(s)'];
           }
@@ -262,8 +180,6 @@ export function UpcomingDebates() {
           if (category?.includes('legislation')) {
             return filters['Legislation'];
           }
-
-          // Check type for Westminster Hall
           if (slot.event?.type?.toLowerCase().includes('westminster hall')) {
             return filters['Westminster Hall'];
           }
@@ -281,7 +197,7 @@ export function UpcomingDebates() {
           <Button 
             variant="outline" 
             className="rounded-full px-6 hover:bg-gray-100 border-gray-300"
-            onClick={goToToday}
+            onClick={handleToday}
           >
             Today
           </Button>
@@ -324,64 +240,13 @@ export function UpcomingDebates() {
               filters={filters}
               onChange={setFilters}
             />
-
-            <Select 
-              defaultValue={view}
-              onValueChange={(value) => setView(value as 'week' | 'month')}
-            >
-              <SelectTrigger className="w-[110px] rounded-full border-gray-300">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
         {isFetching ? (
-          view === 'week' ? <WeekSkeleton /> : <MonthSkeleton />
+          <WeekSkeleton />
         ) : (
-          view === 'week' ? (
-            <WeekView currentDate={currentDate} schedule={filteredSchedule} />
-          ) : (
-            <Card className="overflow-hidden border-gray-200 rounded-xl shadow-sm">
-              <div className="grid grid-cols-5 border-b border-gray-200">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
-                  <div key={day} className="py-2 text-center text-sm font-medium text-gray-500">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                {weeks.map((week, weekIndex) => (
-                  <div key={weekIndex} className="grid grid-cols-5 border-b border-gray-200 last:border-0">
-                    {week.map((date, dayIndex) => {
-                      if (!date) return (
-                        <div key={dayIndex} className="h-8" />
-                      );
-
-                      const daySchedule = filteredSchedule.find(day => 
-                        format(day.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-                      );
-
-                      return (
-                        <CalendarDay
-                          key={format(date, 'yyyy-MM-dd')}
-                          date={date}
-                          sessions={daySchedule?.timeSlots || []}
-                          isToday={isToday(date)}
-                          isCurrentMonth={isSameMonth(date, currentDate)}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )
+          <WeekView currentDate={currentDate} schedule={filteredSchedule} />
         )}
       </div>
     </SavedQuestionsContext.Provider>

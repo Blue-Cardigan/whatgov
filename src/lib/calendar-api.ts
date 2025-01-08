@@ -20,19 +20,19 @@ export class CalendarApi {
   static readonly MAX_ITEMS_PER_REQUEST = 40;
 
   static async getWeeklyEvents(
-    forNextWeek: boolean = false,
+    weekOffset: number = 0,
     options: FetchOptions = {}
   ): Promise<HansardData> {
     const today = new Date();
-    const cacheKey = `hansard:calendar:${forNextWeek ? 'next' : 'current'}:${format(today, 'yyyy-MM-dd')}`;
+    const cacheKey = `hansard:calendar:week:${weekOffset}:${format(today, 'yyyy-MM-dd')}`;
         
     return this.fetchWithCache(
       cacheKey,
       async () => {
-        const { weekStart, weekEnd } = this.calculateWeekDates(today, forNextWeek);
+        const { weekStart, weekEnd } = this.calculateWeekDates(today, weekOffset);
         
-        // If it's weekend and current week is requested, return empty data
-        if (!forNextWeek && this.isWeekend(today)) {
+        // Only return empty data for current week on weekends
+        if (weekOffset === 0 && this.isWeekend(today)) {
           return this.getEmptyHansardData();
         }
         
@@ -40,7 +40,10 @@ export class CalendarApi {
       },
       {
         ...options,
-        cacheTTL: forNextWeek ? this.NEXT_WEEK_CACHE_TTL : this.DEFAULT_CACHE_TTL
+        // Adjust cache TTL based on whether we're looking at past/future data
+        cacheTTL: weekOffset > 0 
+          ? this.NEXT_WEEK_CACHE_TTL  // Future weeks
+          : this.DEFAULT_CACHE_TTL    // Current/past weeks
       }
     );
   }
@@ -77,8 +80,6 @@ export class CalendarApi {
       earlyDayMotions: [],
       oralQuestions: [],
       questionTimes: [],
-      bills: [],
-      billSittings: [],
       events: []
     };
 
@@ -93,19 +94,12 @@ export class CalendarApi {
       });
 
       try {
-        const [questionsResponse, billsResponse, eventsResponse] = await Promise.all([
+        const [questionsResponse, eventsResponse] = await Promise.all([
           this.fetchWithErrorHandling<{
             earlyDayMotions: PublishedEarlyDayMotion[];
             oralQuestions: PublishedOralQuestion[];
             questionTimes: PublishedOralQuestionTime[];
           }>(`/api/hansard/questions?${params.toString()}`),
-          
-          this.fetchWithErrorHandling<{
-            data: {
-              bills: PublishedBill[];
-              sittings: PublishedBillSitting[];
-            }
-          }>(`/api/hansard/bills?${params.toString()}`),
 
           this.fetchWithErrorHandling<{
             data: WhatsOnEvent[];
@@ -116,16 +110,10 @@ export class CalendarApi {
         allData.earlyDayMotions = [...allData.earlyDayMotions, ...(questionsResponse.earlyDayMotions || [])];
         allData.oralQuestions = [...allData.oralQuestions, ...(questionsResponse.oralQuestions || [])];
         allData.questionTimes = [...allData.questionTimes, ...(questionsResponse.questionTimes || [])];
-        allData.bills = [...allData.bills, ...(billsResponse.data.bills || [])];
-        allData.billSittings = [...allData.billSittings, ...(billsResponse.data.sittings || [])];
-        
-        // Add WhatsOn events
         allData.events = [...allData.events, ...(eventsResponse.data || [])];
-        // Check if we received a full page of results
-        const hasMoreQuestions = questionsResponse.oralQuestions?.length === this.MAX_ITEMS_PER_REQUEST;
-        const hasMoreBills = billsResponse.data.bills?.length === this.MAX_ITEMS_PER_REQUEST;
         
-        hasMore = hasMoreQuestions || hasMoreBills;
+        // Check if we received a full page of results
+        hasMore = questionsResponse.oralQuestions?.length === this.MAX_ITEMS_PER_REQUEST;
         skip += this.MAX_ITEMS_PER_REQUEST;
 
       } catch (error) {
@@ -142,15 +130,13 @@ export class CalendarApi {
       oralQuestions: [],
       earlyDayMotions: [],
       questionTimes: [],
-      bills: [],
-      billSittings: [],
       events: []
     };
   }
 
-  private static calculateWeekDates(baseDate: Date, forNextWeek: boolean) {
+  private static calculateWeekDates(baseDate: Date, weekOffset: number) {
     const currentWeekStart = startOfWeek(baseDate, { weekStartsOn: 1 }); // Monday
-    const weekStart = forNextWeek ? addWeeks(currentWeekStart, 1) : currentWeekStart;
+    const weekStart = addWeeks(currentWeekStart, weekOffset);
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 }); // Friday
 
     return { weekStart, weekEnd };
@@ -307,101 +293,55 @@ export class CalendarApi {
       });
     }
 
-    // Process EDMs (no changes needed here)
+    // Process EDMs with timing
     if (Array.isArray(data.earlyDayMotions)) {
+      const edmsByDate = new Map<string, PublishedEarlyDayMotion[]>();
+      
+      // Group EDMs by date
       data.earlyDayMotions.forEach((edm: PublishedEarlyDayMotion) => {
         if (!edm.DateTabled) return;
-
-        const date = new Date(edm.DateTabled);
-        const dateKey = format(date, 'yyyy-MM-dd');
-
-        if (!dayMap.has(dateKey)) {
-          dayMap.set(dateKey, { date, timeSlots: [] });
+        
+        const dateKey = format(new Date(edm.DateTabled), 'yyyy-MM-dd');
+        if (!edmsByDate.has(dateKey)) {
+          edmsByDate.set(dateKey, []);
         }
-
-        const day = dayMap.get(dateKey)!;
-        day.timeSlots.push({
-          type: 'edm',
-          edm: {
-            id: edm.Id,            // Add the primary ID
-            UIN: edm.UIN,         // Add the UIN if available
-            Title: edm.Title,
-            Text: edm.MotionText,
-            PrimarySponsor: {
-              Name: edm.PrimarySponsor.Name,
-              PhotoUrl: edm.PrimarySponsor.PhotoUrl,
-              Party: edm.PrimarySponsor.Party
-            },
-            DateTabled: edm.DateTabled
-          }
-        });
+        edmsByDate.get(dateKey)!.push(edm);
       });
-    }
 
-    // Process bills by house
-    if (data.bills && data.billSittings) {
-      const billSittingGroups = data.billSittings.reduce((acc, sitting) => {
-        const dateKey = format(new Date(sitting.date), 'yyyy-MM-dd');
-        const key = `${sitting.billId}-${dateKey}`;
-        
-        if (!acc.has(key)) {
-          acc.set(key, {
-            billId: sitting.billId,
-            date: dateKey,
-            sittings: []
-          });
-        }
-        
-        acc.get(key)!.sittings.push(sitting);
-        return acc;
-      }, new Map<string, {
-        billId: number;
-        date: string;
-        sittings: PublishedBillSitting[];
-      }>());
-
-      // Process each group of sittings
-      billSittingGroups.forEach((group) => {
-        const dateKey = group.date;
+      // Create timed slots for EDMs
+      edmsByDate.forEach((dayEdms, dateKey) => {
         if (!dayMap.has(dateKey)) {
           dayMap.set(dateKey, { date: new Date(dateKey), timeSlots: [] });
         }
-        
-        const bill = data.bills.find(b => b.billId === group.billId);
-        if (!bill) return;
 
         const day = dayMap.get(dateKey)!;
+        const baseTime = setHours(setMinutes(new Date(dateKey), 0), 9); // 9:00 AM
 
-        // Sort sittings by stage order
-        const sortedSittings = group.sittings.sort((a, b) => {
-          const stageA = bill.currentStage?.sortOrder || 0;
-          const stageB = bill.currentStage?.sortOrder || 0;
-          return stageA - stageB;
-        });
+        // Create individual slots for each EDM, 10 minutes apart
+        dayEdms.forEach((edm, index) => {
+          const startTime = addMinutes(baseTime, index * 10);
+          const endTime = addMinutes(startTime, 10);
 
-        // Create time slot without making up times
-        day.timeSlots.push({
-          type: 'bill',
-          // Only include time information if it's actually provided
-          time: sortedSittings[0].time ? {
-            substantive: sortedSittings[0].time,
-            topical: '',
-            deadline: ''
-          } : undefined,
-          bill: {
-            id: bill.billId,
-            title: bill.shortTitle || bill.title || '',
-            longTitle: bill.longTitle || '',
-            summary: bill.summary || '',
-            currentHouse: bill.currentHouse,
-            originatingHouse: bill.originatingHouse,
-            isAct: bill.isAct,
-            isDefeated: bill.isDefeated,
-            sponsors: bill.sponsors,
-            currentStage: bill.currentStage,
-            stage: sortedSittings[0].stageId,
-            sittings: sortedSittings
-          }
+          day.timeSlots.push({
+            type: 'edm',
+            time: {
+              substantive: format(startTime, 'HH:mm'),
+              topical: format(endTime, 'HH:mm'),
+              deadline: ''
+            },
+            edm: {
+              id: edm.Id,
+              UIN: edm.UIN,
+              Title: edm.Title,
+              Text: edm.MotionText,
+              PrimarySponsor: {
+                Name: edm.PrimarySponsor.Name,
+                PhotoUrl: edm.PrimarySponsor.PhotoUrl,
+                Party: edm.PrimarySponsor.Party
+              },
+              DateTabled: edm.DateTabled
+            }
+          });
         });
       });
     }
@@ -448,16 +388,11 @@ export class CalendarApi {
       .map(day => ({
         ...day,
         timeSlots: day.timeSlots.sort((a, b) => {
-          // Items with times come first
           if (a.time?.substantive && !b.time?.substantive) return -1;
           if (!a.time?.substantive && b.time?.substantive) return 1;
-          
-          // If both have times, sort by time
           if (a.time?.substantive && b.time?.substantive) {
             return a.time.substantive.localeCompare(b.time.substantive);
           }
-          
-          // If neither have times, maintain their order but ensure spacing
           return 0;
         })
       }))

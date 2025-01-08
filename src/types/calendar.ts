@@ -45,10 +45,8 @@ export interface TimeSlot {
     };
     DateTabled: string;
   };
-  bill?: BillTimeSlot;
   time?: TimeInfo;
   event?: WhatsOnEvent;
-  duration?: number;
 }
 
 export interface DaySchedule {
@@ -196,8 +194,6 @@ export interface HansardData {
   earlyDayMotions: PublishedEarlyDayMotion[];
   oralQuestions: PublishedOralQuestion[];
   questionTimes: PublishedOralQuestionTime[];
-  bills: PublishedBill[];
-  billSittings: PublishedBillSitting[];
   events: WhatsOnEvent[];
 }
 
