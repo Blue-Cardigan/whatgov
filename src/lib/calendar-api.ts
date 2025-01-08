@@ -8,6 +8,7 @@ import type {
   HansardData,
   TimeSlot,
   DaySchedule,
+  WhatsOnEvent
 } from '@/types/calendar';
 import type { FetchOptions } from '@/types';
 import { getRedisValue, setRedisValue } from '@/app/actions/redis';
@@ -77,7 +78,8 @@ export class CalendarApi {
       oralQuestions: [],
       questionTimes: [],
       bills: [],
-      billSittings: []
+      billSittings: [],
+      events: []
     };
 
     let skip = 0;
@@ -91,7 +93,7 @@ export class CalendarApi {
       });
 
       try {
-        const [questionsResponse, billsResponse] = await Promise.all([
+        const [questionsResponse, billsResponse, eventsResponse] = await Promise.all([
           this.fetchWithErrorHandling<{
             earlyDayMotions: PublishedEarlyDayMotion[];
             oralQuestions: PublishedOralQuestion[];
@@ -103,18 +105,22 @@ export class CalendarApi {
               bills: PublishedBill[];
               sittings: PublishedBillSitting[];
             }
-          }>(`/api/hansard/bills?${params.toString()}`)
+          }>(`/api/hansard/bills?${params.toString()}`),
+
+          this.fetchWithErrorHandling<{
+            data: WhatsOnEvent[];
+          }>(`/api/hansard/whatson?${params.toString()}`)
         ]);
 
-        // Merge questions data
+        // Merge existing data
         allData.earlyDayMotions = [...allData.earlyDayMotions, ...(questionsResponse.earlyDayMotions || [])];
         allData.oralQuestions = [...allData.oralQuestions, ...(questionsResponse.oralQuestions || [])];
         allData.questionTimes = [...allData.questionTimes, ...(questionsResponse.questionTimes || [])];
-
-        // Merge bills data - note the data property in the response
         allData.bills = [...allData.bills, ...(billsResponse.data.bills || [])];
         allData.billSittings = [...allData.billSittings, ...(billsResponse.data.sittings || [])];
-
+        
+        // Add WhatsOn events
+        allData.events = [...allData.events, ...(eventsResponse.data || [])];
         // Check if we received a full page of results
         const hasMoreQuestions = questionsResponse.oralQuestions?.length === this.MAX_ITEMS_PER_REQUEST;
         const hasMoreBills = billsResponse.data.bills?.length === this.MAX_ITEMS_PER_REQUEST;
@@ -137,7 +143,8 @@ export class CalendarApi {
       earlyDayMotions: [],
       questionTimes: [],
       bills: [],
-      billSittings: []
+      billSittings: [],
+      events: []
     };
   }
 
@@ -378,8 +385,8 @@ export class CalendarApi {
           // Only include time information if it's actually provided
           time: sortedSittings[0].time ? {
             substantive: sortedSittings[0].time,
-            topical: null,
-            deadline: null
+            topical: '',
+            deadline: ''
           } : undefined,
           bill: {
             id: bill.billId,
@@ -394,6 +401,43 @@ export class CalendarApi {
             currentStage: bill.currentStage,
             stage: sortedSittings[0].stageId,
             sittings: sortedSittings
+          }
+        });
+      });
+    }
+
+    // Process WhatsOn events
+    if (Array.isArray(data.events)) {
+      data.events.forEach((event) => {
+        if (!event.startTime) return;
+
+        const date = new Date(event.startTime);
+        const dateKey = format(date, 'yyyy-MM-dd');
+
+        if (!dayMap.has(dateKey)) {
+          dayMap.set(dateKey, { date, timeSlots: [] });
+        }
+
+        const day = dayMap.get(dateKey)!;
+        
+        day.timeSlots.push({
+          type: 'event',
+          time: {
+            substantive: format(new Date(event.startTime), 'HH:mm'),
+            topical: event.endTime ? format(new Date(event.endTime), 'HH:mm') : null,
+            deadline: ''
+          },
+          event: {
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            location: event.location,
+            category: event.category,
+            house: event.house,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            members: event.members,
+            type: event.type,
           }
         });
       });

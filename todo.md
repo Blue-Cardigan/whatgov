@@ -1,20 +1,27 @@
 Rewrite:
 [/] Remove voting and feed functionality
-[ ] Update the assistant daily (Add a new vector store each week?). 
-      [ ] Add a summary/analysis at the start of each
-      [ ] Ensure Member names etc. are included.
-[ ] List an MP's recent votes and contributions in basic search results
-[ ] Add keyword search within an MP's contributions
+[ ] Update the assistant vector store daily. 
+      [/] Add a summary/analysis at the start of each
+      [/] Ensure Member names etc. are included.
+[ ] Create endpoint and GH Action to batch process saved assistant searches
+[ ] Implement notifications for unread debates
+      [ ] In app
+      [ ] Email
+[ ] Use whatson api to complete calendar
+[ ] Additional MP data in search results
+      [ ] Recent points
+      [ ] Votes 
 [ ] Save MP searches with keywords (using hansard search?)
 [ ] Display MP searches in saved searches page
 [/] Replace default date filter with current week, instead of current parliament
-[ ] Implement overnight search update
-[ ] Implement notifications for unread debates
-[ ] Rework Calendar: 
+[/] Rework Calendar: 
       [/] Calendar display style
       [-] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
       [/] Save calendar items
+[ ] Generate daily and weekly summary of relevant debates
 
+
+[ ] Add keyword search within an MP's contributions
 
 Professionals
 [ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TimeSlot } from "@/types/calendar";
 import { Clock } from "lucide-react";
-import { SessionPopover } from "./CalendarViews";
+import { SessionPopover } from "./SessionPopover";
 
 interface UntimedItemsProps {
   items: TimeSlot[];

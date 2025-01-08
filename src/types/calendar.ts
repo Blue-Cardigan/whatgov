@@ -7,7 +7,7 @@ export interface TimeInfo {
 }
 
 export interface TimeSlot {
-  type: 'oral-questions' | 'edm' | 'bill';
+  type: 'oral-questions' | 'edm' | 'bill' | 'event';
   department?: string;
   minister?: {
     MnisId: number;
@@ -47,6 +47,7 @@ export interface TimeSlot {
   };
   bill?: BillTimeSlot;
   time?: TimeInfo;
+  event?: WhatsOnEvent;
   duration?: number;
 }
 
@@ -188,15 +189,36 @@ export interface MemberForDate {
     stageId: number;
     billId: number;
     date: string;
+    time?: string;
   }
   
-  export interface HansardData {
-    earlyDayMotions: PublishedEarlyDayMotion[];
-    oralQuestions: PublishedOralQuestion[];
-    questionTimes: PublishedOralQuestionTime[];
-    bills: PublishedBill[];
-    billSittings: PublishedBillSitting[];
-  }
+export interface HansardData {
+  earlyDayMotions: PublishedEarlyDayMotion[];
+  oralQuestions: PublishedOralQuestion[];
+  questionTimes: PublishedOralQuestionTime[];
+  bills: PublishedBill[];
+  billSittings: PublishedBillSitting[];
+  events: WhatsOnEvent[];
+}
+
+export interface WhatsOnEvent {
+  id: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime?: string;
+  category?: string;
+  type?: string;
+  house?: string;
+  members?: Array<{
+    name: string;
+    party: string;
+    partyColour: string;
+    constituency: string;
+    photoUrl?: string;
+  }>;
+}
 
 export interface BillTimeSlot {
   id: number;

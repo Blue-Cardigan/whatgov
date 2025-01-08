@@ -17,7 +17,7 @@ export const metadata = {
 
 export default function DebatesPage() {
   return (
-    <main className="min-h-[calc(100vh-4rem)] flex flex-col p-4 md:p-6">
+    <main className="h-full flex flex-col p-4 md:p-6">
       <div className="flex-1">
         <UpcomingDebates />
       </div>

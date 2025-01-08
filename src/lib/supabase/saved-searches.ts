@@ -1,12 +1,5 @@
 import createClient from './client';
 import type { SavedSearch, SaveSearchParams } from '@/types/search';
-import type { TimeSlot } from '@/types/calendar';
-
-interface QuestionIdentifier {
-  text: string;
-  date: string;
-  minister: string;
-}
 
 // Add type checking functions
 export async function isItemSaved(

@@ -4,8 +4,7 @@ import { useState, useMemo, useEffect, createContext, useContext } from "react";
 import { Card } from "@/components/ui/card";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Search, HelpCircle, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronRight, ChevronLeft, Search, Settings } from "lucide-react";
 import { useCalendarData } from '@/hooks/useCalendarData';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { WeekView, CalendarDay } from "./CalendarViews";
@@ -13,6 +12,7 @@ import { CalendarApi } from '@/lib/calendar-api';
 import { isItemSaved } from "@/lib/supabase/saved-searches";
 import type { TimeSlot } from '@/types/calendar';
 import { MonthSkeleton, WeekSkeleton } from './CalendarSkeleton';
+import { CalendarFilters, type EventFilters } from './CalendarFilters';
 
 // Add context for saved questions
 interface SavedQuestionsContextType {
@@ -37,6 +37,19 @@ export function UpcomingDebates() {
 
   const [view, setView] = useState<'week' | 'month'>('week');
   const [savedQuestions, setSavedQuestions] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<EventFilters>({
+    'Oral Questions': true,
+    'Main Chamber': true,
+    'Westminster Hall': true,
+    'Private Meeting': false,
+    'Introduction(s)': true,
+    'Orders and Regulations': true,
+    'Private Members\' Bills': true,
+    'Legislation': true,
+    'Bills': true,
+    'EDMs': true,
+    'Oral evidence': false,
+  });
 
   // Modify navigation functions to handle both week and month views
   const handlePrevious = () => {
@@ -99,6 +112,7 @@ export function UpcomingDebates() {
   const schedule = useMemo(() => {
     if (!rawData) return [];
     const processed = CalendarApi.processScheduleData(rawData);
+    console.log('processed', processed);
     return processed;
   }, [rawData]);
 
@@ -207,6 +221,59 @@ export function UpcomingDebates() {
     checkSavedQuestions();
   }, [schedule]);
 
+  // Filter schedule based on selected categories
+  const filteredSchedule = useMemo(() => {
+    if (!schedule.length) return [];
+
+    return schedule.map(day => ({
+      ...day,
+      timeSlots: day.timeSlots.filter(slot => {
+        if (slot.type === 'oral-questions') {
+          return filters['Oral Questions'];
+        }
+        if (slot.type === 'bill') {
+          return filters['Bills'];
+        }
+        if (slot.type === 'edm') {
+          return filters['EDMs'];
+        }
+        if (slot.type === 'event') {
+          // Check category first
+          const category = slot.event?.category?.toLowerCase();
+          
+          if (category === 'oral evidence') {
+            return filters['Oral evidence'];
+          }
+          if (category === 'private meeting') {
+            return filters['Private Meeting'];
+          }
+          if (category === 'debate') {
+            return filters['Main Chamber'];
+          }
+          if (category?.includes('introduction')) {
+            return filters['Introduction(s)'];
+          }
+          if (category?.includes('orders and regulations')) {
+            return filters['Orders and Regulations'];
+          }
+          if (category?.includes('private members\' bills')) {
+            return filters['Private Members\' Bills'];
+          }
+          if (category?.includes('legislation')) {
+            return filters['Legislation'];
+          }
+
+          // Check type for Westminster Hall
+          if (slot.event?.type?.toLowerCase().includes('westminster hall')) {
+            return filters['Westminster Hall'];
+          }
+          return true;
+        }
+        return true;
+      })
+    }));
+  }, [schedule, filters]);
+
   return (
     <SavedQuestionsContext.Provider value={{ savedQuestions, setSavedQuestions }}>
       <div className="space-y-1">
@@ -252,20 +319,11 @@ export function UpcomingDebates() {
             >
               <Search className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-10 w-10"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-10 w-10"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
+            
+            <CalendarFilters 
+              filters={filters}
+              onChange={setFilters}
+            />
 
             <Select 
               defaultValue={view}
@@ -286,7 +344,7 @@ export function UpcomingDebates() {
           view === 'week' ? <WeekSkeleton /> : <MonthSkeleton />
         ) : (
           view === 'week' ? (
-            <WeekView currentDate={currentDate} schedule={schedule} />
+            <WeekView currentDate={currentDate} schedule={filteredSchedule} />
           ) : (
             <Card className="overflow-hidden border-gray-200 rounded-xl shadow-sm">
               <div className="grid grid-cols-5 border-b border-gray-200">
@@ -305,7 +363,7 @@ export function UpcomingDebates() {
                         <div key={dayIndex} className="h-8" />
                       );
 
-                      const daySchedule = schedule.find(day => 
+                      const daySchedule = filteredSchedule.find(day => 
                         format(day.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
                       );
 
