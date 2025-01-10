@@ -79,9 +79,7 @@ export function useAssistant() {
         for (const line of lines) {
           if (line.trim()) {
             try {
-              const { type, content } = JSON.parse(line);
-              console.log('[Assistant] Stream chunk type:', type);
-              
+              const { type, content } = JSON.parse(line);              
               switch (type) {
                 case 'text':
                   onStreamingUpdate?.(
@@ -92,7 +90,6 @@ export function useAssistant() {
                   break;
 
                 case 'finalText':
-                  console.log('[Assistant] Received final text:', content.text);
                   onStreamingUpdate?.(
                     content.text,
                     currentCitations,
@@ -102,6 +99,11 @@ export function useAssistant() {
 
                 case 'citations':
                   currentCitations = content.content || content;
+                  onStreamingUpdate?.(
+                    buffer,
+                    currentCitations,
+                    false
+                  );
                   break;
               }
             } catch (e) {

@@ -4,7 +4,9 @@ MVP:
       [/] Add a summary/analysis at the start of each
       [/] Ensure Member names etc. are included.
       [ ] Run script daily with cron job
-[ ] Fix assistant citations when streaming
+[/] Fix assistant citations when streaming
+[/] Unique page for each debate
+[-] Update to maintain a weekly Vector DB
 [ ] Create endpoint and GH Action to batch process saved searches
       [/] Endpoint generates response and updates table for assistant
       [ ] Endpoint searches hansard and updates if new results
@@ -12,6 +14,7 @@ MVP:
 [ ] Implement notifications for unread debates
       [ ] In app
 [/] Use whatson api to complete calendar
+[ ] Add 'coming soon' for additional mp data
 
 Next:
 [ ] Generate daily and weekly highlights of relevant debates

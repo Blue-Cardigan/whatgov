@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
-import type { Citation, SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
+import type { Citation, SearchResponse, SearchResultAIContent } from '@/types/search';
 
 
 interface SearchState {
@@ -21,6 +21,11 @@ interface SearchState {
     mpId?: string;
     keywords: string[];
   };
+  pagination: {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+  };
 }
 
 type SearchAction =
@@ -34,7 +39,16 @@ type SearchAction =
   | { type: 'CLEAR_AI_SEARCH' }
   | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
   | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
-  | { type: 'CLEAR_MP_SEARCH' };
+  | { type: 'CLEAR_MP_SEARCH' }
+  | { type: 'SET_PAGINATION'; payload: Partial<SearchState['pagination']> };
+
+export interface SearchParams {
+  searchTerm: string;
+  skip?: number;
+  take?: number;
+  orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
+  resultType?: 'all' | 'debates' | 'written-statements' | 'written-answers' | 'corrections' | 'divisions' | 'members';
+}
 
 const initialState: SearchState = {
   results: null,
@@ -42,7 +56,8 @@ const initialState: SearchState = {
     searchTerm: '',
     skip: 0,
     take: 10,
-    orderBy: 'SittingDateDesc'
+    orderBy: 'SittingDateDesc',
+    resultType: 'all'
   },
   isLoading: false,
   aiSearch: {
@@ -56,6 +71,11 @@ const initialState: SearchState = {
     query: '',
     mpId: undefined,
     keywords: []
+  },
+  pagination: {
+    currentPage: 1,
+    pageSize: 10,
+    totalPages: 1
   }
 };
 
@@ -130,32 +150,17 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
     case 'SET_PARAMS':
       return {
         ...state,
-        searchParams: action.payload
+        searchParams: {
+          ...state.searchParams,
+          ...action.payload,
+          // Reset pagination when changing result type
+          skip: action.payload.resultType !== state.searchParams.resultType ? 0 : action.payload.skip
+        }
       };
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload
-      };
-    case 'APPEND_RESULTS':
-      if (!state.results) return { 
-        ...state, 
-        results: action.payload 
-      };
-      
-      return {
-        ...state,
-        results: {
-          ...action.payload,
-          Contributions: [
-            ...state.results.Contributions,
-            ...action.payload.Contributions
-          ],
-          aiContent: {
-            ...(state.results.aiContent || {}),
-            ...(action.payload.aiContent || {})
-          }
-        }
       };
     case 'CLEAR_RESULTS':
       return {
@@ -173,7 +178,6 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       };
     case 'SET_AI_SEARCH':
       if (action.payload.isFinal) {
-        console.log('[SearchContext] Setting final text:', action.payload.streamingText);
         return {
           ...state,
           aiSearch: {
@@ -199,7 +203,10 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
     case 'CLEAR_AI_SEARCH':
       return {
         ...state,
-        aiSearch: initialState.aiSearch
+        aiSearch: {
+          ...initialState.aiSearch,
+          isLoading: true
+        }
       };
     case 'SET_SEARCH_TYPE':
       return {
@@ -218,6 +225,14 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         mpSearch: initialState.mpSearch
+      };
+    case 'SET_PAGINATION':
+      return {
+        ...state,
+        pagination: {
+          ...state.pagination,
+          ...action.payload
+        }
       };
     default:
       return state;

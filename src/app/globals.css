@@ -116,7 +116,7 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-[hsl(var(--border))];
   }
   body {
     @apply bg-background text-foreground;
@@ -156,6 +156,20 @@ body {
   .calendar-event:hover {
     transform: scale(1.02);
     z-index: 20;
+  }
+
+  /* Add the new animation */
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
   }
 }
 

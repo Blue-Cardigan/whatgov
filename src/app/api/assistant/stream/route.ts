@@ -107,6 +107,7 @@ export async function POST(request: Request) {
                     content: citations
                   }) + '\n'
                 ));
+                console.log('[Assistant Stream] Sent citations:', citations);
               }
             }
           }

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { Children, ReactNode, useEffect } from 'react';
 import { InlineCitation } from '@/components/ui/inline-citation';
+import { LoadingAnimation } from '@/components/ui/loading-animation';
 
 interface StreamedResponseProps {
   streamingText: string;
@@ -11,14 +12,7 @@ interface StreamedResponseProps {
   query: string;
 }
 
-export function StreamedResponse({ streamingText, citations, isLoading, query }: StreamedResponseProps) {
-  useEffect(() => {
-    console.log('[StreamedResponse] Received text update:', {
-      length: streamingText?.length,
-      citations: citations?.length,
-      isLoading
-    });
-  }, [streamingText, citations, isLoading]);
+export function StreamedResponse({ streamingText, citations, isLoading }: StreamedResponseProps) {
 
   const formatCitationIndexes = (citations: Citation[]): string => {
     if (!citations || citations.length === 0) return '【】';
@@ -199,14 +193,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   };
 
   if (isLoading && !streamingText) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Searching through parliamentary records...</p>
-        </div>
-      </div>
-    );
+    return <LoadingAnimation />;
   }
 
   if (!streamingText) {
@@ -222,7 +209,9 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
       {streamingText && (
         <>
           <MarkdownWithCitations text={streamingText} />
-          <CitationsList citations={citations} />
+          {citations?.length > 0 && (
+            <CitationsList citations={citations} />
+          )}
         </>
       )}
     </div>

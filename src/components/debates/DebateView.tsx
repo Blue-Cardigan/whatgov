@@ -2,30 +2,25 @@
 
 import { FeedItem, PartyCount } from '@/types';
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, UserIcon, Share2, ExternalLink, Search, Clock, Building, LightbulbIcon } from 'lucide-react';
+import { CalendarIcon, Share2, ExternalLink, Search, Clock, UserIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { AnalysisPreview } from '../posts/DebateContent';
 import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
-import { DivisionContent } from '../posts/DivisionContent';
-import { KeyPointsContent } from '../posts/KeyPointsContent';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
-import { PartyDistribution } from '../posts/PartyDistribution';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Link from 'next/link';
 import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { HansardDebateResponse, HansardContribution, HansardNavigatorItem } from "@/types/hansard";
+import type { HansardDebateResponse, HansardContribution } from "@/types/hansard";
 import { FormattedMarkdown } from '@/lib/utils';
 
 interface DebateViewProps {
   debate: FeedItem;
-  userMp?: string | null;
   hansardData?: HansardDebateResponse;
 }
 
@@ -69,22 +64,80 @@ function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, '');
 }
 
-export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
-  const { user, isEngagedCitizen } = useAuth();
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [currentDivisionIndex, setCurrentDivisionIndex] = useState(0);
-  const hasDivisions = debate.divisions && debate.divisions.length > 0;
+interface SpeakerPoint {
+  speaker: {
+    name: string;
+    role: string;
+    party: string;
+    constituency: string;
+  };
+  contributions: {
+    point: string;
+    context: string;
+    keywords: string[];
+  }[];
+}
 
-  // Only show key points tab if user has appropriate subscription
-  const showKeyPointsTab = useMemo(() => {
-    return debate.ai_key_points?.length > 0 && (user && isEngagedCitizen);
-  }, [debate.ai_key_points, user, isEngagedCitizen]);
+function KeyPointsContent({ keyPoints }: { keyPoints: SpeakerPoint[] }) {
+  return (
+    <div className="space-y-6">
+      {keyPoints.map((item, index) => (
+        <Card key={index} className="overflow-hidden">
+          <CardHeader className="pb-4 bg-muted/5">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <UserIcon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold">{item.speaker.name}</h3>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <Badge variant="outline">{item.speaker.party}</Badge>
+                  {item.speaker.constituency && (
+                    <Badge variant="outline">{item.speaker.constituency}</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {item.contributions.map((contribution, cIndex) => (
+              <div key={cIndex} className="space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-2">
+                    {contribution.point}
+                  </p>
+                  <p className="text-sm">
+                    {contribution.context}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {contribution.keywords.map((keyword, kIndex) => (
+                    <Badge 
+                      key={kIndex} 
+                      variant="secondary"
+                      className="text-xs"
+                    >
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export function DebateView({ debate, hansardData }: DebateViewProps) {
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   // Handle share
   const handleShare = async () => {
     try {
       await navigator.share({
-        title: debate.ai_title,
+        title: debate.title,
         text: debate.ai_summary,
         url: window.location.href,
       });
@@ -93,12 +146,6 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
       await navigator.clipboard.writeText(window.location.href);
     }
   };
-
-  // Memoize computed values
-  const isUserMpSpeaker = useMemo(() => 
-    userMp && debate.speakers?.[0]?.display_as === userMp,
-    [userMp, debate.speakers]
-  );
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -126,31 +173,7 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
 
     return (
       <div className="space-y-6">
-        {/* Overview Card */}
-        <Card>
-          <CardHeader className="space-y-4">
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building className="h-4 w-4" />
-                <span>{hansardData.Overview.House} • {hansardData.Overview.Location}</span>
-              </div>
-              <CardTitle>{hansardData.Overview.Title}</CardTitle>
-            </div>
-            
-            {/* Navigation breadcrumb */}
-            <div className="text-sm text-muted-foreground flex gap-2 items-center flex-wrap">
-              {hansardData.Navigator?.map((nav: HansardNavigatorItem, index: number) => (
-                <span key={nav.Id} className="flex items-center">
-                  {nav.Title}
-                  {index < hansardData.Navigator.length - 1 && (
-                    <span className="mx-2 text-muted-foreground/50">→</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </CardHeader>
-        </Card>
-
+        
         {/* Search and Content Card */}
         <Card>
           <CardHeader className="pb-4 sticky top-0 bg-card z-10 border-b">
@@ -316,8 +339,7 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
       <Card 
         className={cn(
           "overflow-hidden relative w-full border-l-[6px] transition-colors shadow-sm hover:shadow-md",
-          "flex flex-col",
-          isUserMpSpeaker ? "ring-1 ring-primary/20" : ""
+          "flex flex-col"
         )}
         style={{ 
           borderLeftColor: locationColors[debate.location] || '#2b2b2b',
@@ -331,134 +353,55 @@ export function DebateView({ debate, userMp, hansardData }: DebateViewProps) {
         </div>
 
         {/* Title Section */}
-        <CardHeader className={cn(
-          "pb-2 flex-shrink-0",
-          isUserMpSpeaker ? "pt-8 sm:pt-10" : "pt-4"
-        )}>
+        <CardHeader className="pb-2 flex-shrink-0">
           <div className="flex justify-between items-start gap-4">
             <div className="flex flex-col">
               <CardTitle className="text-xl font-bold">
-                {debate.ai_title}
+                {debate.title}
               </CardTitle>
-              {userMp && debate.speakers?.[0]?.display_as === userMp && (
-                <span className="sm:hidden flex items-center gap-1.5 text-primary text-sm mt-1.5">
-                  <UserIcon className="h-3.5 w-3.5" />
-                  Your MP spoke
-                </span>
-              )}
             </div>
             <DebateActions debate={debate} onShare={handleShare} />
           </div>
         </CardHeader>
 
-        {/* Overview Section */}
-        <div className="px-6 pb-4">
-          <h3 className="text-lg font-semibold mb-4">Overview</h3>
-          <div className="text-sm text-muted-foreground">
-            <FormattedMarkdown content={debate.ai_overview || debate.ai_summary} />
-          </div>
-        </div>
-
-        {/* Analysis Section - Only show if different from overview */}
-        {debate.ai_summary && debate.ai_summary !== debate.ai_overview && (
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-6">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">Analysis</h3>
-              </div>
-              {isEngagedCitizen && (
-                <Badge variant="secondary" className="gap-1.5">
-                  <LightbulbIcon className="h-4 w-4" />
-                  Premium
-                </Badge>
-              )}
-            </div>
-            
-            {isEngagedCitizen ? (
-              <div className="text-sm text-muted-foreground">
-                <FormattedMarkdown content={debate.ai_summary} />
-              </div>
-            ) : (
-              <AnalysisPreview onUpgrade={() => setShowUpgradeDialog(true)} variant="full" />
-            )}
-          </div>
-        )}
-      </Card>
-
-      {/* Tabs Section for Divisions, Comments, etc. */}
-      <div className="border-t">
-        <Tabs defaultValue={hasDivisions ? "divisions" : "comments"} className="w-full">
-          <div className="px-6 py-3 border-b">
-            <TabsList className="w-full justify-start h-auto p-0 bg-transparent space-x-4">
-              {hasDivisions && (
-                <TabsTrigger 
-                  value="divisions"
-                  className="data-[state=active]:bg-primary/10"
-                >
-                  Divisions
-                </TabsTrigger>
-              )}
-              {debate.ai_comment_thread?.length > 0 && (
-                <TabsTrigger 
-                  value="comments"
-                  className="data-[state=active]:bg-primary/10"
-                >
-                  Hot Takes
-                </TabsTrigger>
-              )}
-              {showKeyPointsTab && (
-                <TabsTrigger 
-                  value="keyPoints"
-                  className="data-[state=active]:bg-primary/10"
-                >
+        {/* Analysis and Key Points Tabs */}
+        <Card>
+          <Tabs defaultValue="analysis" className="w-full">
+            <TabsList className="w-full justify-start h-auto p-4 bg-transparent space-x-4 border-b">
+              <TabsTrigger value="analysis">
+                Analysis
+              </TabsTrigger>
+                <TabsTrigger value="keyPoints">
                   Key Points
                 </TabsTrigger>
-              )}
-              {hansardData && (
-                <TabsTrigger value="hansard">
-                  Original Transcript
-                </TabsTrigger>
-              )}
             </TabsList>
-          </div>
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {hasDivisions && (
-              <TabsContent value="divisions" className="mt-6">
-                <div className="bg-card rounded-lg border">
-                  <DivisionContent 
-                    divisions={debate.divisions!}
-                    currentIndex={currentDivisionIndex}
-                    onNavigate={setCurrentDivisionIndex}
-                    isActive={true}
-                  />
-                </div>
-              </TabsContent>
-            )}
-            
-            {showKeyPointsTab && (
-              <TabsContent value="keyPoints" className="mt-6">
-                <div className="bg-card rounded-lg border">
-                  <KeyPointsContent 
-                    keyPoints={debate.ai_key_points}
-                    isActive={true}
-                    userMp={userMp}
-                  />
-                </div>
-              </TabsContent>
-            )}
+            <TabsContent value="analysis" className="p-4">
+              <div className="text-sm text-muted-foreground">
+                <FormattedMarkdown content={debate.analysis} />
+              </div>
+            </TabsContent>
 
-            {hansardData && (
-              <TabsContent value="hansard">
-                <div className="bg-card rounded-lg border">
-                  {renderHansardContributions()}
-                </div>
-              </TabsContent>
-            )}
-          </div>
-        </Tabs>
-      </div>
+            <TabsContent value="keyPoints" className="p-4">
+              <KeyPointsContent 
+                keyPoints={debate.speaker_points}
+              />
+            </TabsContent>
+          </Tabs>
+        </Card>
+
+        {/* Transcript Section */}
+        {hansardData && (
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle className="text-lg">Original Transcript</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderHansardContributions()}
+            </CardContent>
+          </Card>
+        )}
+      </Card>
 
       <UpgradeDialog 
         open={showUpgradeDialog} 
@@ -498,8 +441,6 @@ function MetaInformation({ item }: { item: FeedItem }) {
           </Badge>
         )}
       </div>
-
-      <PartyDistribution partyCount={partyCount} />
     </div>
   );
 }
