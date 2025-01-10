@@ -1,18 +1,24 @@
-
 -- Create function to update next_run_at
 CREATE OR REPLACE FUNCTION public.calculate_next_run_at()
 RETURNS TRIGGER AS $$
+DECLARE
+    search_repeat_on jsonb;
 BEGIN
+    -- Get repeat_on from saved_searches
+    SELECT repeat_on INTO search_repeat_on
+    FROM public.saved_searches
+    WHERE id = NEW.search_id;
+
     -- Calculate next run based on day of week, setting time to 7am
     NEW.next_run_at := (
         CASE
-            WHEN NEW.repeat_on->>'frequency' = 'weekly' THEN
+            WHEN search_repeat_on->>'frequency' = 'weekly' THEN
                 -- Get the next occurrence of the specified day of week
                 CASE
-                    WHEN EXTRACT(DOW FROM CURRENT_TIMESTAMP) <= (NEW.repeat_on->>'dayOfWeek')::int THEN
-                        CURRENT_DATE + ((NEW.repeat_on->>'dayOfWeek')::int - EXTRACT(DOW FROM CURRENT_TIMESTAMP))::int
+                    WHEN EXTRACT(DOW FROM CURRENT_TIMESTAMP) <= (search_repeat_on->>'dayOfWeek')::int THEN
+                        CURRENT_DATE + ((search_repeat_on->>'dayOfWeek')::int - EXTRACT(DOW FROM CURRENT_TIMESTAMP))::int
                     ELSE
-                        CURRENT_DATE + (7 - EXTRACT(DOW FROM CURRENT_TIMESTAMP) + (NEW.repeat_on->>'dayOfWeek')::int)::int
+                        CURRENT_DATE + (7 - EXTRACT(DOW FROM CURRENT_TIMESTAMP) + (search_repeat_on->>'dayOfWeek')::int)::int
                 END + INTERVAL '7 hours'  -- Set to 7am
             ELSE NULL
         END

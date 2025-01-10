@@ -3,7 +3,6 @@ import type { KeyPoint, Speaker } from "@/types";
 export interface Citation {
     citation_index: number;
     debate_id: string;
-    chunk_text: string;
   }
 
 export interface SearchState {
@@ -13,7 +12,7 @@ export interface SearchState {
     aiSearch: {
         query: string;
         streamingText: string;
-        citations: Array<{ citation_index: number; debate_id: string, chunk_text: string }>;
+        citations: Citation[];
         isLoading: boolean;
     };
     searchType?: 'ai' | 'hansard' | 'mp';
@@ -42,9 +41,20 @@ export interface SaveSearchParams {
   query: string;
   response: string;
   citations: string[];
-  queryState: any;
-  searchType: SearchType;
-  mpData?: MPSearchData;
+  queryState?: {
+    searchTerm: string;
+    startDate?: string;
+    endDate?: string;
+    house?: 'Commons' | 'Lords';
+    parts?: string[];
+    skip?: number;
+    take?: number;
+  };
+  searchType: 'ai' | 'hansard' | 'mp';
+  repeat_on?: {
+    frequency: 'weekly';
+    dayOfWeek: number;
+  } | null;
 }
 
 export interface SavedSearch {

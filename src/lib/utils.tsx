@@ -13,6 +13,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+
+// Helper function to get last 7 weekdays
+export function getLastSevenDays(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  let currentDate = new Date(today);
+  let daysCollected = 0;
+
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+  while (daysCollected < 7) {
+    const dayOfWeek = currentDate.getDay();
+    // Only include weekdays (Monday-Friday)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const weekday = weekdays[dayOfWeek - 1];
+      const dateStr = currentDate.toISOString().split('T')[0];
+      days.push(`${weekday} ${dateStr}`);
+      daysCollected++;
+    }
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+
+  return days;
+} 
+
 export const getThreeFourPortraitUrl = (memberId: number) => 
   `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=threefour&webversion=true`;
 

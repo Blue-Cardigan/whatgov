@@ -1,17 +1,11 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
-import type { SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
+import type { Citation, SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
 
-// Add new type for citations
-type Citation = {
-  citation_index: number;
-  debate_id: string;
-  chunk_text: string;
-};
 
 interface SearchState {
-  results: SearchResponse | null;
+  results: (SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }) | null;
   searchParams: SearchParams;
   aiContent?: Record<string, SearchResultAIContent>;
   isLoading: boolean;
@@ -36,7 +30,7 @@ type SearchAction =
   | { type: 'APPEND_RESULTS'; payload: SearchResponse }
   | { type: 'CLEAR_RESULTS' }
   | { type: 'SET_AI_LOADING'; payload: boolean }
-  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[] } }
+  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[]; isFinal?: boolean } }
   | { type: 'CLEAR_AI_SEARCH' }
   | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
   | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
@@ -144,7 +138,11 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         isLoading: action.payload
       };
     case 'APPEND_RESULTS':
-      if (!state.results) return { ...state, results: action.payload };
+      if (!state.results) return { 
+        ...state, 
+        results: action.payload 
+      };
+      
       return {
         ...state,
         results: {
@@ -174,12 +172,27 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         }
       };
     case 'SET_AI_SEARCH':
+      if (action.payload.isFinal) {
+        console.log('[SearchContext] Setting final text:', action.payload.streamingText);
+        return {
+          ...state,
+          aiSearch: {
+            ...state.aiSearch,
+            query: action.payload.query,
+            // For final text, completely replace the streaming text
+            streamingText: action.payload.streamingText,
+            citations: action.payload.citations
+          }
+        };
+      }
+      
+      // For non-final updates, append to existing text
       return {
         ...state,
         aiSearch: {
           ...state.aiSearch,
           query: action.payload.query,
-          streamingText: action.payload.streamingText,
+          streamingText: state.aiSearch.streamingText + action.payload.streamingText,
           citations: action.payload.citations
         }
       };

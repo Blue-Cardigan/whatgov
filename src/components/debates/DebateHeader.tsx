@@ -37,8 +37,8 @@ export function DebateHeader({
       const supabase = createClient();
       
       const { data, error } = await supabase
-        .from('debates')
-        .select('party_count, contribution_count, house, date, type, ai_title, title')
+        .from('debates_new')
+        .select('title, type, house, date, analysis, speaker_points')
         .eq('ext_id', extId)
         .single();
 
@@ -108,7 +108,6 @@ export function DebateHeader({
 
         {/* Replace Stats with PartyDistribution */}
         <div className="flex items-center gap-3 ml-auto">
-          <PartyDistribution partyCount={debate.party_count} />
           <span className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
             {debate.contribution_count}

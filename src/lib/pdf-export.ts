@@ -110,8 +110,8 @@ export async function exportToPDF({
     }).filter(Boolean);
 
     const { data: debates } = await supabase
-      .from('debates')
-      .select('ext_id, date, title, ai_title, house')
+      .from('debates_new')
+      .select('ext_id, date, title, type, house, analysis, speaker_points')
       .in('ext_id', extIds);
 
     const debateMap = new Map(debates?.map(d => [d.ext_id, d]));
@@ -136,7 +136,7 @@ export async function exportToPDF({
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(33, 33, 33);
-        const citationText = `[${index}] ${debate.ai_title || debate.title}`;
+        const citationText = `[${index}] ${debate.title}`;
         const citationLines = doc.splitTextToSize(citationText, contentWidth);
         doc.text(citationLines, margin.left, yPosition);
         yPosition += citationLines.length * 7 + 5;
@@ -158,7 +158,7 @@ export async function exportToPDF({
         // Hansard link
         const hansardUrl = constructHansardUrl(
           debate.ext_id,
-          debate.title || debate.ai_title,
+          debate.title,
           format(new Date(debate.date), 'yyyy-MM-dd')
         );
         const labelX = margin.left + 35; // X position where URL starts

@@ -22,7 +22,7 @@ async function getDebateFromServer(extId: string) {
   const supabase = await createServerSupabaseClient();
   
   const { data: debate, error } = await supabase
-    .from('debates')
+    .from('debates_new')
     .select('*')
     .eq('ext_id', extId)
     .single();

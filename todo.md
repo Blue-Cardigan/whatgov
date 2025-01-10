@@ -1,30 +1,37 @@
-Rewrite:
+MVP:
 [/] Remove voting and feed functionality
 [ ] Update the assistant vector store daily. 
       [/] Add a summary/analysis at the start of each
       [/] Ensure Member names etc. are included.
-[ ] Create endpoint and GH Action to batch process saved assistant searches
+      [ ] Run script daily with cron job
+[ ] Fix assistant citations when streaming
+[ ] Create endpoint and GH Action to batch process saved searches
+      [/] Endpoint generates response and updates table for assistant
+      [ ] Endpoint searches hansard and updates if new results
+      [ ] Endpoint called by cron job daily
 [ ] Implement notifications for unread debates
       [ ] In app
-      [ ] Email
-[ ] Use whatson api to complete calendar
-[ ] Additional MP data in search results
+[/] Use whatson api to complete calendar
+
+Next:
+[ ] Generate daily and weekly highlights of relevant debates
+[ ] Email reminders with saved searches
+[ ] MP data in search results
       [ ] Recent points
       [ ] Votes 
 [ ] Save MP searches with keywords (using hansard search?)
-[ ] Display MP searches in saved searches page
+[ ] Save & Display MP searches in saved searches page
 [/] Replace default date filter with current week, instead of current parliament
 [/] Rework Calendar: 
       [/] Calendar display style
       [-] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
       [/] Save calendar items
-[ ] Generate daily and weekly summary of relevant debates
 
 
 [ ] Add keyword search within an MP's contributions
 
 Professionals
-[ ] Send personal welcome email (Say newsletters don't work yet - add booking link to request features)
+[ ] Send personal welcome email
 [/] Member profile search 
 [ ] Make member profile search EC exclusive
 [/] Make search page wider (on desktop)
@@ -37,11 +44,6 @@ Professionals
 [/] Limit assistant usage by engagement
 [/] Assistant filter editing
 [/] Export saved searches to file
-[ ] Implement assistant filters for pro users
-[ ] Fix keyword list view in assistant filters
-[ ] Implement 'run weekly on Xday' in saved searches. 
-      - Vector stores are updated and the query rerun in one go
-      - Saves updating vector stores every day
 [/] Delete assistants
 [/] Format saved searches correctly
 [/] Save query-assistant pairs to rerun

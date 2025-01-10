@@ -13,7 +13,6 @@ import { ResultCard } from './ResultCard';
 import { SaveSearchButton } from '../SaveSearchButton';
 import type { SearchResponse } from '@/types/search';
 
-// Add new interface for grouped results
 interface GroupedContributions {
   debateExtId: string;
   debateSection: string;
@@ -140,12 +139,10 @@ export function SearchResults({
             startDate: searchParams.startDate,
             endDate: searchParams.endDate,
             house: searchParams.house || 'Commons',
-            enableAI: searchParams.enableAI,
             skip: searchParams.skip,
             take: searchParams.take,
-            orderBy: searchParams.orderBy
           },
-          results: getResultMetadata()
+          response: getResultMetadata()
         }}
         searchType="hansard"
       />

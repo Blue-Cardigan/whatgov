@@ -1,70 +1,70 @@
 import createClient from './client';
 import type { SavedSearch, SaveSearchParams } from '@/types/search';
 
-// Add type checking functions
-export async function isItemSaved(
-  type: 'bill' | 'edm' | 'question',
-  identifier: { 
-    id?: number;
-    title?: string;
-    date?: string;
-    minister?: string;
-  }
-): Promise<boolean> {
-  const supabase = createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-
-  const query = supabase
-    .from('saved_searches')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('search_type', type);
-
-  const { count, error } = await query;
-
-  if (error) {
-    console.error('Error checking saved item:', error);
-    return false;
-  }
-
-  return (count ?? 0) > 0;
-}
-
-// Update saveSearch to handle bills and EDMs
 export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch> {
   const supabase = createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Check if item is already saved
-  let existingQuery = supabase
-    .from('saved_searches')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('search_type', params.searchType);
+  try {
+    // Prepare query state based on search type
+    let queryState;
     
-  const { count: existingCount } = await existingQuery;
+    if (params.searchType === 'hansard') {
+      queryState = {
+        searchTerm: params.query,
+        house: params.queryState?.house,
+        startDate: params.queryState?.startDate || new Date('2024-07-04').toISOString(),
+        endDate: params.queryState?.endDate || new Date().toISOString(),
+        parts: [params.query] // Store original query for exact matching
+      };
+    }
 
-  if (existingCount && existingCount > 0) {
-    throw new Error('Item already saved');
+    // Insert the saved search first
+    const { data: savedSearch, error: searchError } = await supabase
+      .from('saved_searches')
+      .insert({
+        user_id: user.id,
+        query: params.query,
+        response: params.response,
+        citations: params.citations || [],
+        query_state: queryState ? queryState : null,
+        search_type: params.searchType
+      })
+      .select()
+      .single();
+
+    if (searchError) throw searchError;
+    if (!savedSearch) throw new Error('Failed to create saved search');
+
+    // If repeat is enabled, create the schedule
+    if (params.repeat_on) {
+      const { error: scheduleError } = await supabase
+        .from('saved_search_schedules')
+        .insert({
+          search_id: savedSearch.id,
+          user_id: user.id,
+          is_active: true,
+          repeat_on: JSON.stringify(params.repeat_on)
+          // next_run_at will be set automatically by the trigger
+        });
+
+      if (scheduleError) {
+        // If schedule creation fails, delete the saved search
+        await supabase
+          .from('saved_searches')
+          .delete()
+          .eq('id', savedSearch.id);
+        
+        throw scheduleError;
+      }
+    }
+
+    return savedSearch;
+
+  } catch (error) {
+    console.error('Error saving search:', error);
+    throw error;
   }
-
-  const { data, error } = await supabase
-    .from('saved_searches')
-    .insert({
-      user_id: user.id,
-      query: params.query,
-      response: params.response,
-      citations: params.citations,
-      query_state: params.queryState,
-      search_type: params.searchType,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
 } 

@@ -122,9 +122,6 @@ export async function GET(request: NextRequest) {
         : { Success: false, Response: [] }
     ]);
 
-    console.log(questionsData);
-    console.log(timesData);
-
     // Combine and structure the response
     const combinedResponse: ApiResponse<{
       earlyDayMotions: any[];

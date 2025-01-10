@@ -14,8 +14,9 @@ export function useAssistant() {
   const performFileSearch = useCallback(async (
     query: string, 
     openaiAssistantId: string | null,
-    onStreamingUpdate?: (text: string, citations: Citation[]) => void,
-    onComplete?: () => void
+    onStreamingUpdate?: (text: string, citations: Citation[], isFinal: boolean) => void,
+    onComplete?: () => void,
+    useRecentFiles: boolean = false
   ) => {
     if (hasReachedResearchSearchLimit()) {
       toast({
@@ -32,13 +33,20 @@ export function useAssistant() {
       await recordResearchSearch();
       const authHeader = await getAuthHeader();
 
+      console.log('[Assistant] Starting search with query:', query);
+      console.log('[Assistant] Using recent files:', useRecentFiles);
+
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authHeader}`
         },
-        body: JSON.stringify({ query, assistantId: openaiAssistantId }),
+        body: JSON.stringify({ 
+          query, 
+          assistantId: openaiAssistantId,
+          useRecentFiles
+        }),
       });
 
       if (!response.ok) {
@@ -49,15 +57,17 @@ export function useAssistant() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
 
+      setIsLoading(false);
+
       const decoder = new TextDecoder();
       let buffer = '';
-      let currentText = '';
       let currentCitations: Citation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
         
         if (done) {
+          console.log('[Assistant] Stream complete');
           onComplete?.();
           break;
         }
@@ -69,45 +79,42 @@ export function useAssistant() {
         for (const line of lines) {
           if (line.trim()) {
             try {
-              const { type, content } = parseStreamingResponse(line);
+              const { type, content } = JSON.parse(line);
+              console.log('[Assistant] Stream chunk type:', type);
               
               switch (type) {
-                case 'citations':
-                  if (Array.isArray(content)) {
-                    currentCitations = (content as Citation[])
-                      .map((citation) => ({
-                        citation_index: Number(citation.citation_index),
-                        debate_id: citation.debate_id,
-                        chunk_text: citation.chunk_text
-                      }))
-                      .sort((a, b) => a.citation_index - b.citation_index);
-                    onStreamingUpdate?.(currentText, currentCitations);
-                  }
-                  break;
-
                 case 'text':
-                case 'finalText':
-                  currentText += typeof content === 'string' ? content : String(content);
-                  onStreamingUpdate?.(currentText, currentCitations);
+                  onStreamingUpdate?.(
+                    content.content || content,
+                    currentCitations,
+                    false
+                  );
                   break;
 
-                case 'error':
-                  throw new Error(typeof content === 'string' ? content : 'Unknown error');
-                  
-                default:
+                case 'finalText':
+                  console.log('[Assistant] Received final text:', content.text);
+                  onStreamingUpdate?.(
+                    content.text,
+                    currentCitations,
+                    true
+                  );
+                  break;
+
+                case 'citations':
+                  currentCitations = content.content || content;
                   break;
               }
             } catch (e) {
-              console.error('Error processing stream:', e);
+              console.error('[Assistant] Error processing stream chunk:', e);
             }
           }
         }
       }
 
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('[Assistant] Search error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-      onStreamingUpdate?.(errorMessage, []);
+      onStreamingUpdate?.(errorMessage, [], false);
       
       toast({
         title: "Search failed",

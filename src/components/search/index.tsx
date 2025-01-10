@@ -19,11 +19,21 @@ import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { useAssistant } from '@/hooks/useAssistant';
 import type { Citation } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import { exportToPDF } from '@/lib/pdf-export';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { SearchParams } from '@/types/search';
 
 const PAGE_SIZE = 10;
 
 export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 'mp' }) {
-  const { state, dispatch } = useSearch();
+  const { state: searchState, dispatch } = useSearch();
   const { user, isEngagedCitizen, isProfessional, loading: authLoading } = useAuth();
   const { recordResearchSearch } = useEngagement();
   const { 
@@ -41,103 +51,98 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   // Active search type
   const [activeSearchType, setActiveSearchType] = useState<'ai' | 'hansard' | 'mp'>(initialTab);
 
-  const [streamingState, setStreamingState] = useState({
-    text: '',
-    citations: [] as Citation[],
-    isComplete: false,
-    isSearching: false
-  });
-
-  const handleStreamingUpdate = useCallback((text: string, citations: Citation[]) => {
-    setStreamingState(prev => ({
-      ...prev,
-      text,
-      citations,
-      isComplete: false
-    }));
-  }, []);
+  const handleStreamingUpdate = useCallback((text: string, citations: Citation[], isFinal: boolean) => {
+    dispatch({ 
+      type: 'SET_AI_SEARCH', 
+      payload: {
+        query: searchState.aiSearch.query,
+        streamingText: text,
+        citations,
+        isFinal
+      }
+    });
+  }, [dispatch, searchState.aiSearch.query]);
 
   const handleStreamingComplete = useCallback(() => {
-    setStreamingState(prev => ({
-      ...prev,
-      isComplete: true
-    }));
-  }, []);
+    dispatch({ 
+      type: 'SET_AI_LOADING', 
+      payload: false 
+    });
+  }, [dispatch]);
 
-  const performSearch = useCallback(async (searchParams: any) => {
+  const [useRecentFiles, setUseRecentFiles] = useState(true);
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportToPDF({
+        title: searchState.searchParams.searchTerm || '',
+        content: activeSearchType === 'ai' 
+          ? searchState.aiSearch.streamingText 
+          : JSON.stringify(searchState.results, null, 2),
+        citations: activeSearchType === 'ai'
+          ? searchState.aiSearch.citations.map(c => c.debate_id)
+          : searchState.results?.Contributions.map(c => c.DebateSectionExtId) || [],
+        date: new Date(),
+      });
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const performSearch = useCallback(async (searchParams: SearchParams) => {
     setLoading(true);
     setError(null);
     
     try {
+      // Update search type in context
+      dispatch({ type: 'SET_SEARCH_TYPE', payload: activeSearchType });
+      
       switch (activeSearchType) {
         case 'ai':
-          // Reset streaming state
-          setStreamingState({
-            text: '',
-            citations: [],
-            isComplete: false,
-            isSearching: true
+          dispatch({ 
+            type: 'SET_AI_LOADING', 
+            payload: true 
+          });
+
+          dispatch({ 
+            type: 'SET_AI_SEARCH', 
+            payload: {
+              query: searchParams.searchTerm || '',
+              streamingText: '',
+              citations: []
+            }
           });
 
           await performFileSearch(
-            searchParams.searchTerm,
-            null, // assistant ID if needed
+            searchParams.searchTerm || '',
+            null,
             handleStreamingUpdate,
-            handleStreamingComplete
+            handleStreamingComplete,
+            useRecentFiles
           );
           break;
-
-        case 'hansard':
-          dispatch({ type: 'SET_LOADING', payload: true });
-          const response = await HansardAPI.search({
+          
+        case 'hansard':          
+          // Set default values for skip/take if not provided
+          const params: SearchParams = {
             ...searchParams,
-            skip: 0,
-            take: PAGE_SIZE,
-          });
+            skip: searchParams.skip || 0,
+            take: searchParams.take || 10,
+            orderBy: searchParams.orderBy || 'SittingDateDesc'
+          };
           
-          if (user?.id) {
-            await recordResearchSearch();
-          }
-
-          dispatch({ type: 'SET_PARAMS', payload: searchParams });
-          dispatch({ type: 'SET_RESULTS', payload: response });
-          break;
-
-        case 'mp':
-          const mpData = await getMPData(searchParams.searchTerm);
+          // Update search params in context
+          dispatch({ type: 'SET_PARAMS', payload: params });
           
-          if (!mpData) {
-            setError(`No MP found matching "${searchParams.searchTerm}"`);
-            setMPData(null);
-            setKeyPoints([]);
-            setTopics([]);
-            return;
-          }
-
-          setMPData(mpData);
+          const results = await HansardAPI.search(params);
           
-          if (isProfessional) {
-            const { data: points } = await getMPKeyPointsByName(mpData.member_id);
-            
-            if (points) {
-              setKeyPoints(points);
-              
-              const topicsMap = new Map<string, AiTopic>();
-              let mentionsCount = 0;
-              
-              points.forEach(point => {
-                mentionsCount++;
-                if (Array.isArray(point.ai_topics)) {
-                  point.ai_topics.forEach(topic => {
-                    // Process topics logic
-                  });
-                }
-              });
-
-              setTopics(Array.from(topicsMap.values()));
-              setTotalMentions(mentionsCount);
-            }
-          }
+          // Update results in context
+          dispatch({ type: 'SET_RESULTS', payload: results });
           break;
       }
     } catch (error) {
@@ -146,7 +151,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     } finally {
       setLoading(false);
     }
-  }, [activeSearchType, performFileSearch, handleStreamingUpdate, handleStreamingComplete]);
+  }, [activeSearchType, performFileSearch, handleStreamingUpdate, handleStreamingComplete, useRecentFiles, dispatch]);
 
   const handleSearchTypeChange = (type: 'ai' | 'hansard' | 'mp') => {
     setActiveSearchType(type);
@@ -157,8 +162,39 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     setError(null);
   };
 
+  const handleLoadMore = useCallback(async () => {
+    if (activeSearchType !== 'hansard' || !searchState.results) return;
+
+    setLoading(true);
+    try {
+      // Calculate new skip value
+      const newSkip = (searchState.searchParams.skip || 0) + (searchState.searchParams.take || 10);
+      
+      // Update search params with new skip value
+      const loadMoreParams: SearchParams = {
+        ...searchState.searchParams,
+        skip: newSkip,
+        take: 10
+      };
+
+      const moreResults = await HansardAPI.search(loadMoreParams);
+
+      // Append new results to existing ones
+      dispatch({ 
+        type: 'APPEND_RESULTS',
+        payload: moreResults
+      });
+
+    } catch (error) {
+      console.error('Error loading more results:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load more results');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeSearchType, searchState.results, searchState.searchParams, dispatch]);
+
   const renderResults = () => {
-    if (loading && !streamingState.text) {
+    if (loading && !searchState.aiSearch.streamingText) {
       return <div className="flex justify-center py-8">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>;
@@ -168,50 +204,86 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
       return <div className="text-red-500 text-center py-4">{error}</div>;
     }
 
+    const renderActionButtons = () => {
+      if (loading || (!searchState.aiSearch.streamingText && !searchState.results?.Contributions?.length)) {
+        return null;
+      }
+
+      return (
+        <div className="flex gap-2 mb-4">
+          <SaveSearchButton
+            searchType={activeSearchType}
+            aiSearch={activeSearchType === 'ai' ? {
+              query: searchState.aiSearch.query,
+              streamingText: searchState.aiSearch.streamingText,
+              citations: searchState.aiSearch.citations,
+            } : undefined}
+            hansardSearch={activeSearchType === 'hansard' ? {
+              query: searchState.searchParams.searchTerm || '',
+              response: searchState.results,
+              queryState: {
+                searchTerm: searchState.searchParams.searchTerm || '',
+                startDate: searchState.searchParams.startDate,
+                endDate: searchState.searchParams.endDate,
+                house: searchState.searchParams.house
+              }
+            } : undefined}
+          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={handleExport}
+                  disabled={isExporting}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Export to PDF
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      );
+    };
+
     switch (activeSearchType) {
       case 'ai':
         return (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              {streamingState.isComplete && (
-                <SaveSearchButton
-                  aiSearch={{
-                    query: state.searchParams.searchTerm || '',
-                    streamingText: streamingState.text,
-                    citations: streamingState.citations,
-                    queryState: {
-                      searchTerm: state.searchParams.searchTerm || '',
-                      startDate: state.searchParams.startDate,
-                      endDate: state.searchParams.endDate,
-                      house: state.searchParams.house
-                    }
-                  }}
-                  searchType="ai"
-                />
-              )}
-            </div>
+            {renderActionButtons()}
             <StreamedResponse
-              streamingText={streamingState.text}
-              citations={streamingState.citations}
-              isLoading={streamingState.isSearching && !streamingState.isComplete}
-              query={state.searchParams.searchTerm || ''}
+              streamingText={searchState.aiSearch.streamingText}
+              citations={searchState.aiSearch.citations}
+              isLoading={searchState.aiSearch.isLoading}
+              query={searchState.aiSearch.query}
             />
           </div>
         );
 
       case 'hansard':
+        const hasMore = Boolean(
+          searchState.results?.TotalContributions && 
+          searchState.results.Contributions.length < searchState.results.TotalContributions
+        );
+
         return (
-          <SearchResults
-            results={state.results?.Contributions || []}
-            isLoading={state.isLoading}
-            totalResults={state.results?.TotalContributions || 0}
-            searchParams={state.searchParams}
-            onSearch={performSearch}
-            onLoadMore={() => {/* Implement load more logic */}}
-            hasMore={Boolean(state.results?.TotalContributions && 
-              state.results.Contributions.length < state.results.TotalContributions)}
-            aiContent={state.results?.aiContent}
-          />
+          <div>
+            {renderActionButtons()}
+            <SearchResults
+              results={searchState.results?.Contributions || []}
+              isLoading={loading}
+              totalResults={searchState.results?.TotalContributions || 0}
+              searchParams={searchState.searchParams}
+              onSearch={performSearch}
+              onLoadMore={handleLoadMore}
+              hasMore={hasMore}
+              aiContent={searchState.results?.aiContent}
+            />
+          </div>
         );
 
       case 'mp':
@@ -255,14 +327,16 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     <div className="space-y-8 mt-8">
       <QueryBuilder
         searchParams={{
-          searchTerm: state.searchParams.searchTerm || '',
-          startDate: state.searchParams.startDate,
-          endDate: state.searchParams.endDate,
-          house: state.searchParams.house
+          searchTerm: searchState.searchParams.searchTerm || '',
+          startDate: searchState.searchParams.startDate,
+          endDate: searchState.searchParams.endDate,
+          house: searchState.searchParams.house
         }}
         onSearch={performSearch}
         searchType={activeSearchType}
         onSearchTypeChange={handleSearchTypeChange}
+        useRecentFiles={useRecentFiles}
+        onToggleRecentFiles={setUseRecentFiles}
       />
 
       {renderResults()}
