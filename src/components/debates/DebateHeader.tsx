@@ -6,7 +6,6 @@ import { locationColors, getDebateType } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import createClient from '@/lib/supabase/client';
 import Link from 'next/link';
-import { PartyCount } from '@/types';
 
 interface DebateHeaderProps {
   extId: string;

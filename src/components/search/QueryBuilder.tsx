@@ -1,21 +1,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar as CalendarIcon, Search as SearchIcon, X } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Badge } from "@/components/ui/badge";
 import { 
   LightbulbIcon, 
   BookOpenIcon, 
   UserIcon,
-  FilterIcon
 } from 'lucide-react';
-import { RefreshCcwIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -72,16 +66,6 @@ interface QueryBuilderProps {
   onToggleRecentFiles?: (value: boolean) => void;
 }
 
-// Add this helper function at the top level
-const getStartOfWeek = () => {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const diff = now.getDate() - dayOfWeek;
-  const startOfWeek = new Date(now.setDate(diff));
-  startOfWeek.setHours(0, 0, 0, 0);
-  return startOfWeek.toISOString();
-};
-
 export function QueryBuilder({ 
   searchParams, 
   onSearch, 
@@ -93,48 +77,13 @@ export function QueryBuilder({
   const router = useRouter();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
-  const today = new Date().toISOString();
-
-  // Update initialization
-  const startOfWeek = getStartOfWeek();
+  
   const [localParams, setLocalParams] = useState({
-    startDate: searchParams.startDate || startOfWeek,
-    endDate: searchParams.endDate || today,
     house: searchParams.house
   });
 
-  // Update hasCustomDates check
-  const [hasCustomDates, setHasCustomDates] = useState(
-    searchParams.startDate !== startOfWeek || 
-    searchParams.endDate !== today
-  );
-
-  const [showFilters, setShowFilters] = useState(false);
-
-  const handleDateChange = (type: 'start' | 'end', date?: Date) => {
-    if (date) {
-      setHasCustomDates(true);
-      setLocalParams(prev => ({
-        ...prev,
-        [type === 'start' ? 'startDate' : 'endDate']: date.toISOString()
-      }));
-    }
-  };
-
-  // Rename and update reset function
-  const resetToCurrentWeek = () => {
-    setLocalParams(prev => ({
-      ...prev,
-      startDate: startOfWeek,
-      endDate: today
-    }));
-    setHasCustomDates(false);
-  };
-
   const handleHouseChange = (house: 'Commons' | 'Lords') => {
     setLocalParams(prev => {
-      // If the house is already selected and it's the only one selected,
-      // clicking it again will deselect it
       if (prev.house === house) {
         return {
           ...prev,
@@ -142,7 +91,6 @@ export function QueryBuilder({
         };
       }
       
-      // If the other house is selected, clicking this one will select both (undefined)
       if (prev.house && prev.house !== house) {
         return {
           ...prev,
@@ -150,7 +98,6 @@ export function QueryBuilder({
         };
       }
       
-      // If no house is selected, clicking one will select it
       return {
         ...prev,
         house: house
@@ -159,7 +106,6 @@ export function QueryBuilder({
   };
 
   const handleSubmit = () => {
-    
     onSearch({
       searchTerm,
       ...localParams
@@ -168,50 +114,10 @@ export function QueryBuilder({
 
   const currentSearchType = searchTypes.find(t => t.id === searchType);
 
-  // Get active filters count only for search types that show filters
+  // Get active filters count - now only for house filter
   const activeFiltersCount = currentSearchType?.showFilters ? [
-    localParams.startDate,
-    localParams.endDate,
     localParams.house
   ].filter(Boolean).length : 0;
-
-  // Predefined date ranges
-  const dateRanges = {
-    currentParliament: {
-      label: 'Current Parliament',
-      startDate: '2024-07-04', // Current parliament start date
-      endDate: new Date().toISOString()
-    },
-    // Can add more predefined ranges here
-  } as const;
-
-  const handleDateRangeSelect = (value: string) => {
-    if (value === 'custom') {
-      return; // Keep current custom dates
-    }
-    
-    const range = dateRanges[value as keyof typeof dateRanges];
-    if (range) {
-      setLocalParams(prev => ({
-        ...prev,
-        startDate: range.startDate,
-        endDate: range.endDate
-      }));
-    }
-  };
-
-  // Get current date range type
-  const getCurrentDateRangeType = () => {
-    if (!localParams.startDate || !localParams.endDate) return 'custom';
-    
-    // Check if dates match any predefined range
-    if (localParams.startDate === dateRanges.currentParliament.startDate &&
-        localParams.endDate === dateRanges.currentParliament.endDate) {
-      return 'currentParliament';
-    }
-    
-    return 'custom';
-  };
 
   return (
     <div className="space-y-4">
@@ -272,7 +178,14 @@ export function QueryBuilder({
           </Button>
         </div>
 
-        {/* Add the toggle for AI search type */}
+        {/* Add scope indicator for Hansard search */}
+        {searchType === 'hansard' && (
+          <p className="text-sm text-muted-foreground">
+            Showing most recent results
+          </p>
+        )}
+
+        {/* AI Recent Files Toggle */}
         {searchType === 'ai' && (
           <div className="flex items-center space-x-2">
             <Switch
@@ -309,178 +222,35 @@ export function QueryBuilder({
         </div>
       )}
 
-      {/* Only show filters section for search types that support it */}
-      {currentSearchType?.showFilters && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+      {/* House Filter - Only for Hansard search */}
+      {searchType === 'hansard' && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
+              variant={localParams.house === 'Commons' || !localParams.house ? "default" : "outline"}
               size="sm"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => handleHouseChange('Commons')}
               className={cn(
-                "text-muted-foreground hover:text-foreground",
-                showFilters && "text-foreground"
+                "flex-1",
+                localParams.house === 'Commons' && "bg-[#006E46] text-white hover:bg-[#005538]",
+                !localParams.house && "bg-[#006E46] text-white hover:bg-[#005538] opacity-90"
               )}
             >
-              <FilterIcon className="h-4 w-4 mr-2" />
-              Filters
-              {activeFiltersCount > 0 && (
-                <Badge 
-                  variant="secondary" 
-                  className="ml-2"
-                >
-                  {activeFiltersCount}
-                </Badge>
-              )}
+              Commons
             </Button>
-            
-            {activeFiltersCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setLocalParams({
-                    startDate: '',
-                    endDate: '',
-                    house: undefined
-                  });
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Clear all
-              </Button>
-            )}
+            <Button
+              variant={localParams.house === 'Lords' || !localParams.house ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleHouseChange('Lords')}
+              className={cn(
+                "flex-1",
+                localParams.house === 'Lords' && "bg-[#9C1A39] text-white hover:bg-[#8B1733]",
+                !localParams.house && "bg-[#9C1A39] text-white hover:bg-[#8B1733] opacity-90"
+              )}
+            >
+              Lords
+            </Button>
           </div>
-
-          {showFilters && (
-            <div className="p-4 border rounded-lg space-y-4">
-              {/* Date Range */}
-              {currentSearchType?.showDate && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Date Range</label>
-                    {hasCustomDates && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetToCurrentWeek}
-                        className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                      >
-                        <RefreshCcwIcon className="h-3 w-3 mr-1" />
-                        Reset to Current Week
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={cn(
-                            "w-[140px] justify-start",
-                            !hasCustomDates && "border-dashed"
-                          )}
-                        >
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          {localParams.startDate ? 
-                            format(new Date(localParams.startDate), "d MMM yyyy") : 
-                            "Start date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <div className="p-2 border-b">
-                          <p className="text-sm text-muted-foreground">
-                            Current Parliament began on 4 July 2024
-                          </p>
-                        </div>
-                        <CalendarComponent
-                          mode="single"
-                          selected={localParams.startDate ? new Date(localParams.startDate) : undefined}
-                          onSelect={(date) => handleDateChange('start', date)}
-                          disabled={(date) => 
-                            localParams.endDate ? date > new Date(localParams.endDate) : false
-                          }
-                          defaultMonth={new Date(startOfWeek)}
-                        />
-                      </PopoverContent>
-                    </Popover>
-
-                    <span className="text-muted-foreground">to</span>
-
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className={cn(
-                            "w-[140px] justify-start",
-                            !hasCustomDates && "border-dashed"
-                          )}
-                        >
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          {localParams.endDate ? 
-                            format(new Date(localParams.endDate), "d MMM yyyy") : 
-                            "End date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <CalendarComponent
-                          mode="single"
-                          selected={localParams.endDate ? new Date(localParams.endDate) : undefined}
-                          onSelect={(date) => handleDateChange('end', date)}
-                          disabled={(date) => 
-                            localParams.startDate ? date < new Date(localParams.startDate) : false
-                          }
-                          defaultMonth={new Date()}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {!hasCustomDates && (
-                    <p className="text-sm text-muted-foreground">
-                      Showing results from the current week
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* House Selector */}
-              {currentSearchType?.showHouse && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">House</label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={localParams.house === 'Commons' || !localParams.house ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleHouseChange('Commons')}
-                      className={cn(
-                        "flex-1",
-                        localParams.house === 'Commons' && "bg-[#006E46] text-white hover:bg-[#005538]",
-                        !localParams.house && "bg-[#006E46] text-white hover:bg-[#005538] opacity-90"
-                      )}
-                    >
-                      Commons
-                    </Button>
-                    <Button
-                      variant={localParams.house === 'Lords' || !localParams.house ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleHouseChange('Lords')}
-                      className={cn(
-                        "flex-1",
-                        localParams.house === 'Lords' && "bg-[#9C1A39] text-white hover:bg-[#8B1733]",
-                        !localParams.house && "bg-[#9C1A39] text-white hover:bg-[#8B1733] opacity-90"
-                      )}
-                    >
-                      Lords
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>

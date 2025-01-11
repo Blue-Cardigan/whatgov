@@ -1,5 +1,3 @@
-import type { KeyPoint, Speaker } from "@/types";
-
 export interface Citation {
     citation_index: number;
     debate_id: string;
@@ -43,9 +41,8 @@ export interface SaveSearchParams {
   citations: string[];
   queryState?: {
     searchTerm: string;
-    startDate?: string;
-    endDate?: string;
     house?: 'Commons' | 'Lords';
+    dateRange?: string;
     parts?: string[];
     skip?: number;
     take?: number;
@@ -98,23 +95,12 @@ export interface HansardApiConfig {
 }
   
 export interface SearchParams {
-    searchTerm?: string;
+    searchTerm: string;
     house?: 'Commons' | 'Lords';
-    orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
-    startDate?: string;
-    endDate?: string;
-    spokenBy?: string;
-    memberId?: number;
-    memberIds?: number[];
-    divisionId?: number;
-    seriesNumber?: number;
-    volumeNumber?: number;
-    columnNumber?: string;
-    section?: number;
-    debateSectionId?: number;
     skip?: number;
     take?: number;
-    enableAI?: boolean;
+    orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
+    resultType?: 'all' | 'debates' | 'written-statements' | 'written-answers' | 'corrections' | 'divisions' | 'members';
 }
   
 export interface SearchResponse {
@@ -137,30 +123,10 @@ export interface SearchResponse {
     Debates: SearchDebateItem[];
     Divisions: SearchDebateItem[];
     Committees: SearchDebateItem[];
-    aiContent?: Record<string, SearchResultAIContent>;
-}
-
-
-export interface SearchResultAIContent {
-    id: string;
-    ext_id: string;
-    title: string;
-    ai_title?: string;
-    date: string;
-    type: string;
-    house: string;
-    location: string;
-    ai_summary?: string;
-    ai_key_points?: KeyPoint[];
-    speaker_count?: number;
-    party_count?: Record<string, number>;
-    speakers?: Speaker[];
 }
   
 export interface Member {
     MemberId: number;
-    DodsId: number;
-    PimsId: number;
     DisplayAs: string;
     ListAs: string;
     FullTitle: string;

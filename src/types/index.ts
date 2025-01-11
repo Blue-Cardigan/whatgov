@@ -7,34 +7,14 @@ export interface FetchOptions {
   forceRefresh?: boolean;
 }
 
-export interface FeedItem {
-    id: string;
+export interface DebateItem {
     ext_id: string;
     title: string;
     date: string;
-    location: string;
+    house: string;
     type: string;
-    ai_title: string;
-    ai_summary: string;
-    ai_overview: string;
-    ai_tone: 'neutral' | 'contentious' | 'collaborative';
-    ai_key_points: KeyPoint[];
-    ai_topics: AiTopics;
-    ai_comment_thread: CommentThread[]; 
-    speaker_count: number;
-    speakers: Speaker[];
-    contribution_count: number;
-    party_count: PartyCount;
-
-    interest_score: number;
-    interest_factors: InterestFactors;
-    engagement_count: number;
-
-    ai_question: string;
-    ai_question_topic: string;
-    ai_question_ayes: number;
-    ai_question_noes: number;
-    divisions?: Division[];
+    analysis: string;
+    speaker_points: string[];
   }
 
 export interface Speaker {
@@ -44,15 +24,6 @@ export interface Speaker {
   member_id: number;
   memberId?: string;
   constituency?: string;
-}
-
-export interface PartyCount {
-  Conservative?: number;
-  Labour?: number;
-  "Liberal Democrat"?: number;
-  "Scottish National Party"?: number;
-  Other?: number;
-  [key: string]: number | undefined;
 }
 
 export type MPData = {

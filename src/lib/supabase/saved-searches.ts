@@ -15,11 +15,15 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
       queryState = {
         searchTerm: params.query,
         house: params.queryState?.house,
-        startDate: params.queryState?.startDate || new Date('2024-07-04').toISOString(),
-        endDate: params.queryState?.endDate || new Date().toISOString(),
         parts: [params.query] // Store original query for exact matching
       };
     }
+
+    // Ensure repeat_on is properly formatted as a JSONB object
+    const repeat_on = params.repeat_on ? {
+      frequency: params.repeat_on.frequency,
+      dayOfWeek: params.repeat_on.dayOfWeek
+    } : null;
 
     // Insert the saved search first
     const { data: savedSearch, error: searchError } = await supabase
@@ -29,8 +33,8 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
         query: params.query,
         response: params.response,
         citations: params.citations || [],
-        query_state: queryState ? queryState : null,
-        search_type: params.searchType
+        query_state: queryState || null,
+        search_type: params.searchType,
       })
       .select()
       .single();
@@ -38,16 +42,15 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
     if (searchError) throw searchError;
     if (!savedSearch) throw new Error('Failed to create saved search');
 
-    // If repeat is enabled, create the schedule
-    if (params.repeat_on) {
+    // If repeat is enabled, create the schedule with properly formatted JSONB
+    if (repeat_on) {
       const { error: scheduleError } = await supabase
         .from('saved_search_schedules')
         .insert({
           search_id: savedSearch.id,
           user_id: user.id,
           is_active: true,
-          repeat_on: JSON.stringify(params.repeat_on)
-          // next_run_at will be set automatically by the trigger
+          repeat_on // This will be properly stored as JSONB
         });
 
       if (scheduleError) {

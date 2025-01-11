@@ -35,12 +35,7 @@ interface SaveSearchButtonProps {
     response: any;
     queryState?: {
       searchTerm: string;
-      startDate?: string;
-      endDate?: string;
       house?: 'Commons' | 'Lords';
-      parts?: string[];
-      skip?: number;
-      take?: number;
     };
   };
   mpSearch?: {
@@ -76,14 +71,13 @@ export function SaveSearchButton({
       setIsSaving(true);
 
       const repeat_on = repeatEnabled ? {
+        dayOfWeek: parseInt(repeatDay, 10),
         frequency: 'weekly' as const,
-        dayOfWeek: parseInt(repeatDay, 10)
       } : null;
 
       switch (searchType) {
         case 'ai':
-          if (!aiSearch) break;
-          if (!aiSearch.query.trim()) {
+          if (!aiSearch?.query.trim()) {
             throw new Error('Search query cannot be empty');
           }
           await saveSearch({
@@ -91,38 +85,45 @@ export function SaveSearchButton({
             response: aiSearch.streamingText,
             citations: aiSearch.citations.map(c => c.debate_id),
             searchType: 'ai',
+            queryState: {
+              searchTerm: aiSearch.query
+            },
             repeat_on
           });
           break;
 
         case 'hansard':
-          if (!hansardSearch) break;
-          if (!hansardSearch.query.trim()) {
+          if (!hansardSearch?.query.trim()) {
             throw new Error('Search query cannot be empty');
           }
           await saveSearch({
             query: hansardSearch.query,
-            response: JSON.stringify(hansardSearch.response),
+            response: hansardSearch.response,
             citations: [],
             queryState: hansardSearch.queryState,
             searchType: 'hansard',
             repeat_on
           });
           break;
+
+        default:
+          throw new Error('Unsupported search type');
       }
 
       toast({
         title: "Search saved",
         description: repeatEnabled 
           ? `Search will repeat every ${WEEKDAYS.find(d => d.value === repeatDay)?.label}` 
-          : "You can find this in your saved searches"
+          : "You can find this in your saved searches",
+        duration: 3000
       });
       setIsOpen(false);
     } catch (error) {
       toast({
         title: "Error saving search",
         description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setIsSaving(false);

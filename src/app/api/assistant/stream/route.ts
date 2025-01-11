@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { getLastSevenDays } from '@/lib/utils';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,19 +7,35 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
-    const { query, assistantId, useRecentFiles } = await request.json();
+    const { query, useRecentFiles } = await request.json();
     console.log('[Assistant Stream] Starting with query:', query);
     console.log('[Assistant Stream] Using recent files:', useRecentFiles);
 
-    const lastSevenDays = getLastSevenDays();
-
-    let finalQuery = query;
+    // Get the weekly assistant ID if useRecentFiles is true
+    let assistantId = process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
 
     if (useRecentFiles) {
-      finalQuery += `\n\nThe current date is ${new Date().toISOString().split('T')[0]}. Your response must only use the most recent debates, from these days: ${lastSevenDays.join(', ')}`
-    }
+      // Get current date
+      const currentDate = new Date();
+      // Get Monday of current week (0 = Sunday, 1 = Monday, etc)
+      const diff = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() === 0 ? -6 : 1);
+      const monday = new Date(currentDate.setDate(diff));
+      const mondayString = monday.toISOString().split('T')[0];
 
-    console.log('[Assistant Stream] Final query:', finalQuery);
+      const supabase = await createServerSupabaseClient();
+      const { data: vectorStore, error } = await supabase
+        .from('vector_stores')
+        .select('assistant_id')
+        .eq('store_name', `Weekly Debates ${mondayString}`)
+        .single();
+
+      if (error) {
+        console.error('[Assistant Stream] Error fetching weekly assistant:', error);
+      } else if (vectorStore?.assistant_id) {
+        console.log('[Assistant Stream] Using weekly assistant:', vectorStore.assistant_id);
+        assistantId = vectorStore.assistant_id;
+      }
+    }
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -30,12 +46,12 @@ export async function POST(request: Request) {
 
           await openai.beta.threads.messages.create(thread.id, {
             role: "user",
-            content: finalQuery
+            content: query // Using original query without modification
           });
 
           const runStream = await openai.beta.threads.runs.createAndStream(
             thread.id,
-            { assistant_id: assistantId || process.env.DEFAULT_OPENAI_ASSISTANT_ID! }
+            { assistant_id: assistantId }
           );
 
           let citations: Array<{ citation_index: number; debate_id: string }> = [];

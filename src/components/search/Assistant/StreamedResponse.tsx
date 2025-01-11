@@ -1,7 +1,7 @@
 import { Citation } from '@/types/search';
 import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
-import { Children, ReactNode, useEffect } from 'react';
+import { Children, cloneElement, isValidElement, ReactNode } from 'react';
 import { InlineCitation } from '@/components/ui/inline-citation';
 import { LoadingAnimation } from '@/components/ui/loading-animation';
 
@@ -163,9 +163,21 @@ export function StreamedResponse({ streamingText, citations, isLoading }: Stream
           ),
           li: ({ children }) => (
             <li className="mb-1 text-foreground">
-              {Children.map(children, (child: ReactNode) =>
-                typeof child === 'string' ? renderWithCitations(child) : child
-              )}
+              {Children.map(children, (child: ReactNode) => {
+                if (typeof child === 'string') {
+                  return renderWithCitations(child);
+                }
+                // Handle nested paragraph elements inside list items
+                if (isValidElement(child)) {
+                  return cloneElement<any>(child, {
+                    ...child.props,
+                    children: typeof child.props.children === 'string' 
+                      ? renderWithCitations(child.props.children)
+                      : child.props.children
+                  });
+                }
+                return child;
+              })}
             </li>
           ),
           blockquote: ({ children }) => (
@@ -196,7 +208,7 @@ export function StreamedResponse({ streamingText, citations, isLoading }: Stream
     return <LoadingAnimation />;
   }
 
-  if (!streamingText) {
+  if (!isLoading && !streamingText) {
     return (
       <div className="text-muted-foreground text-center py-8">
         <p>Enter a query to search through parliamentary records...</p>
@@ -206,13 +218,9 @@ export function StreamedResponse({ streamingText, citations, isLoading }: Stream
 
   return (
     <div className="prose dark:prose-invert prose-slate max-w-none">
-      {streamingText && (
-        <>
-          <MarkdownWithCitations text={streamingText} />
-          {citations?.length > 0 && (
-            <CitationsList citations={citations} />
-          )}
-        </>
+      <MarkdownWithCitations text={streamingText} />
+      {citations?.length > 0 && (
+        <CitationsList citations={citations} />
       )}
     </div>
   );

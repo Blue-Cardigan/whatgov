@@ -1,7 +1,6 @@
 import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
 import type { FetchOptions } from '@/types';
-import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
 
 export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
@@ -102,12 +101,12 @@ export class HansardAPI {
     }
   }
 
-  static async search(params: SearchParams): Promise<SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }> {
+  static async search(params: SearchParams): Promise<SearchResponse> {
     const url = constructSearchUrl(params);
     const cacheKey = `search:${url}:ai='0'}`;
 
     try {
-      const cachedResult = await this.fetchWithCache<SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }>(
+      const cachedResult = await this.fetchWithCache<SearchResponse>(
         cacheKey,
         async () => {
           const searchResults = await this.fetchWithErrorHandling<SearchResponse>(url);

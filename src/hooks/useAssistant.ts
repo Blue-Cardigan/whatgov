@@ -57,8 +57,7 @@ export function useAssistant() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
 
-      setIsLoading(false);
-
+      let hasStartedStreaming = false;
       const decoder = new TextDecoder();
       let buffer = '';
       let currentCitations: Citation[] = [];
@@ -70,6 +69,11 @@ export function useAssistant() {
           console.log('[Assistant] Stream complete');
           onComplete?.();
           break;
+        }
+
+        if (!hasStartedStreaming) {
+          setIsLoading(false);
+          hasStartedStreaming = true;
         }
 
         buffer += decoder.decode(value, { stream: true });

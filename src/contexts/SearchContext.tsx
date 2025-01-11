@@ -1,13 +1,12 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
-import type { Citation, SearchResponse, SearchResultAIContent } from '@/types/search';
+import type { Citation, SearchParams, SearchResponse } from '@/types/search';
 
 
 interface SearchState {
-  results: (SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }) | null;
+  results: SearchResponse | null;
   searchParams: SearchParams;
-  aiContent?: Record<string, SearchResultAIContent>;
   isLoading: boolean;
   aiSearch: {
     query: string;
@@ -20,11 +19,6 @@ interface SearchState {
     query: string;
     mpId?: string;
     keywords: string[];
-  };
-  pagination: {
-    currentPage: number;
-    pageSize: number;
-    totalPages: number;
   };
 }
 
@@ -39,21 +33,13 @@ type SearchAction =
   | { type: 'CLEAR_AI_SEARCH' }
   | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
   | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
-  | { type: 'CLEAR_MP_SEARCH' }
-  | { type: 'SET_PAGINATION'; payload: Partial<SearchState['pagination']> };
-
-export interface SearchParams {
-  searchTerm: string;
-  skip?: number;
-  take?: number;
-  orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
-  resultType?: 'all' | 'debates' | 'written-statements' | 'written-answers' | 'corrections' | 'divisions' | 'members';
-}
+  | { type: 'CLEAR_MP_SEARCH' };
 
 const initialState: SearchState = {
   results: null,
   searchParams: {
     searchTerm: '',
+    house: undefined,
     skip: 0,
     take: 10,
     orderBy: 'SittingDateDesc',
@@ -72,11 +58,6 @@ const initialState: SearchState = {
     mpId: undefined,
     keywords: []
   },
-  pagination: {
-    currentPage: 1,
-    pageSize: 10,
-    totalPages: 1
-  }
 };
 
 const SearchContext = createContext<{
@@ -182,20 +163,18 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
           ...state,
           aiSearch: {
             ...state.aiSearch,
-            query: action.payload.query,
-            // For final text, completely replace the streaming text
+            query: action.payload.query || state.searchParams.searchTerm,
             streamingText: action.payload.streamingText,
             citations: action.payload.citations
           }
         };
       }
       
-      // For non-final updates, append to existing text
       return {
         ...state,
         aiSearch: {
           ...state.aiSearch,
-          query: action.payload.query,
+          query: action.payload.query || state.searchParams.searchTerm,
           streamingText: state.aiSearch.streamingText + action.payload.streamingText,
           citations: action.payload.citations
         }
@@ -204,8 +183,10 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         aiSearch: {
-          ...initialState.aiSearch,
-          isLoading: true
+          query: '',
+          streamingText: '',
+          citations: [],
+          isLoading: false
         }
       };
     case 'SET_SEARCH_TYPE':
@@ -225,14 +206,6 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         mpSearch: initialState.mpSearch
-      };
-    case 'SET_PAGINATION':
-      return {
-        ...state,
-        pagination: {
-          ...state.pagination,
-          ...action.payload
-        }
       };
     default:
       return state;

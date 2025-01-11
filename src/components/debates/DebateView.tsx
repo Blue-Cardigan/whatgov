@@ -1,6 +1,6 @@
 'use client';
 
-import { FeedItem, PartyCount } from '@/types';
+import { DebateItem } from '@/types';
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Share2, ExternalLink, Search, Clock, UserIcon } from 'lucide-react';
 import { format } from 'date-fns';
@@ -20,7 +20,7 @@ import type { HansardDebateResponse, HansardContribution } from "@/types/hansard
 import { FormattedMarkdown } from '@/lib/utils';
 
 interface DebateViewProps {
-  debate: FeedItem;
+  debate: DebateItem;
   hansardData?: HansardDebateResponse;
 }
 
@@ -33,7 +33,7 @@ const constructHansardUrl = (debateExtId: string, title: string, date: string) =
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 };
 
-function DebateActions({ debate, onShare }: { debate: FeedItem; onShare: () => void }) {
+function DebateActions({ debate, onShare }: { debate: DebateItem; onShare: () => void }) {
   return (
     <div className="flex items-center gap-2">
       {debate.ext_id && (
@@ -138,7 +138,7 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
     try {
       await navigator.share({
         title: debate.title,
-        text: debate.ai_summary,
+        text: debate.analysis,
         url: window.location.href,
       });
     } catch {
@@ -342,9 +342,9 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
           "flex flex-col"
         )}
         style={{ 
-          borderLeftColor: locationColors[debate.location] || '#2b2b2b',
+          borderLeftColor: locationColors[debate.house] || '#2b2b2b',
           borderLeftStyle: 'solid',
-          backgroundImage: `linear-gradient(to right, ${locationColors[debate.location]}15, transparent 10%)`,
+          backgroundImage: `linear-gradient(to right, ${locationColors[debate.house]}15, transparent 10%)`,
         }}
       >
         {/* Meta Information Header */}
@@ -414,8 +414,7 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
 }
 
 // Reuse the MetaInformation component with slight modifications
-function MetaInformation({ item }: { item: FeedItem }) {
-  const partyCount = item.party_count as PartyCount;
+function MetaInformation({ item }: { item: DebateItem }) {
   const debateType = useMemo(() => getDebateType(item.type), [item.type]);
   
   const formattedDate = useMemo(() => {

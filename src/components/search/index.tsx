@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEngagement } from '@/hooks/useEngagement';
 import { HansardAPI } from '@/lib/search-api';
 import { QueryBuilder } from './QueryBuilder';
-import { SearchResults } from './Hansard/SearchResults';
+import { DateRange, SearchResults } from './Hansard/SearchResults';
 import { StreamedResponse } from './Assistant/StreamedResponse';
 import { MPProfileCard } from '@/components/MPProfile/MPProfileCard';
 import { MPKeyPoints } from '@/components/MPProfile/MPKeyPoints';
@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { SearchParams } from '@/types/search';
+import { LoadingAnimation } from '@/components/ui/loading-animation';
 
 const PAGE_SIZE = 10;
 
@@ -55,13 +56,13 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     dispatch({ 
       type: 'SET_AI_SEARCH', 
       payload: {
-        query: searchState.aiSearch.query,
+        query: searchState.searchParams.searchTerm || '',
         streamingText: text,
         citations,
         isFinal
       }
     });
-  }, [dispatch, searchState.aiSearch.query]);
+  }, [dispatch, searchState.searchParams.searchTerm]);
 
   const handleStreamingComplete = useCallback(() => {
     dispatch({ 
@@ -99,27 +100,24 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     setError(null);
     
     try {
-      // Update search type in context
       dispatch({ type: 'SET_SEARCH_TYPE', payload: activeSearchType });
       
       switch (activeSearchType) {
         case 'ai':
           dispatch({ 
+            type: 'CLEAR_AI_SEARCH' 
+          });
+          
+          dispatch({ 
             type: 'SET_AI_LOADING', 
             payload: true 
           });
 
-          dispatch({ 
-            type: 'SET_AI_SEARCH', 
-            payload: {
-              query: searchParams.searchTerm || '',
-              streamingText: '',
-              citations: []
-            }
-          });
+          const searchTerm = searchParams.searchTerm || '';
+          dispatch({ type: 'SET_PARAMS', payload: { searchTerm } });
 
           await performFileSearch(
-            searchParams.searchTerm || '',
+            searchTerm,
             null,
             handleStreamingUpdate,
             handleStreamingComplete,
@@ -128,20 +126,15 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           break;
           
         case 'hansard':          
-          // Set default values for skip/take if not provided
           const params: SearchParams = {
             ...searchParams,
-            skip: searchParams.skip || 0,
-            take: searchParams.take || 10,
-            orderBy: searchParams.orderBy || 'SittingDateDesc'
+            searchTerm: searchParams.searchTerm || '',
+            house: searchParams.house || 'Commons',
           };
           
-          // Update search params in context
           dispatch({ type: 'SET_PARAMS', payload: params });
           
           const results = await HansardAPI.search(params);
-          
-          // Update results in context
           dispatch({ type: 'SET_RESULTS', payload: results });
           break;
       }
@@ -162,42 +155,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     setError(null);
   };
 
-  const handleLoadMore = useCallback(async () => {
-    if (activeSearchType !== 'hansard' || !searchState.results) return;
-
-    setLoading(true);
-    try {
-      // Calculate new skip value
-      const newSkip = (searchState.searchParams.skip || 0) + (searchState.searchParams.take || 10);
-      
-      // Update search params with new skip value
-      const loadMoreParams: SearchParams = {
-        ...searchState.searchParams,
-        skip: newSkip,
-        take: 10
-      };
-
-      const moreResults = await HansardAPI.search(loadMoreParams);
-
-      // Append new results to existing ones
-      dispatch({ 
-        type: 'APPEND_RESULTS',
-        payload: moreResults
-      });
-
-    } catch (error) {
-      console.error('Error loading more results:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load more results');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeSearchType, searchState.results, searchState.searchParams, dispatch]);
-
   const renderResults = () => {
     if (loading && !searchState.aiSearch.streamingText) {
-      return <div className="flex justify-center py-8">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>;
+      return <LoadingAnimation />;
     }
 
     if (error) {
@@ -214,18 +174,16 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           <SaveSearchButton
             searchType={activeSearchType}
             aiSearch={activeSearchType === 'ai' ? {
-              query: searchState.aiSearch.query,
+              query: searchState.searchParams.searchTerm || '',
               streamingText: searchState.aiSearch.streamingText,
               citations: searchState.aiSearch.citations,
             } : undefined}
             hansardSearch={activeSearchType === 'hansard' ? {
               query: searchState.searchParams.searchTerm || '',
-              response: searchState.results,
+              response: searchState.results?.TotalContributions || [],
               queryState: {
                 searchTerm: searchState.searchParams.searchTerm || '',
-                startDate: searchState.searchParams.startDate,
-                endDate: searchState.searchParams.endDate,
-                house: searchState.searchParams.house
+                house: searchState.searchParams.house,
               }
             } : undefined}
           />
@@ -265,11 +223,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         );
 
       case 'hansard':
-        const hasMore = Boolean(
-          searchState.results?.TotalContributions && 
-          searchState.results.Contributions.length < searchState.results.TotalContributions
-        );
-
         return (
           <div>
             {renderActionButtons()}
@@ -278,14 +231,10 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
               isLoading={loading}
               totalResults={searchState.results?.TotalContributions || 0}
               searchParams={searchState.searchParams}
-              onSearch={performSearch}
-              onLoadMore={handleLoadMore}
-              hasMore={hasMore}
-              aiContent={searchState.results?.aiContent}
             />
           </div>
         );
-
+        
       case 'mp':
         return (
           mpData && (
@@ -328,8 +277,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
       <QueryBuilder
         searchParams={{
           searchTerm: searchState.searchParams.searchTerm || '',
-          startDate: searchState.searchParams.startDate,
-          endDate: searchState.searchParams.endDate,
           house: searchState.searchParams.house
         }}
         onSearch={performSearch}

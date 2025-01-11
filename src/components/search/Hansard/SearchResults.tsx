@@ -1,17 +1,11 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, FileText, AlertCircle, MessageSquare } from "lucide-react";
 import { Contribution } from "@/types/search";
-import { useCallback, useMemo } from 'react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useMemo } from 'react';
 import type { SearchParams } from '@/types/search';
-import type { SearchResultAIContent } from "@/types/search";
 import { ResultCard } from './ResultCard';
-import { SaveSearchButton } from '../SaveSearchButton';
-import type { SearchResponse } from '@/types/search';
 
 interface GroupedContributions {
   debateExtId: string;
@@ -20,48 +14,21 @@ interface GroupedContributions {
   firstContribution: Contribution;
 }
 
+export enum DateRange {
+  CurrentWeek = 'current-week',
+}
+
 export function SearchResults({ 
   results, 
   isLoading, 
   totalResults,
   searchParams,
-  onSearch,
-  onLoadMore,
-  hasMore,
-  aiContent
 }: {
   results: Contribution[];
   isLoading: boolean;
   totalResults: number;
   searchParams: SearchParams;
-  onSearch: (params: Partial<SearchParams>) => void;
-  onLoadMore: () => void;
-  hasMore: boolean;
-  aiContent?: Record<string, SearchResultAIContent>;
 }) {
-  const handleSortOrderChange = useCallback((orderBy: SearchParams['orderBy']) => {
-    onSearch({ orderBy });
-  }, [onSearch]);
-
-  // Memoize helper functions
-  const getTotalResults = useCallback(() => {
-    if (!totalResults) return "0";
-    return totalResults.toLocaleString();
-  }, [totalResults]);
-
-  const getResultTypeIcon = useCallback((section: string) => {
-    switch (section) {
-      case 'Written Statements':
-        return <FileText className="h-4 w-4" />;
-      case 'Written Answers':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'Written Corrections':
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <MessageSquare className="h-4 w-4" />;
-    }
-  }, []);
-
   // Add grouping logic
   const groupedResults = useMemo(() => {
     const groups = results.reduce((acc, contribution) => {
@@ -81,74 +48,6 @@ export function SearchResults({
     return Object.values(groups);
   }, [results]);
 
-  // Update the categorization to match the API response structure
-  const getResultMetadata = useCallback((): SearchResponse => {
-    const metadata: SearchResponse = {
-      TotalMembers: new Set(results.map(c => c.MemberId).filter(Boolean)).size,
-      TotalContributions: totalResults,
-      TotalWrittenStatements: 0,
-      TotalWrittenAnswers: 0,
-      TotalCorrections: 0,
-      TotalPetitions: 0,
-      TotalDebates: groupedResults.length,
-      TotalCommittees: 0,
-      TotalDivisions: 0,
-      SearchTerms: searchParams.searchTerm ? [searchParams.searchTerm] : [],
-      Members: [],
-      Contributions: results,
-      WrittenStatements: [],
-      WrittenAnswers: [],
-      Corrections: [],
-      Petitions: [],
-      Debates: [],
-      Divisions: [],
-      Committees: []
-    };
-
-    // Categorize contributions based on their section
-    results.forEach(contribution => {
-      switch (contribution.DebateSection) {
-        case 'Written Statements':
-          metadata.WrittenStatements.push(contribution);
-          metadata.TotalWrittenStatements++;
-          break;
-        case 'Written Answers':
-          metadata.WrittenAnswers.push(contribution);
-          metadata.TotalWrittenAnswers++;
-          break;
-        case 'Written Corrections':
-          metadata.Corrections.push(contribution);
-          metadata.TotalCorrections++;
-          break;
-      }
-    });
-
-    return metadata;
-  }, [results, totalResults, groupedResults, searchParams.searchTerm]);
-
-  // Update the SaveSearchButton section
-  const renderSaveButton = () => {
-    if (!results.length || isLoading) return null;
-
-    return (
-      <SaveSearchButton 
-        hansardSearch={{
-          query: searchParams.searchTerm || '',
-          queryState: {
-            searchTerm: searchParams.searchTerm || '',
-            startDate: searchParams.startDate,
-            endDate: searchParams.endDate,
-            house: searchParams.house || 'Commons',
-            skip: searchParams.skip,
-            take: searchParams.take,
-          },
-          response: getResultMetadata()
-        }}
-        searchType="hansard"
-      />
-    );
-  };
-
   return (
     <div className="space-y-4">
       {/* Results Header */}
@@ -161,31 +60,11 @@ export function SearchResults({
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">
-                {getTotalResults()} results found
-              </p>
               <p className="text-xs text-muted-foreground">
-                Including {results.length} contributions
+                Top {results.length} contributions
               </p>
             </>
           )}
-        </div>
-
-        <div className="flex items-center gap-4">
-          {renderSaveButton()}
-          <Select
-            value={searchParams.orderBy}
-            onValueChange={(value) => handleSortOrderChange(value as SearchParams['orderBy'])}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Sort by date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="SittingDateDesc">Most Recent</SelectItem>
-              <SelectItem value="SittingDateAsc">Oldest First</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -196,32 +75,18 @@ export function SearchResults({
         ) : !groupedResults?.length ? (
           <EmptyState searchTerm={searchParams.searchTerm} />
         ) : (
-          groupedResults.map((group: GroupedContributions) => (
-            <ResultCard
-              key={group.debateExtId}
-              result={group.firstContribution}
-              contributions={group.contributions}
-              searchTerm={searchParams.searchTerm}
-              getResultTypeIcon={getResultTypeIcon}
-              aiContent={aiContent?.[group.debateExtId]}
-            />
-          ))
+          <>
+            {groupedResults.map((group: GroupedContributions) => (
+              <ResultCard
+                key={group.debateExtId}
+                result={group.firstContribution}
+                contributions={group.contributions}
+                searchTerm={searchParams.searchTerm}
+              />
+            ))}
+          </>
         )}
       </div>
-
-      {/* Load More */}
-      {hasMore && !isLoading && (
-        <div className="flex justify-center mt-6">
-          <Button 
-            variant="outline" 
-            onClick={onLoadMore}
-            className="gap-2"
-          >
-            Load More Results
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

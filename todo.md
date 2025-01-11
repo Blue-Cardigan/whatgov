@@ -6,11 +6,14 @@ MVP:
       [ ] Run script daily with cron job
 [/] Fix assistant citations when streaming
 [/] Unique page for each debate
-[-] Update to maintain a weekly Vector DB
+[/] Maintain a weekly Vector DB
+[/] Update UI toggle to use assistant with weekly or all-time VDB
+[/] Fix streamedResponse to show loading and remove previous content when a new search starts
 [ ] Create endpoint and GH Action to batch process saved searches
       [/] Endpoint generates response and updates table for assistant
       [ ] Endpoint searches hansard and updates if new results
       [ ] Endpoint called by cron job daily
+[ ] Create cron job to search and find saved debates
 [ ] Implement notifications for unread debates
       [ ] In app
 [/] Use whatson api to complete calendar
