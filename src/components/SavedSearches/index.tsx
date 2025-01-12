@@ -420,8 +420,13 @@ export function SavedSearches() {
           {/* Search Results */}
           <div className="space-y-4">
             {(() => {
-              // First, pair up Hansard searches
-              const hansardPairs = filteredSearches
+              // First, filter based on selected type
+              const filteredByType = filterType === 'all' 
+                ? filteredSearches 
+                : filteredSearches.filter(group => group.mainSearch.search_type === filterType);
+
+              // Then pair up Hansard searches
+              const hansardPairs = filteredByType
                 .filter(group => group.mainSearch.search_type === 'hansard')
                 .reduce<Array<typeof filteredSearches>>((pairs, group, index, array) => {
                   if (index % 2 === 0) {
@@ -434,7 +439,7 @@ export function SavedSearches() {
                 }, []);
 
               // Get AI searches
-              const aiSearches = filteredSearches
+              const aiSearches = filteredByType
                 .filter(group => group.mainSearch.search_type === 'ai');
 
               // Combine and sort all items (pairs count as one item)
@@ -450,6 +455,15 @@ export function SavedSearches() {
                   content: group
                 }))
               ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+              // If no results after filtering, show message
+              if (mixedResults.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No {filterType === 'all' ? '' : filterType} searches found
+                  </div>
+                );
+              }
 
               // Render the mixed results
               return mixedResults.map((item, index) => {
