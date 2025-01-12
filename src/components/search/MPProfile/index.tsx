@@ -6,10 +6,8 @@ import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/mpsearch";
 import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { useAuth } from "@/contexts/AuthContext";
 import { MPProfileCard } from "./MPProfileCard";
-import { MPKeyPoints } from "./MPKeyPoints";
 import { MPLinks } from "./MPLinks";
 import { SubscriptionCTA } from "@/components/ui/subscription-cta";
-import { MPTopics } from "./MPTopics";
 import { AiTopic, MPData } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignInPrompt } from "@/components/ui/sign-in-prompt";
@@ -248,19 +246,9 @@ export function MPProfile() {
                   <>
                     {(isProfessional || mpData.member_id.toString() === profile?.mp) ? (
                       <>
-                        {!topicsLoading && topics.length > 0 && (
-                          <div className="pt-2">
-                            <MPTopics topics={topics} totalMentions={totalMentions} />
-                          </div>
-                        )}
-                        {!keyPointsLoading && keyPoints.length > 0 && (
-                          <div className="pt-2">
-                            <MPKeyPoints keyPoints={keyPoints} />
-                          </div>
-                        )}
                         {(topicsLoading || keyPointsLoading) && (
                           <div className="space-y-4">
-                            <Skeleton className="h-[200px] w-full" />
+                            <Skeleton className="h-[200px s] w-full" />
                             <Skeleton className="h-[150px] w-full" />
                           </div>
                         )}

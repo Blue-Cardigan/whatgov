@@ -62,6 +62,7 @@ export interface SavedSearch {
   citations: Citation[];
   created_at: string;
   search_type: 'ai' | 'hansard' | 'mp' | 'question';
+  is_unread: boolean;
   query_state?: {
     parts?: string;
     startDate?: string;

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useSearch } from '@/contexts/SearchContext';
 
 const searchTypes = [
   { 
@@ -44,8 +45,8 @@ const searchTypes = [
     description: "Search MP votes and contributions",
     placeholder: "Search for an MP by name...",
     showHouse: false, 
-    showDate: true,
-    showFilters: true
+    showDate: false,
+    showFilters: false
   }
 ] as const;
 
@@ -74,6 +75,7 @@ export function QueryBuilder({
   useRecentFiles,
   onToggleRecentFiles
 }: QueryBuilderProps) {
+  const { dispatch } = useSearch();
   const router = useRouter();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
@@ -106,10 +108,20 @@ export function QueryBuilder({
   };
 
   const handleSubmit = () => {
-    onSearch({
-      searchTerm,
-      ...localParams
-    });
+    if (searchTerm.trim()) {
+      const params = {
+        searchTerm: searchTerm.trim(),
+        ...localParams
+      };
+
+      // Clear previous results when switching search types
+      if (searchType === 'mp') {
+        dispatch({ type: 'CLEAR_RESULTS' });
+        dispatch({ type: 'CLEAR_AI_SEARCH' });
+      }
+
+      onSearch(params);
+    }
   };
 
   const currentSearchType = searchTypes.find(t => t.id === searchType);

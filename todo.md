@@ -11,13 +11,14 @@ MVP:
 [/] Fix streamedResponse to show loading and remove previous content when a new search starts
 [ ] Create endpoint and GH Action to batch process saved searches
       [/] Endpoint generates response and updates table for assistant
-      [ ] Endpoint searches hansard and updates if new results
-      [ ] Endpoint called by cron job daily
+      [ ] Endpoint repeats search and updates, indicating if the top result has changed
+      [-] Endpoint called by cron job daily
 [ ] Create cron job to search and find saved debates
-[ ] Implement notifications for unread debates
-      [ ] In app
+      [ ] Endpoint searches hansard 
+[/] Implement notifications for unread debates
+      [/] In app
 [/] Use whatson api to complete calendar
-[ ] Add 'coming soon' for additional mp data
+[/] Add 'coming soon' for additional mp data
 
 Next:
 [ ] Generate daily and weekly highlights of relevant debates

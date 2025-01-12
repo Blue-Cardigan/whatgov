@@ -33,7 +33,15 @@ export function SavedSearches() {
         const [searchesResponse, calendarResponse] = await Promise.all([
           supabase
             .from('saved_searches')
-            .select('*')
+            .select(`
+              *,
+              saved_search_schedules (
+                id,
+                is_active,
+                repeat_on,
+                next_run_at
+              )
+            `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
           
@@ -55,6 +63,28 @@ export function SavedSearches() {
 
     fetchData();
   }, [user, supabase]);
+
+  useEffect(() => {
+    return () => {
+      if (!user?.id || searches.length === 0) return;
+
+      const unreadSearchIds = searches
+        .filter(search => search.is_unread)
+        .map(search => search.id);
+
+      if (unreadSearchIds.length === 0) return;
+
+      supabase
+        .from('saved_searches')
+        .update({ is_unread: false })
+        .in('id', unreadSearchIds)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to mark searches as read:', error);
+          }
+        });
+    };
+  }, [user, searches, supabase]);
 
   const handleDeleteSearch = async (searchId: string) => {
     if (!user?.id) return;
@@ -159,6 +189,8 @@ export function SavedSearches() {
   // Split searches into AI and Hansard
   const aiSearches = searches.filter(s => s.search_type === 'ai');
   const hansardSearches = searches.filter(s => s.search_type === 'hansard');
+  const unreadAiCount = aiSearches.filter(s => s.is_unread).length;
+  const unreadHansardCount = hansardSearches.filter(s => s.is_unread).length;
 
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8">
@@ -166,7 +198,14 @@ export function SavedSearches() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* AI Searches - Takes up 2 columns */}
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="text-xl font-semibold mb-4">AI Research Assistant</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">AI Research Assistant</h2>
+            {unreadAiCount > 0 && (
+              <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+                {unreadAiCount} new
+              </span>
+            )}
+          </div>
           {aiSearches.map((search) => (
             <SearchCard 
               key={search.id} 
@@ -195,7 +234,14 @@ export function SavedSearches() {
           {/* Hansard Searches Section */}
           {hansardSearches.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Hansard Search</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Hansard Search</h2>
+                {unreadHansardCount > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+                    {unreadHansardCount} new
+                  </span>
+                )}
+              </div>
               {hansardSearches.map((search) => (
                 <SearchCard 
                   key={search.id} 

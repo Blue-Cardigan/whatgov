@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { MPData, AiTopic } from '@/types';
 import type { MPKeyPointDetails } from '@/lib/supabase/mpsearch';
-import type { Citation } from '@/types/search';
+import type { Citation, Contribution } from '@/types/search';
 
 interface SaveSearchButtonProps {
   searchType: 'ai' | 'hansard' | 'mp';
@@ -32,7 +32,19 @@ interface SaveSearchButtonProps {
   };
   hansardSearch?: {
     query: string;
-    response: any;
+    response: {
+      TotalMembers: number;
+      TotalContributions: number;
+      TotalWrittenStatements: number;
+      TotalWrittenAnswers: number;
+      TotalCorrections: number;
+      TotalPetitions: number;
+      TotalDebates: number;
+      TotalCommittees: number;
+      TotalDivisions: number;
+      SearchTerms: string[];
+      Contributions: Contribution[];
+    };
     queryState?: {
       searchTerm: string;
       house?: 'Commons' | 'Lords';
@@ -96,10 +108,29 @@ export function SaveSearchButton({
           if (!hansardSearch?.query.trim()) {
             throw new Error('Search query cannot be empty');
           }
+
+          // Format the response to include only summary and first result
+          const formattedResponse = {
+            summary: {
+              TotalMembers: hansardSearch.response.TotalMembers,
+              TotalContributions: hansardSearch.response.TotalContributions,
+              TotalWrittenStatements: hansardSearch.response.TotalWrittenStatements,
+              TotalWrittenAnswers: hansardSearch.response.TotalWrittenAnswers,
+              TotalCorrections: hansardSearch.response.TotalCorrections,
+              TotalPetitions: hansardSearch.response.TotalPetitions,
+              TotalDebates: hansardSearch.response.TotalDebates,
+              TotalCommittees: hansardSearch.response.TotalCommittees,
+              TotalDivisions: hansardSearch.response.TotalDivisions,
+            },
+            searchTerms: hansardSearch.response.SearchTerms,
+            firstResult: hansardSearch.response.Contributions?.[0] || null,
+            date: new Date().toISOString().split('T')[0],
+          };
+
           await saveSearch({
             query: hansardSearch.query,
-            response: hansardSearch.response,
-            citations: [],
+            response: JSON.stringify(formattedResponse),
+            citations: [formattedResponse.firstResult?.ContributionExtId].filter(Boolean),
             queryState: hansardSearch.queryState,
             searchType: 'hansard',
             repeat_on

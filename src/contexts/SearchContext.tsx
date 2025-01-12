@@ -4,6 +4,12 @@ import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode }
 import type { Citation, SearchParams, SearchResponse } from '@/types/search';
 
 
+interface MPSearchState {
+  query: string;
+  mpId?: string;
+  keywords: string[];
+}
+
 interface SearchState {
   results: SearchResponse | null;
   searchParams: SearchParams;
@@ -15,11 +21,7 @@ interface SearchState {
     isLoading: boolean;
   };
   searchType?: 'ai' | 'hansard' | 'mp';
-  mpSearch?: {
-    query: string;
-    mpId?: string;
-    keywords: string[];
-  };
+  mpSearch: MPSearchState;
 }
 
 type SearchAction =
@@ -198,8 +200,8 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
       return {
         ...state,
         mpSearch: {
-          ...action.payload,
-          keywords: action.payload.keywords || []
+          ...state.mpSearch,
+          ...action.payload
         }
       };
     case 'CLEAR_MP_SEARCH':

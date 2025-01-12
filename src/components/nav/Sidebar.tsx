@@ -21,6 +21,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSupabase } from '@/components/providers/SupabaseProvider';
+import { useEffect, useState } from "react";
 
 interface SidebarProps {
   className?: string;
@@ -30,6 +32,47 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut, subscription } = useAuth();
+  const supabase = useSupabase();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      if (!user?.id) return;
+      
+      const { count, error } = await supabase
+        .from('saved_searches')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_unread', true);
+        
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        return;
+      }
+      
+      setUnreadCount(count || 0);
+    }
+    
+    fetchUnreadCount();
+    
+    const channel = supabase
+      .channel('saved_searches_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'saved_searches',
+          filter: `user_id=eq.${user?.id}`
+        },
+        () => fetchUnreadCount()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase]);
 
   const handleSignOut = async () => {
     try {
@@ -188,7 +231,8 @@ export function Sidebar({ className }: SidebarProps) {
     {
       title: "Saved Searches",
       href: "/saved",
-      icon: Bookmark
+      icon: Bookmark,
+      badge: unreadCount > 0 ? unreadCount : undefined
     }
   ];
 
@@ -202,9 +246,14 @@ export function Sidebar({ className }: SidebarProps) {
               "h-16 mt-6",
               "justify-center lg:justify-start",
               pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-              "lg:w-full"
+              "lg:w-full relative"
             )}>
               <item.icon className="h-8 w-8" />
+              {item.badge && (
+                <span className="absolute top-3 right-3 lg:right-12 h-5 w-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
+                  {item.badge}
+                </span>
+              )}
               <span className="hidden lg:block ml-4 font-semibold text-xl">
                 {item.title}
               </span>
@@ -213,6 +262,7 @@ export function Sidebar({ className }: SidebarProps) {
         </TooltipTrigger>
         <TooltipContent side="right" className="lg:hidden text-xl">
           <span>{item.title}</span>
+          {item.badge && ` (${item.badge})`}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

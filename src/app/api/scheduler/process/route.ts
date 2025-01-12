@@ -6,7 +6,29 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const assistantIDToUse = process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
+const defaultAssistantID = process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
+
+type SavedSearch = {
+  query: string;
+  query_state: {
+    house?: string;
+    parts?: string[];
+  } | null;
+  search_type: 'ai' | 'hansard' | 'calendar';
+  repeat_on: {
+    frequency: string;
+    dayOfWeek: number;
+  };
+}
+
+type Schedule = {
+  id: string;
+  is_active: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  user_id: string;
+  saved_searches: SavedSearch;
+}
 
 export async function POST(request: Request) {
   console.log('[Scheduler] Starting scheduled search processing');
@@ -55,7 +77,7 @@ export async function POST(request: Request) {
         )
       `)
       .eq('is_active', true)
-      .or('next_run_at.lte.now()');
+      .or('next_run_at.lte.now()') as { data: Schedule[] | null, error: any };
 
     console.log(`[Scheduler] Query conditions:`, {
       is_active: true,
@@ -86,13 +108,33 @@ export async function POST(request: Request) {
 
         let response: string;
         let citations: string[] = [];
-
         let finalQuery = schedule.saved_searches.query;
 
         if (schedule.saved_searches.search_type === 'ai') {
-          // Process AI search
+          // Get current week's assistant ID
+          const currentDate = new Date();
+          const diff = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() === 0 ? -6 : 1);
+          const monday = new Date(currentDate.setDate(diff));
+          const mondayString = monday.toISOString().split('T')[0];
+
+          let assistantId = defaultAssistantID; // Default fallback
+
+          const { data: vectorStore, error: vectorStoreError } = await supabase
+            .from('vector_stores')
+            .select('assistant_id')
+            .eq('store_name', `Weekly Debates ${mondayString}`)
+            .single();
+
+          if (vectorStoreError) {
+            console.error('[Scheduler] Error fetching weekly assistant:', vectorStoreError);
+          } else if (vectorStore?.assistant_id) {
+            console.log('[Scheduler] Using weekly assistant:', vectorStore.assistant_id);
+            assistantId = vectorStore.assistant_id;
+          }
+
+          // Process AI search with selected assistant
           const thread = await openai.beta.threads.create();
-          console.log(`[Scheduler] Created thread ${thread.id} for AI search`);
+          console.log(`[Scheduler] Created thread ${thread.id} for AI search using assistant ${assistantId}`);
 
           finalQuery += `\n\nThe current date is ${new Date().toISOString().split('T')[0]}. Your response must only use the most recent debates, from these days: ${getLastSevenDays().join(', ')}`
           
@@ -102,7 +144,7 @@ export async function POST(request: Request) {
           });
 
           const run = await openai.beta.threads.runs.create(thread.id, {
-            assistant_id: assistantIDToUse
+            assistant_id: assistantId
           });
 
           let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
@@ -146,7 +188,7 @@ export async function POST(request: Request) {
           } else {
             searchParams.set('searchTerm', schedule.saved_searches.query);
           }
-
+          
           const url = `${process.env.NEXT_PUBLIC_URL}/api/hansard/search?${searchParams.toString()}`;
           console.log(`[Scheduler] Fetching Hansard data from: ${url}`);
 
@@ -156,7 +198,38 @@ export async function POST(request: Request) {
           }
 
           const hansardData = await hansardResponse.json();
-          response = JSON.stringify(hansardData);
+
+          // Get the first result from any available result type
+          const firstResult = hansardData.Contributions?.[0] || null;
+
+          // Format the response to include date context and first result
+          const formattedResponse = {
+            date: todayDate,
+            results: {
+              summary: {
+                totalResults: 
+                  (hansardData.TotalDebates || 0) +
+                  (hansardData.TotalWrittenStatements || 0) +
+                  (hansardData.TotalWrittenAnswers || 0) +
+                  (hansardData.TotalContributions || 0)
+              },
+              firstResult,
+              totals: {
+                TotalMembers: hansardData.TotalMembers || 0,
+                TotalContributions: hansardData.TotalContributions || 0,
+                TotalWrittenStatements: hansardData.TotalWrittenStatements || 0,
+                TotalWrittenAnswers: hansardData.TotalWrittenAnswers || 0,
+                TotalCorrections: hansardData.TotalCorrections || 0,
+                TotalPetitions: hansardData.TotalPetitions || 0,
+                TotalDebates: hansardData.TotalDebates || 0,
+                TotalCommittees: hansardData.TotalCommittees || 0,
+                TotalDivisions: hansardData.TotalDivisions || 0
+              },
+              searchTerms: hansardData.SearchTerms || []
+            }
+          };
+
+          response = JSON.stringify(formattedResponse);
         } else {
           throw new Error(`Unsupported search type: ${schedule.saved_searches.search_type}`);
         }

@@ -8,10 +8,8 @@ import { HansardAPI } from '@/lib/search-api';
 import { QueryBuilder } from './QueryBuilder';
 import { DateRange, SearchResults } from './Hansard/SearchResults';
 import { StreamedResponse } from './Assistant/StreamedResponse';
-import { MPProfileCard } from '@/components/MPProfile/MPProfileCard';
-import { MPKeyPoints } from '@/components/MPProfile/MPKeyPoints';
-import { MPLinks } from '@/components/MPProfile/MPLinks';
-import { MPTopics } from '@/components/MPProfile/MPTopics';
+import { MPProfileCard } from '@/components/search/MPProfile/MPProfileCard';
+import { MPLinks } from '@/components/search/MPProfile/MPLinks';
 import { SubscriptionCTA } from '@/components/ui/subscription-cta';
 import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/mpsearch";
 import type { MPData, AiTopic } from "@/types";
@@ -30,6 +28,9 @@ import {
 } from "@/components/ui/tooltip";
 import type { SearchParams } from '@/types/search';
 import { LoadingAnimation } from '@/components/ui/loading-animation';
+import { Card } from "@/components/ui/card";
+import { Clock } from "lucide-react";
+import { Check } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -103,6 +104,25 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
       dispatch({ type: 'SET_SEARCH_TYPE', payload: activeSearchType });
       
       switch (activeSearchType) {
+        case 'mp':
+          const mpData = await getMPData(searchParams.searchTerm);
+          if (mpData) {
+            const { data: keyPoints } = await getMPKeyPointsByName(mpData.member_id);
+            dispatch({ 
+              type: 'SET_MP_SEARCH', 
+              payload: { 
+                query: searchParams.searchTerm,
+                mpId: mpData.member_id.toString(),
+                keywords: []
+              }
+            });
+            setMPData(mpData);
+            setKeyPoints(keyPoints);
+          } else {
+            setError(`No MP found matching "${searchParams.searchTerm}"`);
+          }
+          break;
+
         case 'ai':
           dispatch({ 
             type: 'CLEAR_AI_SEARCH' 
@@ -180,10 +200,22 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
             } : undefined}
             hansardSearch={activeSearchType === 'hansard' ? {
               query: searchState.searchParams.searchTerm || '',
-              response: searchState.results?.TotalContributions || [],
+              response: {
+                TotalMembers: searchState.results?.Members?.length || 0,
+                TotalContributions: searchState.results?.Contributions?.length || 0,
+                TotalWrittenStatements: searchState.results?.WrittenStatements?.length || 0,
+                TotalWrittenAnswers: searchState.results?.WrittenAnswers?.length || 0,
+                TotalCorrections: searchState.results?.Corrections?.length || 0,
+                TotalPetitions: searchState.results?.Petitions?.length || 0,
+                TotalDebates: searchState.results?.Debates?.length || 0,
+                TotalCommittees: searchState.results?.Committees?.length || 0,
+                TotalDivisions: searchState.results?.Divisions?.length || 0,
+                SearchTerms: searchState.results?.SearchTerms || [],
+                Contributions: searchState.results?.Contributions || [],
+              },
               queryState: {
                 searchTerm: searchState.searchParams.searchTerm || '',
-                house: searchState.searchParams.house,
+                house: searchState.searchParams.house || 'Commons',
               }
             } : undefined}
           />
@@ -227,7 +259,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           <div>
             {renderActionButtons()}
             <SearchResults
-              results={searchState.results?.Contributions || []}
+              results={searchState.results}
               isLoading={loading}
               totalResults={searchState.results?.TotalContributions || 0}
               searchParams={searchState.searchParams}
@@ -236,35 +268,48 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         );
         
       case 'mp':
-        return (
-          mpData && (
-            <div className="space-y-6">
-              <MPProfileCard mpData={mpData} />
-              <MPLinks mpData={mpData} />
-              {isProfessional || isEngagedCitizen ? (
-                <>
-                  {topics.length > 0 && (
-                    <MPTopics topics={topics} totalMentions={totalMentions} />
-                  )}
-                  {keyPoints.length > 0 && (
-                    <MPKeyPoints keyPoints={keyPoints} />
-                  )}
-                </>
-              ) : (
-                <SubscriptionCTA
-                  title={isEngagedCitizen ? "Upgrade to view other MPs' activity" : "Upgrade to track MP activity"}
-                  description={isEngagedCitizen 
-                    ? "Get access to detailed insights for all MPs with a Professional subscription."
-                    : "Get detailed insights into MPs' parliamentary contributions, voting records, and key positions."}
-                  features={[
-                    "View key points for any MP",
-                    "Compare MPs' positions on issues",
-                    "Track multiple MPs' activities"
-                  ]}
-                />
-              )}
-            </div>
-          )
+        return mpData && (
+          <div className="space-y-6">
+            <MPProfileCard mpData={mpData} />
+            <MPLinks mpData={mpData} />
+            {isProfessional || isEngagedCitizen ? (
+              <Card className="p-6 bg-muted/50">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold">Coming Soon</h3>
+                  </div>
+                  <p className="text-muted-foreground">
+                    We're working on analyzing parliamentary data to provide detailed insights into MP activities and positions. Check back soon!
+                  </p>
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-primary" />
+                      <span className="text-sm">Track MP voting patterns</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-primary" />
+                      <span className="text-sm">View key debate contributions</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-primary" />
+                      <span className="text-sm">Analyze position changes over time</span>
+                    </li>
+                  </ul>
+                </div>
+              </Card>
+            ) : (
+              <SubscriptionCTA
+                title="Upgrade to track MP activity"
+                description="Get detailed insights into MPs' parliamentary contributions and positions."
+                features={[
+                  "View key points for any MP",
+                  "Track MP activities and votes",
+                  "Compare MPs' positions on issues"
+                ]}
+              />
+            )}
+          </div>
         );
 
       default:
