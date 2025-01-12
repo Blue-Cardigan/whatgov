@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getLastSevenDays } from '@/lib/utils';
+import { SearchResponse } from '@/types/search';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -15,10 +16,6 @@ type SavedSearch = {
     parts?: string[];
   } | null;
   search_type: 'ai' | 'hansard' | 'calendar';
-  repeat_on: {
-    frequency: string;
-    dayOfWeek: number;
-  };
 }
 
 type Schedule = {
@@ -27,6 +24,10 @@ type Schedule = {
   last_run_at: string | null;
   next_run_at: string | null;
   user_id: string;
+  repeat_on: {
+    frequency: string;
+    dayOfWeek: number;
+  };
   saved_searches: SavedSearch;
 }
 
@@ -44,6 +45,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Get search type from request body
+    const body = await request.json().catch(() => ({}));
+    const searchType = body.searchType as 'ai' | 'hansard' | undefined;
+
     // Create service role client to bypass RLS
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,7 +66,7 @@ export async function POST(request: Request) {
     
     console.log('[Scheduler] Starting query with service role...');
     
-    const { data: schedules, error: schedulesError } = await supabase
+    const query = supabase
       .from('saved_search_schedules')
       .select(`
         id,
@@ -69,15 +74,23 @@ export async function POST(request: Request) {
         last_run_at,
         next_run_at,
         user_id,
+        repeat_on,
         saved_searches!inner (
           query,
           query_state,
-          search_type,
-          repeat_on
+          search_type
         )
       `)
       .eq('is_active', true)
-      .or('next_run_at.lte.now()') as { data: Schedule[] | null, error: any };
+      .or('next_run_at.lte.now()');
+
+    // Add search type filter if specified
+    if (searchType) {
+      query.eq('saved_searches.search_type', searchType);
+      console.log(`[Scheduler] Filtering for search type: ${searchType}`);
+    }
+
+    const { data: schedules, error: schedulesError } = await query as { data: Schedule[] | null, error: any };
 
     console.log(`[Scheduler] Query conditions:`, {
       is_active: true,
@@ -108,6 +121,7 @@ export async function POST(request: Request) {
 
         let response: string;
         let citations: string[] = [];
+        let hasChanged: boolean = false;
         let finalQuery = schedule.saved_searches.query;
 
         if (schedule.saved_searches.search_type === 'ai') {
@@ -175,18 +189,17 @@ export async function POST(request: Request) {
             }
           }
 
+          hasChanged = false;
         } else if (schedule.saved_searches.search_type === 'hansard') {
-          // Process Hansard search
-          console.log(`[Scheduler] Processing Hansard search with query state:`, schedule.saved_searches.query_state);
+          console.log(`[Scheduler] Processing Hansard search with query:`, schedule.saved_searches.query);
           
-          // Construct search params from query_state
+          // For Hansard searches, use the stored query directly as it may contain advanced search directives
           const searchParams = new URLSearchParams();
-          if (schedule.saved_searches.query_state) {
-            const { house, parts } = schedule.saved_searches.query_state;
-            if (house) searchParams.set('house', house);
-            if (parts) searchParams.set('searchTerm', parts.join(' '));
-          } else {
-            searchParams.set('searchTerm', schedule.saved_searches.query);
+          searchParams.set('searchTerm', schedule.saved_searches.query);
+          
+          // Add house filter if present
+          if (schedule.saved_searches.query_state?.house) {
+            searchParams.set('house', schedule.saved_searches.query_state.house);
           }
           
           const url = `${process.env.NEXT_PUBLIC_URL}/api/hansard/search?${searchParams.toString()}`;
@@ -197,39 +210,55 @@ export async function POST(request: Request) {
             throw new Error(`Hansard API error: ${hansardResponse.status}`);
           }
 
-          const hansardData = await hansardResponse.json();
+          const hansardData = await hansardResponse.json() as SearchResponse;
+          console.log(`[Scheduler] Hansard data:`, hansardData);
 
-          // Get the first result from any available result type
-          const firstResult = hansardData.Contributions?.[0] || null;
+          // Get the first result from any available result type, prioritizing Contributions
+          const firstResult = 
+            hansardData.Contributions?.[0] || 
+            hansardData.WrittenStatements?.[0] || 
+            hansardData.WrittenAnswers?.[0] || 
+            hansardData.Corrections?.[0] || 
+            null;
 
-          // Format the response to include date context and first result
+          // Format the response to match SaveSearchButton format
           const formattedResponse = {
-            date: todayDate,
-            results: {
-              summary: {
-                totalResults: 
-                  (hansardData.TotalDebates || 0) +
-                  (hansardData.TotalWrittenStatements || 0) +
-                  (hansardData.TotalWrittenAnswers || 0) +
-                  (hansardData.TotalContributions || 0)
-              },
-              firstResult,
-              totals: {
-                TotalMembers: hansardData.TotalMembers || 0,
-                TotalContributions: hansardData.TotalContributions || 0,
-                TotalWrittenStatements: hansardData.TotalWrittenStatements || 0,
-                TotalWrittenAnswers: hansardData.TotalWrittenAnswers || 0,
-                TotalCorrections: hansardData.TotalCorrections || 0,
-                TotalPetitions: hansardData.TotalPetitions || 0,
-                TotalDebates: hansardData.TotalDebates || 0,
-                TotalCommittees: hansardData.TotalCommittees || 0,
-                TotalDivisions: hansardData.TotalDivisions || 0
-              },
-              searchTerms: hansardData.SearchTerms || []
-            }
+            summary: {
+              TotalMembers: hansardData.TotalMembers || 0,
+              TotalContributions: hansardData.TotalContributions || 0,
+              TotalWrittenStatements: hansardData.TotalWrittenStatements || 0,
+              TotalWrittenAnswers: hansardData.TotalWrittenAnswers || 0,
+              TotalCorrections: hansardData.TotalCorrections || 0,
+              TotalPetitions: hansardData.TotalPetitions || 0,
+              TotalDebates: hansardData.TotalDebates || 0,
+              TotalCommittees: hansardData.TotalCommittees || 0,
+              TotalDivisions: hansardData.TotalDivisions || 0
+            },
+            searchTerms: hansardData.SearchTerms || [],
+            firstResult,
+            date: todayDate
           };
 
+          // Get the last stored result for comparison
+          const { data: lastSearch, error: lastSearchError } = await supabase
+            .from('saved_searches')
+            .select('response')
+            .eq('user_id', schedule.user_id)
+            .eq('query', schedule.saved_searches.query)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (lastSearchError) {
+            console.error('[Scheduler] Error fetching last search:', lastSearchError);
+          }
+
+          // Parse the last search response and compare first results
+          const lastFirstResult = lastSearch ? JSON.parse(lastSearch.response).firstResult : null;
+          hasChanged = JSON.stringify(firstResult) !== JSON.stringify(lastFirstResult);
+
           response = JSON.stringify(formattedResponse);
+          citations = firstResult ? [firstResult.ContributionExtId] : [];
         } else {
           throw new Error(`Unsupported search type: ${schedule.saved_searches.search_type}`);
         }
@@ -244,7 +273,7 @@ export async function POST(request: Request) {
             citations,
             query_state: schedule.saved_searches.query_state,
             search_type: schedule.saved_searches.search_type,
-            repeat_on: schedule.saved_searches.repeat_on
+            has_changed: hasChanged
           });
 
         if (saveError) {
@@ -253,7 +282,7 @@ export async function POST(request: Request) {
         }
 
         // Update schedule timestamps
-        const nextRunDate = calculateNextRunDate(schedule.saved_searches.repeat_on);
+        const nextRunDate = calculateNextRunDate(schedule.repeat_on);
         const { error: updateError } = await supabase
           .from('saved_search_schedules')
           .update({

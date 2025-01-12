@@ -9,24 +9,17 @@ export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
 export function constructSearchUrl(params: SearchParams): string {
   const searchParams = new URLSearchParams();
   
-  // Add each parameter with the correct prefix
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      // Skip the house parameter if both houses are selected
-      if (key === 'house' && value === 'Commons,Lords') {
-        return;
-      }
-      
-      // Handle arrays specially (like memberIds)
-      if (Array.isArray(value)) {
-        value.forEach(item => {
-          searchParams.append(`queryParameters.${key}`, item.toString());
-        });
-      } else {
-        searchParams.append(`queryParameters.${key}`, value.toString());
-      }
-    }
-  });
+  // Handle advanced search parameters
+  if (params.searchTerm) {
+    // The searchTerm will already be formatted with the correct directives
+    // from the QueryBuilder's constructSearchQuery method
+    searchParams.append('queryParameters.searchTerm', params.searchTerm);
+  }
+  
+  // Add other parameters
+  if (params.house) {
+    searchParams.append('queryParameters.house', params.house);
+  }
 
   return `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/hansard/search?${searchParams.toString()}`;
 }

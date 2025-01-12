@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import type { SavedSearch } from '@/types/search';
@@ -76,7 +76,7 @@ export function SavedSearches() {
 
       supabase
         .from('saved_searches')
-        .update({ is_unread: false })
+        .update({ is_unread: false, has_changed: false })
         .in('id', unreadSearchIds)
         .then(({ error }) => {
           if (error) {
@@ -150,6 +150,24 @@ export function SavedSearches() {
     }
   };
 
+  // Group searches by query
+  const groupedSearches = useMemo(() => {
+    const groups = searches.reduce((acc, search) => {
+      const key = `${search.query}-${search.search_type}`;
+      if (!acc[key]) {
+        acc[key] = {
+          mainSearch: search,
+          relatedSearches: []
+        };
+      } else {
+        acc[key].relatedSearches.push(search);
+      }
+      return acc;
+    }, {} as Record<string, { mainSearch: SavedSearch, relatedSearches: SavedSearch[] }>);
+
+    return Object.values(groups);
+  }, [searches]);
+
   if (!user) {
     return (
       <div className="container max-w-4xl mx-auto px-4 py-8">
@@ -196,7 +214,7 @@ export function SavedSearches() {
     <div className="container max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Saved Items</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* AI Searches - Takes up 2 columns */}
+        {/* AI Searches */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">AI Research Assistant</h2>
@@ -206,51 +224,42 @@ export function SavedSearches() {
               </span>
             )}
           </div>
-          {aiSearches.map((search) => (
-            <SearchCard 
-              key={search.id} 
-              search={search} 
-              onDelete={() => handleDeleteSearch(search.id)}
-            />
-          ))}
+          {groupedSearches
+            .filter(group => group.mainSearch.search_type === 'ai')
+            .map(group => (
+              <SearchCard 
+                key={group.mainSearch.id}
+                search={group.mainSearch}
+                relatedSearches={group.relatedSearches}
+                onDelete={() => handleDeleteSearch(group.mainSearch.id)}
+                user={user}
+              />
+            ))}
         </div>
 
-        {/* Right Column - Hansard Searches and Calendar Items */}
+        {/* Hansard Searches */}
         <div className="space-y-8">
-          {/* Calendar Items Section */}
-          {calendarItems.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Saved Events</h2>
-              {calendarItems.map((item) => (
-                <CalendarCard
-                  key={item.id}
-                  item={item}
-                  onDelete={() => handleDeleteCalendarItem(item.id)}
-                />
-              ))}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Hansard Search</h2>
+              {unreadHansardCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+                  {unreadHansardCount} new
+                </span>
+              )}
             </div>
-          )}
-
-          {/* Hansard Searches Section */}
-          {hansardSearches.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Hansard Search</h2>
-                {unreadHansardCount > 0 && (
-                  <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-                    {unreadHansardCount} new
-                  </span>
-                )}
-              </div>
-              {hansardSearches.map((search) => (
+            {groupedSearches
+              .filter(group => group.mainSearch.search_type === 'hansard')
+              .map(group => (
                 <SearchCard 
-                  key={search.id} 
-                  search={search}
-                  onDelete={() => handleDeleteSearch(search.id)}
+                  key={group.mainSearch.id}
+                  search={group.mainSearch}
+                  relatedSearches={group.relatedSearches}
+                  onDelete={() => handleDeleteSearch(group.mainSearch.id)}
+                  user={user}
                 />
               ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

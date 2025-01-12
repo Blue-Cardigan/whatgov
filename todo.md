@@ -9,9 +9,10 @@ MVP:
 [/] Maintain a weekly Vector DB
 [/] Update UI toggle to use assistant with weekly or all-time VDB
 [/] Fix streamedResponse to show loading and remove previous content when a new search starts
+[ ] Include member search in hansard search
 [ ] Create endpoint and GH Action to batch process saved searches
       [/] Endpoint generates response and updates table for assistant
-      [ ] Endpoint repeats search and updates, indicating if the top result has changed
+      [-] Endpoint repeats search and updates, indicating if the top result has changed
       [-] Endpoint called by cron job daily
 [ ] Create cron job to search and find saved debates
       [ ] Endpoint searches hansard 

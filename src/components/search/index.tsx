@@ -259,7 +259,27 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           <div>
             {renderActionButtons()}
             <SearchResults
-              results={searchState.results}
+              results={searchState.results || {
+                TotalMembers: 0,
+                TotalContributions: 0,
+                TotalWrittenStatements: 0,
+                TotalWrittenAnswers: 0,
+                TotalCorrections: 0,
+                TotalPetitions: 0,
+                TotalDebates: 0,
+                TotalCommittees: 0,
+                TotalDivisions: 0,
+                SearchTerms: [],
+                Members: [],
+                Contributions: [],
+                WrittenStatements: [],
+                WrittenAnswers: [],
+                Corrections: [],
+                Petitions: [],
+                Debates: [],
+                Divisions: [],
+                Committees: []
+              }}
               isLoading={loading}
               totalResults={searchState.results?.TotalContributions || 0}
               searchParams={searchState.searchParams}

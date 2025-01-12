@@ -3,7 +3,7 @@ import type { SavedSearch } from '@/types/search';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Download, Trash2, Clock, Bell, BellRing, ArrowUpRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Trash2, Clock, Bell, BellRing, ArrowUpRight, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DebateHeader } from '@/components/debates/DebateHeader';
@@ -44,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { constructHansardUrl } from '@/lib/utils';
+import { User } from '@supabase/supabase-js';
 
 interface SearchSchedule {
   id: string;
@@ -60,7 +61,9 @@ interface SearchCardProps {
     is_unread?: boolean;
     saved_search_schedules?: SearchSchedule[];
   };
+  relatedSearches: SavedSearch[];
   onDelete: () => void;
+  user: User | null;
 }
 
 const WEEKDAYS = [
@@ -182,12 +185,88 @@ const renderHansardMetrics = (search: SavedSearch) => {
   }
 };
 
-export function SearchCard({ search, onDelete }: SearchCardProps) {
+type AdvancedQuery = {
+  text?: string;
+  debate?: string;
+  spokenBy?: string;
+};
+
+const parseAdvancedQuery = (query: string): AdvancedQuery => {
+  const result: AdvancedQuery = {};
+  
+  // Split by AND and trim
+  const parts = query.split('AND').map(part => part.trim());
+  
+  parts.forEach(part => {
+    if (part.startsWith('words:')) {
+      result.text = part.replace('words:', '').trim();
+    } else if (part.startsWith('debate:')) {
+      result.debate = part.replace('debate:', '').trim();
+    } else if (part.startsWith('spokenby:')) {
+      result.spokenBy = part.replace('spokenby:', '').trim();
+    }
+  });
+  
+  return result;
+};
+
+const formatAdvancedQuery = (query: string): JSX.Element => {
+  const parsedQuery = parseAdvancedQuery(query);
+  
+  return (
+    <div className="flex flex-wrap gap-2 text-sm">
+      {parsedQuery.text && (
+        <div className="inline-flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md">
+          <span className="text-muted-foreground">Text:</span>
+          <span className="font-medium">{parsedQuery.text}</span>
+        </div>
+      )}
+      {parsedQuery.debate && (
+        <div className="inline-flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md">
+          <span className="text-muted-foreground">Debate:</span>
+          <span className="font-medium">{parsedQuery.debate}</span>
+        </div>
+      )}
+      {parsedQuery.spokenBy && (
+        <div className="inline-flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md">
+          <span className="text-muted-foreground">Speaker:</span>
+          <span className="font-medium">{parsedQuery.spokenBy}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
-  const supabase = useSupabase();
-  const { user } = useAuth();
   const { toast } = useToast();
+  const supabase = useSupabase();
+  const router = useRouter();
+
+  // Sort related searches by date, newest first
+  const sortedSearches = useMemo(() => {
+    return [search, ...relatedSearches].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [search, relatedSearches]);
+
+  const currentSearch = sortedSearches[currentIndex];
+  const hasMultipleResults = sortedSearches.length > 1;
+
+  // Navigation handlers
+  const goToPrevious = () => {
+    if (currentIndex < sortedSearches.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const goToNext = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
 
   const schedule = search.saved_search_schedules?.[0];
   const [isActive, setIsActive] = useState(schedule?.is_active ?? false);
@@ -215,7 +294,7 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
         const { data: newSchedule, error: createError } = await supabase
           .from('saved_search_schedules')
           .insert([{
-            ...createDefaultSchedule(search.id, user.id),
+            ...createDefaultSchedule(search.id, user?.id),
             ...updates,
             next_run_at: updates.is_active === false ? null : nextRunDate.toISOString(),
           }])
@@ -406,54 +485,121 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
     return `【${ranges.join(', ')}】`;
   };
 
+  const isAdvancedQuery = search.search_type === 'hansard' && 
+    (search.query.includes('words:') || 
+     search.query.includes('debate:') || 
+     search.query.includes('spokenby:'));
+
+  const handleScheduleToggle = async (scheduleId: string, isActive: boolean) => {
+    try {
+      setIsUpdating(true);
+      const { error } = await supabase
+        .from('saved_search_schedules')
+        .update({ is_active: isActive })
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+
+      toast({
+        title: isActive ? "Schedule activated" : "Schedule paused",
+        description: isActive 
+          ? "Search will resume on the next scheduled date" 
+          : "Search has been paused",
+        duration: 3000
+      });
+    } catch (error) {
+      toast({
+        title: "Error updating schedule",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+        duration: 5000
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <Card className={search.is_unread ? "ring-2 ring-primary" : ""}>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg font-semibold">
-                {search.query}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CardHeader>
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-1.5">
+              <CardTitle className="text-base">
+                {isAdvancedQuery ? (
+                  formatAdvancedQuery(search.query)
+                ) : (
+                  <span>{search.query}</span>
+                )}
               </CardTitle>
-              {search.is_unread && (
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                  New
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {formatDistanceToNow(new Date(currentSearch.created_at), { addSuffix: true })}
                 </span>
-              )}
+                {currentSearch.query_state?.house && (
+                  <>
+                    <span>•</span>
+                    <span>{currentSearch.query_state.house}</span>
+                  </>
+                )}
+                {hasMultipleResults && (
+                  <>
+                    <span>•</span>
+                    <span>{currentIndex + 1} of {sortedSearches.length}</span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground mt-1">
-              {formatDistanceToNow(new Date(search.created_at), { addSuffix: true })}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {renderScheduleControls()}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
+            <div className="flex items-center gap-2">
+              {hasMultipleResults && (
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    onClick={onDelete}
+                    onClick={goToPrevious}
+                    disabled={currentIndex >= sortedSearches.length - 1}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Delete search
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={goToNext}
+                    disabled={currentIndex <= 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {renderScheduleControls()}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={onDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Delete search
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        </CardHeader>
         <CardContent>
           {search.search_type === 'ai' ? (
             <>
               <div className="prose dark:prose-invert prose-sm max-w-none mb-4">
                 <FormattedMarkdown 
-                  content={isOpen ? search.response : search.response.slice(0, 200) + '...'}
+                  content={isOpen ? currentSearch.response : currentSearch.response.slice(0, 200) + '...'}
                   citations={processedCitations}
                 />
               </div>
@@ -478,27 +624,24 @@ export function SearchCard({ search, onDelete }: SearchCardProps) {
               )}
             </>
           ) : (
-            renderHansardMetrics(search)
+            renderHansardMetrics(currentSearch)
+          )}
+          
+          {hasMultipleResults && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>
+                  {format(new Date(currentSearch.created_at), 'PPP')}
+                </span>
+                {currentSearch.has_changed && (
+                  <span className="text-primary font-medium">
+                    Results changed
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
-
-        {search.response.length > 200 && search.search_type === 'ai' && (
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full">
-              {isOpen ? (
-                <div className="flex items-center">
-                  <ChevronUp className="w-4 h-4 mr-2" />
-                  Show Less
-                </div>
-              ) : (
-                <div className="flex items-center">
-                  <ChevronDown className="w-4 h-4 mr-2" />
-                  Show More
-                </div>
-              )}
-            </Button>
-          </CollapsibleTrigger>
-        )}
       </Collapsible>
     </Card>
   );
