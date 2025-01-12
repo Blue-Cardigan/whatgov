@@ -211,7 +211,6 @@ export async function POST(request: Request) {
           }
 
           const hansardData = await hansardResponse.json() as SearchResponse;
-          console.log(`[Scheduler] Hansard data:`, hansardData);
 
           // Get the first result from any available result type, prioritizing Contributions
           const firstResult = 

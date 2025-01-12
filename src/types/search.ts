@@ -54,6 +54,19 @@ export interface SaveSearchParams {
   } | null;
 }
 
+export interface SavedSearchSchedule {
+  id: string;
+  search_id: string;
+  user_id: string;
+  is_active: boolean;
+  next_run_at: string;
+  repeat_on: {
+    frequency: 'daily' | 'weekly';
+    dayOfWeek?: number;
+  } | null;
+  created_at: string;
+}
+
 export interface SavedSearch {
   id: string;
   user_id: string;
@@ -63,6 +76,7 @@ export interface SavedSearch {
   created_at: string;
   search_type: 'ai' | 'hansard' | 'mp' | 'question';
   is_unread: boolean;
+  has_changed: boolean;
   query_state?: {
     parts?: string;
     startDate?: string;
@@ -77,6 +91,7 @@ export interface SavedSearch {
     [key: string]: any;
   };
   mp_data?: MPSearchData;
+  saved_search_schedules?: SavedSearchSchedule[];
 }
 
 

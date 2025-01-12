@@ -78,6 +78,7 @@
     "recharts": "^2.13.3",
     "server-only": "^0.0.1",
     "shadcn-ui": "^0.2.3",
+    "string-strip-html": "^13.4.8",
     "stripe": "^17.3.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",

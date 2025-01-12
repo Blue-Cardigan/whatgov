@@ -1,5 +1,5 @@
 import { formatDistanceToNow, format, addDays } from 'date-fns';
-import type { SavedSearch } from '@/types/search';
+import type { SavedSearch, SavedSearchSchedule } from '@/types/search';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -26,25 +26,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { constructHansardUrl } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
+import { cn } from '@/lib/utils';
+import { exportToPDF } from '@/lib/pdf-export';
 
 interface SearchSchedule {
   id: string;
@@ -59,11 +48,12 @@ interface SearchSchedule {
 interface SearchCardProps {
   search: SavedSearch & { 
     is_unread?: boolean;
-    saved_search_schedules?: SearchSchedule[];
+    saved_search_schedules?: SavedSearchSchedule[];
   };
   relatedSearches: SavedSearch[];
   onDelete: () => void;
   user: User | null;
+  compact?: boolean;
 }
 
 const WEEKDAYS = [
@@ -92,13 +82,55 @@ const createDefaultSchedule = (searchId: string, userId: string) => ({
   })()
 });
 
-const renderHansardMetrics = (search: SavedSearch) => {
+const renderHansardMetrics = (search: SavedSearch, isCompact: boolean = false) => {
   if (!search.query_state || search.search_type !== 'hansard') return null;
 
   try {
     const response = JSON.parse(search.response);
     const { summary, searchTerms, firstResult, date } = response;
 
+    if (isCompact) {
+      return (
+        <div className="space-y-2">
+          {/* Compact metrics display */}
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            {summary.TotalContributions > 0 && (
+              <div className="bg-muted/50 p-2 rounded-lg text-center">
+                <div className="font-medium text-lg">{summary.TotalContributions}</div>
+                <div className="text-xs text-muted-foreground">Contributions</div>
+              </div>
+            )}
+            {summary.TotalDebates > 0 && (
+              <div className="bg-muted/50 p-2 rounded-lg text-center">
+                <div className="font-medium text-lg">{summary.TotalDebates}</div>
+                <div className="text-xs text-muted-foreground">Debates</div>
+              </div>
+            )}
+            {summary.TotalWrittenStatements > 0 && (
+              <div className="bg-muted/50 p-2 rounded-lg text-center">
+                <div className="font-medium text-lg">{summary.TotalWrittenStatements}</div>
+                <div className="text-xs text-muted-foreground">Statements</div>
+              </div>
+            )}
+          </div>
+
+          {/* Latest contribution in compact form */}
+          {firstResult && (
+            <div className="text-sm">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{firstResult.MemberName}</span>
+                <span>{format(new Date(firstResult.SittingDate), 'PP')}</span>
+              </div>
+              <div className="line-clamp-2 text-sm mt-1">
+                {firstResult.ContributionText}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Original full-size metrics display
     return (
       <div className="space-y-4">
         {/* Search Summary */}
@@ -237,13 +269,15 @@ const formatAdvancedQuery = (query: string): JSX.Element => {
   );
 };
 
-export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCardProps) {
+export function SearchCard({ search, relatedSearches, onDelete, user, compact }: SearchCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
   const supabase = useSupabase();
   const router = useRouter();
+  console.log(compact)
 
   // Sort related searches by date, newest first
   const sortedSearches = useMemo(() => {
@@ -519,9 +553,177 @@ export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCa
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      
+      // Format data based on search type
+      let content = search.response;
+      let latestContribution;
+
+      if (search.search_type === 'hansard') {
+        try {
+          const response = JSON.parse(search.response);
+          content = response.summary 
+            ? `Total Contributions: ${response.summary.TotalContributions}
+               Total Debates: ${response.summary.TotalDebates}
+               Total Written Statements: ${response.summary.TotalWrittenStatements}`
+            : search.response;
+
+          // Extract latest contribution details
+          if (response.firstResult) {
+            latestContribution = {
+              memberName: response.firstResult.MemberName,
+              house: response.firstResult.House,
+              debateSection: response.firstResult.DebateSection,
+              contributionText: response.firstResult.ContributionText,
+              sittingDate: response.firstResult.SittingDate,
+              debateExtId: response.firstResult.DebateSectionExtId
+            };
+          }
+        } catch (e) {
+          console.warn('Failed to parse Hansard response:', e);
+        }
+      }
+
+      await exportToPDF({
+        title: search.query,
+        content,
+        citations: processedCitations.map(citation => citation.debate_id),
+        date: new Date(search.created_at),
+        searchType: search.search_type as 'ai' | 'hansard',
+        latestContribution
+      });
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  if (compact && search.search_type === 'hansard') {
+    return (
+      <Card className={cn(
+        search.is_unread && "ring-2 ring-primary",
+        search.has_changed && "ring-2 ring-warning",
+        "transition-all duration-200"
+      )}>
+        <CardHeader className="space-y-0 pb-2">
+          <div className="flex justify-between items-start gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-base font-medium">
+                {isAdvancedQuery ? (
+                  formatAdvancedQuery(search.query)
+                ) : (
+                  <span>{search.query}</span>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {formatDistanceToNow(new Date(currentSearch.created_at), { addSuffix: true })}
+                </span>
+                {currentSearch.query_state?.house && (
+                  <>
+                    <span>•</span>
+                    <span>{currentSearch.query_state.house}</span>
+                  </>
+                )}
+                {hasMultipleResults && (
+                  <>
+                    <span>•</span>
+                    <span>{currentIndex + 1} of {sortedSearches.length}</span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {renderScheduleControls()}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={handleExport}
+                      disabled={isExporting}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export to PDF</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={onDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete search</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {renderHansardMetrics(currentSearch, true)}
+          
+          {/* Navigation controls for multiple results */}
+          {hasMultipleResults && (
+            <div className="mt-4 pt-4 border-t flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPrevious}
+                disabled={currentIndex >= sortedSearches.length - 1}
+                className="h-8 px-2"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Older
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {format(new Date(currentSearch.created_at), 'PP')}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNext}
+                disabled={currentIndex <= 0}
+                className="h-8 px-2"
+              >
+                Newer
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Original card layout for AI searches
   return (
-    <Card className={search.is_unread ? "ring-2 ring-primary" : ""}>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Card className={cn(
+      search.is_unread && "ring-2 ring-primary",
+      search.has_changed && "ring-2 ring-warning",
+      "transition-all duration-200"
+    )}>
+      <Collapsible 
+        open={isOpen} 
+        onOpenChange={setIsOpen}
+      >
         <CardHeader>
           <div className="flex justify-between items-start gap-4">
             <div className="space-y-1.5">
@@ -530,6 +732,11 @@ export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCa
                   formatAdvancedQuery(search.query)
                 ) : (
                   <span>{search.query}</span>
+                )}
+                {search.has_changed && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-warning/20 px-2 py-0.5 text-xs font-medium text-warning-foreground">
+                    Updated
+                  </span>
                 )}
               </CardTitle>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -581,6 +788,24 @@ export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCa
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0"
+                      onClick={handleExport}
+                      disabled={isExporting}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Export to PDF
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
                       onClick={onDelete}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -625,6 +850,24 @@ export function SearchCard({ search, relatedSearches, onDelete, user }: SearchCa
             </>
           ) : (
             renderHansardMetrics(currentSearch)
+          )}
+
+          {search.response.length > 200 && search.search_type === 'ai' && (
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full">
+                {isOpen ? (
+                  <div className="flex items-center">
+                    <ChevronUp className="w-4 h-4 mr-2" />
+                    Show Less
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <ChevronDown className="w-4 h-4 mr-2" />
+                    Show More
+                  </div>
+                )}
+              </Button>
+            </CollapsibleTrigger>
           )}
           
           {hasMultipleResults && (
