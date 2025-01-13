@@ -105,7 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      updateState({ profile: data });
+      // Parse rss_feeds if it's a string
+      const rss_feeds = data.rss_feeds ? (
+        typeof data.rss_feeds === 'string' 
+          ? JSON.parse(data.rss_feeds)
+          : data.rss_feeds
+      ) : [];
+
+      const profile = {
+        ...data,
+        rss_feeds
+      };
+
+      updateState({ profile });
     } catch (error) {
       console.error('Error fetching profile:', error);
       updateState({ profile: null });
@@ -188,29 +200,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!state.user?.id) throw new Error('No authenticated user');
 
       try {
-        // Update the profile in Supabase
+        // Handle rss_feeds specifically to ensure proper JSONB format
+        const updateData = {
+          ...userData,
+          // Don't stringify if undefined or already a string
+          rss_feeds: userData.rss_feeds 
+            ? (typeof userData.rss_feeds === 'string' 
+                ? userData.rss_feeds 
+                : JSON.stringify(userData.rss_feeds))
+            : undefined,
+          updated_at: new Date().toISOString()
+        };
+
         const { data, error } = await supabase
           .from('user_profiles')
-          .update({
-            name: userData.name,
-            postcode: userData.postcode,
-            constituency: userData.constituency,
-            mp: userData.mp,
-            gender: userData.gender,
-            age: userData.age,
-            selected_topics: userData.selected_topics,
-            newsletter: userData.newsletter,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', state.user.id)
           .select()
           .single();
 
         if (error) throw error;
 
-        // Update local state
+        // Parse rss_feeds in the response
+        const rss_feeds = data.rss_feeds ? (
+          typeof data.rss_feeds === 'string' 
+            ? JSON.parse(data.rss_feeds)
+            : data.rss_feeds
+        ) : [];
+
+        const updatedProfile = {
+          ...data,
+          rss_feeds
+        };
+
         updateState({ 
-          profile: { ...state.profile!, ...data } as UserProfile,
+          profile: updatedProfile,
           error: null 
         });
 

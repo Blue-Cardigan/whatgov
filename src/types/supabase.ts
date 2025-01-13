@@ -13,7 +13,7 @@ export type AuthResponse = {
   status?: 'verify_email' | 'error' | 'success' | 'redirect_to_login';
 };
 
-export type UserProfile = {
+export interface UserProfile {
   name: string;
   gender: string;
   age: string;
@@ -30,7 +30,12 @@ export type UserProfile = {
   votes_count?: number;
   votes_last_reset?: string;
   hansard_ai_searches_count?: number;
-};
+  rss_feeds?: Array<{
+    url: string;
+    title: string;
+    last_checked: string;
+  }>;
+}
 
 export type Json =
   | string

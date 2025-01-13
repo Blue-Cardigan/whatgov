@@ -71,3 +71,80 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
     throw error;
   }
 } 
+
+export async function fetchSavedSearches(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('saved_searches')
+    .select(`
+      *,
+      saved_search_schedules (
+        id,
+        is_active,
+        repeat_on,
+        next_run_at
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSavedSearch(searchId: string, userId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('saved_searches')
+    .delete()
+    .match({ 
+      id: searchId,
+      user_id: userId
+    });
+
+  if (error) throw error;
+}
+
+export async function markSearchesAsRead(searchIds: string[], userId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('saved_searches')
+    .update({ is_unread: false, has_changed: false })
+    .in('id', searchIds)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+export function subscribeToSearchUpdates(userId: string, callbacks: {
+  onUpdate?: (payload: any) => void;
+  onInsert?: (payload: any) => void;
+  onDelete?: (payload: any) => void;
+}) {
+  const supabase = createClient();
+
+  return supabase
+    .channel('saved_searches_changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'saved_searches',
+        filter: `user_id=eq.${userId}`
+      },
+      (payload) => {
+        if (payload.eventType === 'UPDATE' && callbacks.onUpdate) {
+          callbacks.onUpdate(payload);
+        } else if (payload.eventType === 'INSERT' && callbacks.onInsert) {
+          callbacks.onInsert(payload);
+        } else if (payload.eventType === 'DELETE' && callbacks.onDelete) {
+          callbacks.onDelete(payload);
+        }
+      }
+    )
+    .subscribe();
+} 

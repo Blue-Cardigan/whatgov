@@ -19,7 +19,7 @@ import type { Citation } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { exportToPDF } from './pdf-export';
+import { exportToPDF } from '@/lib/pdf-export';
 import {
   Tooltip,
   TooltipContent,
@@ -88,6 +88,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           ? searchState.aiSearch.citations.map(c => c.debate_id)
           : searchState.results?.Contributions.map(c => c.DebateSectionExtId) || [],
         date: new Date(),
+        searchType: activeSearchType as 'ai' | 'hansard' | 'calendar',
       });
     } catch (error) {
       console.error('Error exporting to PDF:', error);

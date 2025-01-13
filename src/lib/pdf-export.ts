@@ -1,33 +1,7 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { format } from 'date-fns';
 import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
-
-// Initialize pdfMake fonts
-if (pdfFonts.pdfMake) {
-  pdfMake.vfs = pdfFonts.pdfMake.vfs;
-} else {
-  pdfMake.vfs = pdfFonts;
-}
-
-export const COLORS = {
-  primary: '#449441',
-  primaryForeground: '#fafafa',
-  secondary: '#f0fdf4',
-  muted: '#71717a',
-  border: '#e4e4e7',
-  background: '#ffffff',
-  warning: '#f59e0b',
-};
-
-const SYMBOLS = {
-  calendar: '•',
-  location: '›',
-  type: '»',
-  analysis: '—',
-  person: '·',
-  reference: '†',
-};
+import { COLORS, SYMBOLS, PAGE_WIDTH } from './pdf-utilities';
 
 interface ExportOptions {
   title: string;
@@ -161,8 +135,6 @@ export async function exportToPDF({
   markdown,
   returnContent
 }: ExportOptions) {
-  const PAGE_WIDTH = 595.28;
-  const CONTENT_WIDTH = PAGE_WIDTH - 80;
 
   const getContentStack = (): Content[] => {
     const stack: Content[] = [

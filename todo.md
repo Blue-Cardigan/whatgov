@@ -20,16 +20,21 @@ MVP:
       [/] In app
 [/] Use whatson api to complete calendar
 [/] Add 'coming soon' for additional mp data
-[ ] Enhance pdf exports
-[ ] Create endpoint and GH Action to process saved searches
+[/] Enhance pdf exports
+[/] Improve responsiveness of dashboard
+      [/] Full redesign
+      [/] Added RSS Feeds
+[-] Create endpoint and GH Action to process saved searches
       [/] Endpoint generates response and updates table for assistant
       [-] Endpoint repeats search and updates, indicating if the top result has changed
       [-] Endpoint called by cron job daily
-      [ ] Display calendar items with responses in main section
+      [/] Display calendar items with responses in main section
 [ ] Create cron job to search and find saved debates
       [-] Endpoint searches hansard for saved events and question sessions, then generates and stores response for each
-[ ] Include links to original debates from hansard and calendar cards
-[ ] Update whatgov and whatgov-backend to point to main then push
+[ ] Include links to original debates from saved hansard and calendar cards
+      [/] Calendar
+      [/] Hansard
+[-] Update whatgov and whatgov-backend to point to main then push
 
 Next:
 [ ] Update prompts based on feedback

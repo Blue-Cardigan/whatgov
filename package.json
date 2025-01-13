@@ -78,6 +78,7 @@
     "react-query": "^3.39.3",
     "react-swipeable": "^7.0.2",
     "recharts": "^2.13.3",
+    "rss-parser": "^3.13.0",
     "server-only": "^0.0.1",
     "shadcn-ui": "^0.2.3",
     "string-strip-html": "^13.4.8",

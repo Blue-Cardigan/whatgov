@@ -22,6 +22,10 @@ import {
 import type { TimeSlot } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { exportCalendarItemToPDF } from '@/lib/pdf-utilities';
+import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import createClient from '@/lib/supabase/client';
 
 interface CalendarCardProps {
   item: {
@@ -30,12 +34,45 @@ interface CalendarCardProps {
     created_at: string;
     date: string;
     debate_ids?: string[];
+    is_unread?: boolean;
   };
   onDelete: () => void;
   onDownload: () => void;
 }
 
 export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) {
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      // If there are debate IDs, we might want to fetch debate data first
+      let debateData;
+      if (item.debate_ids?.[0]) {
+        // Fetch debate data if needed
+        const supabase = createClient();
+      
+        const { data, error } = await supabase
+          .from('debates_new')
+          .select('title, type, house, date, analysis, speaker_points')
+          .eq('ext_id', item.debate_ids[0])
+          .single();
+        debateData = data;
+      }
+      await exportCalendarItemToPDF(item, debateData);
+    } catch (error) {
+      console.error('Error exporting calendar item:', error);
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting your calendar item",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const renderEventContent = () => {
     const eventData = item.event_data;
     
@@ -90,7 +127,8 @@ export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) 
                       <Button 
                         variant="outline" 
                         size="icon"
-                        onClick={onDownload}
+                        onClick={handleExport}
+                        disabled={isExporting}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -141,7 +179,8 @@ export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) 
                       <Button 
                         variant="outline" 
                         size="icon"
-                        onClick={onDownload}
+                        onClick={handleExport}
+                        disabled={isExporting}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -205,7 +244,8 @@ export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) 
                       <Button 
                         variant="outline" 
                         size="icon"
-                        onClick={onDownload}
+                        onClick={handleExport}
+                        disabled={isExporting}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -256,7 +296,8 @@ export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) 
                   <Button 
                     variant="outline" 
                     size="icon"
-                    onClick={onDownload}
+                    onClick={handleExport}
+                    disabled={isExporting}
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -274,7 +315,10 @@ export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) 
   };
 
   return (
-    <Card>
+    <Card className={cn(
+      item.is_unread && "ring-2 ring-primary",
+      "transition-all duration-200"
+    )}>
       {renderEventContent()}
     </Card>
   );

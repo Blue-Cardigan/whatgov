@@ -130,7 +130,7 @@ export async function saveCalendarItem(session: TimeSlot, questionId?: number) {
       event_id: eventId,
       event_data: eventData,
       date: eventDate,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -186,4 +186,59 @@ export async function getSavedCalendarItems(startDate: Date, endDate: Date): Pro
   }
 
   return data.map(item => item.event_id);
+}
+
+export async function fetchSavedCalendarItems(userId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('saved_calendar_items')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function markCalendarItemsAsRead(itemIds: string[], userId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('saved_calendar_items')
+    .update({ is_unread: false })
+    .in('id', itemIds)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+export function subscribeToCalendarUpdates(userId: string, callbacks: {
+  onUpdate?: (payload: any) => void;
+  onInsert?: (payload: any) => void;
+  onDelete?: (payload: any) => void;
+}) {
+  const supabase = createClient();
+
+  return supabase
+    .channel('saved_calendar_changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'saved_calendar_items',
+        filter: `user_id=eq.${userId}`
+      },
+      (payload) => {
+        if (payload.eventType === 'UPDATE' && callbacks.onUpdate) {
+          callbacks.onUpdate(payload);
+        } else if (payload.eventType === 'INSERT' && callbacks.onInsert) {
+          callbacks.onInsert(payload);
+        } else if (payload.eventType === 'DELETE' && callbacks.onDelete) {
+          callbacks.onDelete(payload);
+        }
+      }
+    )
+    .subscribe();
 } 
