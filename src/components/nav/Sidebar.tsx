@@ -229,7 +229,7 @@ export function Sidebar({ className }: SidebarProps) {
       icon: Search
     },
     {
-      title: "Saved Searches",
+      title: "Saved",
       href: "/saved",
       icon: Bookmark,
       badge: unreadCount > 0 ? unreadCount : undefined

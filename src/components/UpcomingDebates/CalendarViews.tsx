@@ -27,11 +27,10 @@ export function WeekView({ currentDate, schedule }: {
   const processEventsWithOverlap = (daySchedule: DaySchedule) => {
     // Get timed sessions, including oral questions with proper timing
     const timedSessions = daySchedule?.timeSlots.filter(s => {
-      // Include oral questions that have timing information
-      if (s.type === 'oral-questions' && s.time?.substantive) {
+      if (s.type === 'oral-questions') {
+        // Always include oral questions sessions
         return true;
       }
-      // Include other event types with timing, except duplicates
       if (s.type === 'event') {
         // Skip event sessions that duplicate oral questions
         if (s.event?.category?.toLowerCase() === 'oral questions' || 

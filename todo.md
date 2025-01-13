@@ -9,31 +9,37 @@ MVP:
 [/] Maintain a weekly Vector DB
 [/] Update UI toggle to use assistant with weekly or all-time VDB
 [/] Fix streamedResponse to show loading and remove previous content when a new search starts
-[ ] Include member search in hansard search
-[ ] Create endpoint and GH Action to batch process saved searches
-      [/] Endpoint generates response and updates table for assistant
-      [-] Endpoint repeats search and updates, indicating if the top result has changed
-      [-] Endpoint called by cron job daily
-[ ] Create cron job to search and find saved debates
-      [ ] Endpoint searches hansard 
+[/] Include member search in hansard search
+      [/] Advanced search capabilities for hansard
+[/] Replace default date filter with current week, instead of current parliament
+[/] Rework Calendar: 
+      [/] Calendar display style
+      [/] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
+      [/] Save calendar items
 [/] Implement notifications for unread debates
       [/] In app
 [/] Use whatson api to complete calendar
 [/] Add 'coming soon' for additional mp data
+[ ] Enhance pdf exports
+[ ] Create endpoint and GH Action to process saved searches
+      [/] Endpoint generates response and updates table for assistant
+      [-] Endpoint repeats search and updates, indicating if the top result has changed
+      [-] Endpoint called by cron job daily
+      [ ] Display calendar items with responses in main section
+[ ] Create cron job to search and find saved debates
+      [-] Endpoint searches hansard for saved events and question sessions, then generates and stores response for each
+[ ] Include links to original debates from hansard and calendar cards
+[ ] Update whatgov and whatgov-backend to point to main then push
 
 Next:
+[ ] Update prompts based on feedback
 [ ] Generate daily and weekly highlights of relevant debates
-[ ] Email reminders with saved searches
+[ ] Better structure for questions
 [ ] MP data in search results
       [ ] Recent points
       [ ] Votes 
-[ ] Save MP searches with keywords (using hansard search?)
-[ ] Save & Display MP searches in saved searches page
-[/] Replace default date filter with current week, instead of current parliament
-[/] Rework Calendar: 
-      [/] Calendar display style
-      [-] Integrate full order paper: https://services.orderpaper.parliament.uk/Help/BusinessItem
-      [/] Save calendar items
+      [ ] Save and update mp searches
+[ ] Email reminders
 
 
 [ ] Add keyword search within an MP's contributions

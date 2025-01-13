@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getLastSevenDays } from '@/lib/utils';
 import { SearchResponse } from '@/types/search';
+import { HANSARD_API_BASE } from '@/lib/search-api';
+import { getPrompt, debateResponseFormat } from './debatePrompts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -47,12 +49,12 @@ export async function POST(request: Request) {
   try {
     // Get search type from request body
     const body = await request.json().catch(() => ({}));
-    const searchType = body.searchType as 'ai' | 'hansard' | undefined;
+    const searchType = body.searchType as 'ai' | 'hansard' | 'calendar' | undefined;
 
     // Create service role client to bypass RLS
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key instead of anon key
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
         auth: {
           autoRefreshToken: false,
@@ -61,6 +63,265 @@ export async function POST(request: Request) {
       }
     );
 
+    // If it's a calendar search, process calendar items directly
+    if (searchType === 'calendar') {
+      // Get all calendar items that haven't been processed yet
+      const today = new Date().toISOString().split('T')[0];
+      const { data: calendarItems, error: calendarError } = await supabase
+        .from('saved_calendar_items')
+        .select('*')
+        .is('debate_ids', null)  // Only get items that haven't been processed
+        .lt('date', today)       // Only get items before today
+        .order('date', { ascending: true });
+
+      if (calendarError) {
+        console.error('[Scheduler] Error fetching calendar items:', calendarError);
+        throw calendarError;
+      }
+
+      console.log(`[Scheduler] Found ${calendarItems?.length || 0} unprocessed calendar items`);
+
+      // Process each calendar item individually
+      for (const item of calendarItems || []) {
+        try {
+          const eventData = item.event_data;
+          if (eventData.type === 'event') {
+            // Search for this debate in Hansard
+            const searchParams = new URLSearchParams({
+              'queryParameters.searchTerm': eventData.event.title.replace('[HL]', '').trim(),
+              'queryParameters.date': item.date,
+              'queryParameters.house': eventData.event.house,
+              'queryParameters.startDate': eventData.event.startTime.split('T')[0],
+              'queryParameters.endDate': eventData.event.endTime.split('T')[0]
+            });
+
+            const url = `${HANSARD_API_BASE}/search/debates.json?${searchParams.toString()}`;
+            console.log(`[Scheduler] Searching for debate:`, url);
+            
+            const debateResponse = await fetch(url);
+            
+            if (!debateResponse.ok) {
+              console.error(`[Scheduler] Error fetching debate:`, await debateResponse.text());
+              continue;
+            }
+
+            const debateData = await debateResponse.json();
+            const debateResults = debateData.Results || [];
+
+            if (debateResults.length > 0) {
+              // Update the calendar item with debate IDs and AI response
+              const { error: updateError } = await supabase
+                .from('saved_calendar_items')
+                .update({
+                  debate_ids: debateResults.map((d: any) => d.DebateSectionExtId),
+                  is_unread: true
+                })
+                .eq('id', item.id);
+
+              if (updateError) {
+                console.error(`[Scheduler] Error updating calendar item:`, updateError);
+                throw updateError;
+              }
+
+              console.log(`[Scheduler] Successfully processed calendar item ${item.id} with ${debateResults.length} debates`);
+            } else {
+              // Update to show we checked but found no debates
+              const { error: updateError } = await supabase
+                .from('saved_calendar_items')
+                .update({
+                  debate_ids: [],
+                  response: `No debates found for calendar item on ${item.date}`
+                })
+                .eq('id', item.id);
+
+              if (updateError) {
+                console.error(`[Scheduler] Error updating calendar item:`, updateError);
+                throw updateError;
+              }
+            }
+          } else if (eventData.type === 'oral-questions') {
+            // Check if this is a whole session or individual question
+            const isWholeSession = !item.event_id.includes('-q');
+            let allDebateIds: string[] = [];
+            let questionResponses: { [key: string]: string } = {};
+
+            // Process each oral question
+            for (const question of eventData.questions) {
+              const searchParams = new URLSearchParams({
+                'queryParameters.searchTerm': question.text,
+                'queryParameters.startDate': item.date,
+                'queryParameters.endDate': item.date
+              });
+
+              const url = `${HANSARD_API_BASE}/search.json?${searchParams.toString()}`;
+              console.log(`[Scheduler] Searching for oral question:`, url);
+              
+              const questionResponse = await fetch(url);
+              
+              if (!questionResponse.ok) {
+                console.error(`[Scheduler] Error fetching oral question:`, await questionResponse.text());
+                continue;
+              }
+
+              const questionData = await questionResponse.json();
+              const debateIds = questionData.Contributions?.map((c: any) => c.DebateSectionExtId) || [];
+              allDebateIds.push(...debateIds);
+
+              // If we found any debates and this is a whole session, fetch the top-level debate
+              if (isWholeSession && debateIds.length > 0) {
+                try {
+                  const topLevelUrl = `${HANSARD_API_BASE}/debates/topleveldebateid/${debateIds[0]}.json`;
+                  const topLevelResponse = await fetch(topLevelUrl);
+
+                  if (topLevelResponse.ok) {
+                    const topLevelId = await topLevelResponse.text();
+                    if (topLevelId) {
+                      const cleanTopLevelId = topLevelId.replace(/['"]/g, '');
+                      allDebateIds = [cleanTopLevelId];
+                      console.log('Top level debate ID', cleanTopLevelId);
+
+                      // Generate AI analysis for oral questions
+                      if (isWholeSession && allDebateIds.length > 0) {
+                        try {
+                          // Fetch the full debate content
+                          const debateUrl = `${HANSARD_API_BASE}/debates/debate/${cleanTopLevelId}.json`;
+                          const debateResponse = await fetch(debateUrl);
+                          
+                          if (!debateResponse.ok) {
+                            throw new Error(`Failed to fetch debate content: ${debateResponse.status}`);
+                          }
+
+                          const debateContent = await debateResponse.json();
+                          
+                          // Extract all child debates (individual questions)
+                          const childDebates = debateContent.ChildDebates?.flatMap((dept: any) => 
+                            dept.ChildDebates?.map((question: any) => ({
+                              title: question.Overview.Title,
+                              content: question.Items?.map((item: any) => ({
+                                speaker: item.AttributedTo,
+                                text: item.Value.replace(/<[^>]*>/g, ''), // Strip HTML tags
+                                isQuestion: item.HRSTag === 'Question'
+                              }))
+                            }))
+                          ).filter(Boolean) || [];
+
+                          // Use our standardized debate prompt with the actual debate content
+                          const questionPrompt = getPrompt({
+                            overview: {
+                              Type: 'Department Questions',
+                              Title: debateContent.Overview.Title,
+                              House: debateContent.Overview.House,
+                              Date: debateContent.Overview.Date
+                            },
+                            context: {
+                              department: eventData.department,
+                              questions: childDebates.map((d: any) => ({
+                                title: d.title,
+                                exchanges: d.content
+                              }))
+                            }
+                          });
+
+                          // Create completion request
+                          const completion = await openai.chat.completions.create({
+                            model: "gpt-4o",
+                            messages: [
+                              {
+                                role: "system",
+                                content: "You are an expert parliamentary analyst specializing in oral questions analysis."
+                              },
+                              {
+                                role: "user",
+                                content: questionPrompt
+                              }
+                            ],
+                            response_format: debateResponseFormat(),
+                            temperature: 0.3
+                          });
+
+                          if (completion.choices[0]?.message?.content) {
+                            const analysisResponse = JSON.parse(completion.choices[0].message.content);
+                            // Insert into debates_new table with structured analysis
+                            const { error: debateError } = await supabase
+                              .from('debates_new')
+                              .insert({
+                                ext_id: cleanTopLevelId,
+                                title: `${eventData.department} Oral Questions`,
+                                type: 'Question',
+                                house: 'Commons',
+                                date: item.date,
+                                analysis: analysisResponse.analysis,
+                                speaker_points: analysisResponse.speaker_points,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                              })
+                              .select()
+                              .single();
+
+                            if (debateError) {
+                              console.error(`[Scheduler] Error inserting debate:`, debateError);
+                            }
+                          }
+                        } catch (error) {
+                          console.error(`[Scheduler] Error processing debate content:`, error);
+                          if (error instanceof Error) {
+                            console.error(`[Scheduler] Error details: ${error.message}`);
+                          }
+                        }
+                      }
+                      break; // We only need one top-level ID for the whole session
+                    }
+                  }
+                } catch (error) {
+                  console.error(`[Scheduler] Error fetching top-level debate:`, error);
+                }
+              }
+
+              // For individual questions, store the response
+              if (!isWholeSession && debateIds.length > 0) {
+                questionResponses[question.id] = `Question: ${question.text}\nAsking Member: ${question.askingMembers}`;
+              }
+            }
+
+            // Update the calendar item (now without the response)
+            const { error: updateError } = await supabase
+              .from('saved_calendar_items')
+              .update({
+                debate_ids: allDebateIds,
+              })
+              .eq('id', item.id);
+
+            if (updateError) {
+              console.error(`[Scheduler] Error updating calendar item:`, updateError);
+              throw updateError;
+            }
+
+            console.log(`[Scheduler] Successfully processed ${isWholeSession ? 'session' : 'question'} with ${allDebateIds.length} debates`);
+          }
+        } catch (error) {
+          console.error(`[Scheduler] Error processing calendar item ${item.id}:`, error);
+          // Continue with next item even if one fails
+        }
+      }
+
+      // For the saved_searches record, summarize all calendar processing
+      const { data: processedItems } = await supabase
+        .from('saved_calendar_items')
+        .select('debate_ids, response')
+        .not('debate_ids', 'is', null)
+        .order('date', { ascending: false })
+        .limit(1);
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        processed: calendarItems?.length || 0 
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // For non-calendar searches, continue with existing schedule processing...
     const now = new Date();
     const todayDate = now.toISOString().split('T')[0];
     
@@ -202,7 +463,7 @@ export async function POST(request: Request) {
             searchParams.set('house', schedule.saved_searches.query_state.house);
           }
           
-          const url = `${process.env.NEXT_PUBLIC_URL}/api/hansard/search?${searchParams.toString()}`;
+          const url = `${HANSARD_API_BASE}/search.json?${searchParams.toString()}`;
           console.log(`[Scheduler] Fetching Hansard data from: ${url}`);
 
           const hansardResponse = await fetch(url);

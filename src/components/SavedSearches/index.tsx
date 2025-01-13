@@ -10,23 +10,86 @@ import { Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CalendarCard } from './CalendarCard';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Download, BellRing } from 'lucide-react';
 import { CardHeader, CardTitle } from '@/components/ui/card';
-import { exportToPDF } from '@/lib/pdf-export';
-import { jsPDF } from 'jspdf';
+import { COLORS, exportToPDF } from '@/lib/pdf-export';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
+
+// Initialize pdfMake fonts
+if (pdfFonts.pdfMake) {
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+} else {
+  pdfMake.vfs = pdfFonts;
+}
 
 interface SavedCalendarItem {
   id: string;
   user_id: string;
   event_id: string;
   event_data: TimeSlot;
+  date: string;
   created_at: string;
+  debate_ids?: string[];
 }
+
+interface DebateData {
+  analysis: string;
+  speaker_points: any[]; // or more specific type if available
+  title: string;
+  date: string;
+  house: string;
+  type: string;
+}
+
+const formatAnalysisData = (analysis: string) => {
+  try {
+    const data = JSON.parse(analysis);
+    return `
+## Main Points
+${data.main_points}
+
+## Outcome
+${data.outcome}
+
+## Key Statistics
+${data.key_statistics?.map((stat: any) => `- ${stat.value}: ${stat.context}`).join('\n')}
+
+## Key Dates
+${data.key_dates?.map((date: any) => `- ${date.date}: ${date.significance}`).join('\n')}
+`.trim();
+  } catch (e) {
+    console.warn('Failed to parse analysis JSON:', e);
+    return analysis;
+  }
+};
+
+const formatSpeakerPoints = (speakerPoints: string | any[]) => {
+  try {
+    const points = Array.isArray(speakerPoints) 
+      ? speakerPoints 
+      : JSON.parse(speakerPoints || '[]');
+    
+    return points.map((speaker: any) => `
+## ${speaker.name}
+${speaker.role}${speaker.constituency ? ` - ${speaker.constituency}` : ''}
+Party: ${speaker.party}
+
+Key Contributions:
+${speaker.key_contributions?.map((contribution: any) => `
+- ${contribution.content}
+  ${contribution.references?.map((ref: any) => `  • ${ref.text}`).join('\n') || ''}
+`).join('\n')}
+`.trim()).join('\n\n');
+  } catch (e) {
+    console.warn('Failed to parse speaker points:', e);
+    return '';
+  }
+};
 
 export function SavedSearches() {
   const [searches, setSearches] = useState<SavedSearch[]>([]);
@@ -236,24 +299,136 @@ export function SavedSearches() {
     });
   }, [groupedSearches, filterType, sortBy]);
 
+  const handleCalendarExport = async (item: SavedCalendarItem) => {
+    try {
+      // Fetch associated debate data if debate_ids exist
+      let debateData: Record<string, DebateData> = {};
+      
+      if (item.debate_ids?.length) {
+        const { data: debates, error } = await supabase
+          .from('debates_new')
+          .select('ext_id, analysis, speaker_points, title, date, house, type')
+          .in('ext_id', item.debate_ids);
+
+        if (error) throw error;
+
+        // Create a map of debate data by ext_id
+        debateData = debates?.reduce((acc, debate) => ({
+          ...acc,
+          [debate.ext_id]: debate
+        }), {}) || {};
+      }
+
+      // Format the event data based on type
+      let title = 'Calendar Event';
+      let content = '';
+      let analysisContent = '';
+
+      const formatDebateAnalysis = (debate: DebateData | undefined) => {
+        if (!debate) return '';
+        
+        const analysisText = debate.analysis ? formatAnalysisData(debate.analysis) : 'No analysis available';
+        const speakerPointsText = formatSpeakerPoints(debate.speaker_points);
+        
+        return `
+# ${debate.title}
+Date: ${format(new Date(debate.date), 'PPP')}
+House: ${debate.house}
+Type: ${debate.type}
+
+${analysisText}
+
+${speakerPointsText ? `# Speaker Contributions\n${speakerPointsText}` : ''}
+        `.trim();
+      };
+
+      if (item.event_data.type === 'edm' && item.event_data.edm) {
+        const { edm } = item.event_data;
+        title = `EDM ${edm.id}: ${edm.title}`;
+        content = `
+Primary Sponsor: ${edm.primarySponsor?.name || 'N/A'}
+Date Tabled: ${format(new Date(edm.dateTabled), 'PPP')}
+Text: ${edm.text}
+        `.trim();
+      } else if (item.event_data.type === 'oral-questions') {
+        title = `Oral Questions: ${item.event_data.department}`;
+        content = `
+Date: ${format(new Date(item.date), 'PPP')}
+Department: ${item.event_data.department}
+Minister: ${item.event_data.ministerTitle || 'N/A'}
+        `.trim();
+
+        // Add debate analysis if available
+        if (item.debate_ids?.[0]) {
+          const debate = debateData[item.debate_ids[0]];
+          if (debate) {
+            analysisContent = formatDebateAnalysis(debate);
+          }
+        }
+      } else if (item.event_data.type === 'event' && item.event_data.event) {
+        const { event } = item.event_data;
+        title = event.title;
+        content = `
+Type: ${event.type || 'N/A'}
+Date: ${event.startTime ? format(new Date(event.startTime), 'PPP p') : 'N/A'}
+Location: ${event.location || 'N/A'}
+Description: ${event.description || 'N/A'}
+        `.trim();
+
+        // Add debate analysis for each linked debate
+        if (item.debate_ids?.length) {
+          analysisContent = item.debate_ids
+            .map(debateId => {
+              const debate = debateData[debateId];
+              return debate ? formatDebateAnalysis(debate) : '';
+            })
+            .filter(Boolean)
+            .join('\n\n---\n\n');
+        }
+      }
+
+      // Combine content with analysis if available
+      const finalContent = analysisContent 
+        ? `${content}\n\n${analysisContent}`
+        : content;
+
+      await exportToPDF({
+        title,
+        content: finalContent,
+        date: new Date(item.created_at),
+        searchType: 'calendar',
+        markdown: true
+      });
+
+      toast({
+        title: "Export complete",
+        description: "Calendar event has been exported to PDF",
+      });
+    } catch (error) {
+      console.error('Error exporting calendar event:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleBulkExport = async () => {
     try {
       setIsExporting(true);
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
 
-      let isFirstPage = true;
-
+      // Create an array to hold all content sections
+      const allContent: Content[] = [];
+      
+      // Export searches first
       for (const group of groupedSearches) {
         const { mainSearch } = group;
         
-        if (!isFirstPage) {
-          doc.addPage();
+        // Add a page break before each item (except the first)
+        if (allContent.length > 0) {
+          allContent.push({ text: '', pageBreak: 'before' });
         }
-        isFirstPage = false;
 
         // Format content and get latest contribution for Hansard searches
         let content = mainSearch.response;
@@ -268,7 +443,6 @@ export function SavedSearches() {
                  Total Written Statements: ${response.summary.TotalWrittenStatements}`
               : mainSearch.response;
 
-            // Extract latest contribution details
             if (response.firstResult) {
               latestContribution = {
                 memberName: response.firstResult.MemberName,
@@ -296,24 +470,133 @@ export function SavedSearches() {
           console.warn('Failed to parse citations:', e);
         }
 
-        await exportToPDF({
+        // Get content for this item
+        const itemContent = await exportToPDF({
           title: mainSearch.query,
           content,
           citations: processedCitations,
           date: new Date(mainSearch.created_at),
-          doc,
           searchType: mainSearch.search_type as 'ai' | 'hansard',
-          latestContribution
+          latestContribution,
+          markdown: mainSearch.search_type === 'ai',
+          returnContent: true
         });
+
+        // Ensure itemContent is an array before spreading
+        if (Array.isArray(itemContent)) {
+          allContent.push(...itemContent);
+        } else if (itemContent) {
+          allContent.push(itemContent);
+        }
       }
 
-      // Save the combined PDF
-      const filename = `saved_searches_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
-      doc.save(filename);
+      // Then export calendar items
+      for (const item of calendarItems) {
+        // Add page break
+        if (allContent.length > 0) {
+          allContent.push({ text: '', pageBreak: 'before' });
+        }
+
+        let title = 'Calendar Event';
+        let content = '';
+
+        if (item.event_data.type === 'edm' && item.event_data.edm) {
+          const { edm } = item.event_data;
+          title = `EDM ${edm.id}: ${edm.title}`;
+          content = `
+Primary Sponsor: ${edm.primarySponsor?.name || 'N/A'}
+Date Tabled: ${format(new Date(edm.dateTabled), 'PPP')}
+Text: ${edm.text}
+          `.trim();
+        }
+
+        const itemContent = await exportToPDF({
+          title,
+          content,
+          date: new Date(item.created_at),
+          searchType: 'calendar',
+          returnContent: true
+        });
+
+        // Ensure itemContent is an array before spreading
+        if (Array.isArray(itemContent)) {
+          allContent.push(...itemContent);
+        } else if (itemContent) {
+          allContent.push(itemContent);
+        }
+      }
+
+      // Create and download the combined PDF
+      const docDefinition: TDocumentDefinitions = {
+        pageMargins: [40, 80, 40, 60],
+        header: {
+          stack: [
+            {
+              canvas: [
+                {
+                  type: 'rect',
+                  x: 0,
+                  y: 0,
+                  w: 595.28,
+                  h: 60,
+                  color: COLORS.primary,
+                }
+              ]
+            },
+            {
+              columns: [
+                {
+                  width: 40,
+                  text: 'W',
+                  font: 'Roboto',
+                  fontSize: 24,
+                  bold: true,
+                  color: COLORS.primaryForeground,
+                  margin: [40, -40, 0, 0]
+                },
+                {
+                  width: '*',
+                  text: 'WhatGov Export',
+                  alignment: 'right',
+                  color: COLORS.primaryForeground,
+                  style: 'metadata',
+                  margin: [0, -32, 40, 0]
+                }
+              ]
+            }
+          ]
+        },
+        footer: (currentPage, pageCount) => ({
+          columns: [
+            {
+              text: `Generated on ${format(new Date(), 'PPP')}`,
+              alignment: 'left',
+              margin: [40, 20, 0, 0],
+              style: 'metadata'
+            },
+            {
+              text: `Page ${currentPage} of ${pageCount}`,
+              alignment: 'right',
+              margin: [0, 20, 40, 0],
+              style: 'metadata'
+            }
+          ]
+        }),
+        content: allContent,
+        defaultStyle: {
+          font: 'Roboto'
+        },
+        styles: {
+          // ... copy all styles from exportToPDF ...
+        }
+      };
+
+      const filename = `saved_items_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      pdfMake.createPdf(docDefinition).download(filename);
 
       toast({
         title: "Export complete",
-        description: "All searches have been exported to PDF",
+        description: "All items have been exported to PDF",
       });
     } catch (error) {
       console.error('Error exporting to PDF:', error);
@@ -532,6 +815,7 @@ export function SavedSearches() {
                   key={item.id}
                   item={item}
                   onDelete={() => handleDeleteCalendarItem(item.id)}
+                  onDownload={() => handleCalendarExport(item)}
                 />
               ))}
             </div>

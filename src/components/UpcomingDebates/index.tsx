@@ -1,30 +1,31 @@
 'use client';
 
-import { useState, useMemo, useEffect, createContext } from "react";
-import { format, addWeeks, startOfWeek, isFuture, differenceInWeeks } from "date-fns";
+import { useState, useMemo, createContext } from "react";
+import { format, addWeeks, startOfWeek, addDays, differenceInWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, Search } from "lucide-react";
 import { WeekView } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
-import { isCalendarItemSaved } from "@/lib/supabase/saved-calendar-items";
+import { getSavedCalendarItems } from "@/lib/supabase/saved-calendar-items";
 import type { TimeSlot } from '@/types/calendar';
 import { WeekSkeleton } from './CalendarSkeleton';
 import { CalendarFilters, type EventFilters } from './CalendarFilters';
 import { useQuery } from '@tanstack/react-query';
+import { QueryProvider } from "@/components/providers/QueryProvider";
+import { Bookmark } from "lucide-react";
 
 // Add context for saved questions
 interface SavedQuestionsContextType {
   savedQuestions: Set<string>;
-  setSavedQuestions: (questions: Set<string>) => void;
+  setSavedQuestions: (value: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
 }
 
 export const SavedQuestionsContext = createContext<SavedQuestionsContextType>({
-  savedQuestions: new Set(),
+  savedQuestions: new Set<string>(),
   setSavedQuestions: () => {},
 });
 
-export function UpcomingDebates() {
-  const [view, setView] = useState<'week'>('week');
+function UpcomingDebatesContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [savedQuestions, setSavedQuestions] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<EventFilters>({
@@ -45,6 +46,7 @@ export function UpcomingDebates() {
 
   // Get start of week for consistent querying
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const weekEnd = addDays(weekStart, 4); // Friday
 
   const { data: schedule = [], isFetching } = useQuery({
     queryKey: ['calendar', weekStart.toISOString()],
@@ -55,6 +57,47 @@ export function UpcomingDebates() {
       
       const data = await CalendarApi.getWeeklyEvents(weekDiff);
       return CalendarApi.processScheduleData(data);
+    }
+  });
+
+  // Add new query for saved items
+  const { data: savedItems = [] } = useQuery({
+    queryKey: ['savedItems', weekStart.toISOString()],
+    queryFn: async () => {
+      const items = await getSavedCalendarItems(weekStart, weekEnd);
+      
+      // Create a Set to store all possible IDs
+      const allIds = new Set<string>();
+      
+      items.forEach(eventId => {
+        // Add the original ID
+        allIds.add(eventId);
+        
+        // If this is a session ID, also add IDs for all questions in that session
+        if (eventId.startsWith('oq-') && !eventId.includes('-q')) {
+          const [prefix, deptId, date] = eventId.split('-');
+          
+          // Find the corresponding session in the schedule
+          schedule.forEach(day => {
+            day.timeSlots
+              .filter((slot): slot is TimeSlot & { type: 'oral-questions' } => 
+                slot.type === 'oral-questions' && 
+                slot.departmentId === Number(deptId)
+              )
+              .forEach(session => {
+                // Add individual question IDs
+                session.questions?.forEach(question => {
+                  allIds.add(`oq-${deptId}-${date}-q${question.id}`);
+                });
+              });
+          });
+        }
+      });
+      
+      return Array.from(allIds);
+    },
+    onSuccess: (data) => {
+      setSavedQuestions(new Set(data));
     }
   });
 
@@ -89,47 +132,6 @@ export function UpcomingDebates() {
       return `${format(weekStart, 'MMM yyyy')} - ${format(weekEnd, 'MMM yyyy')}`;
     }
   }, [currentDate]);
-
-  // Add effect to check saved status when schedule changes
-  useEffect(() => {
-    if (!schedule.length) return;
-
-    const checkSavedQuestions = async () => {
-      const savedKeys = new Set<string>();
-      
-      // Check each question
-      await Promise.all(
-        schedule.flatMap(day => 
-          day.timeSlots
-            .filter((slot): slot is TimeSlot & { type: 'oral-questions', questions: NonNullable<TimeSlot['questions']> } => 
-              slot.type === 'oral-questions' && !!slot.questions
-            )
-            .map(async slot => {
-              const sessionDate = slot.time?.substantive || slot.time?.topical;
-              
-              if (!sessionDate || !slot.department) return;
-
-              // Generate eventId in the same format as saveCalendarItem
-              const eventId = `oq-${slot.department}-${sessionDate}`;
-              
-              try {
-                const isSaved = await isCalendarItemSaved(eventId);
-                if (isSaved) {
-                  // Store the eventId as the key instead of the previous composite key
-                  savedKeys.add(eventId);
-                }
-              } catch (error) {
-                console.error('Error checking saved status:', error);
-              }
-            })
-        )
-      );
-
-      setSavedQuestions(savedKeys);
-    };
-
-    checkSavedQuestions();
-  }, [schedule]);
 
   // Filter schedule based on selected categories
   const filteredSchedule = useMemo(() => {
@@ -223,13 +225,19 @@ export function UpcomingDebates() {
           </h2>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-10 w-10"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
+                <Bookmark className="h-4 w-4" />
+                Save events to receive a briefing the next morning
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full h-10 w-10"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            </div>
             
             <CalendarFilters 
               filters={filters}
@@ -245,5 +253,14 @@ export function UpcomingDebates() {
         )}
       </div>
     </SavedQuestionsContext.Provider>
+  );
+}
+
+// New wrapper component
+export function UpcomingDebates() {
+  return (
+    <QueryProvider>
+      <UpcomingDebatesContent />
+    </QueryProvider>
   );
 } 

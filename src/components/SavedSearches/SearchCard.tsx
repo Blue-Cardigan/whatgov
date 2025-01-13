@@ -35,16 +35,6 @@ import { User } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { exportToPDF } from '@/lib/pdf-export';
 
-interface SearchSchedule {
-  id: string;
-  is_active: boolean;
-  repeat_on: {
-    dayOfWeek: number;
-    frequency: 'weekly';
-  };
-  next_run_at: string;
-}
-
 interface SearchCardProps {
   search: SavedSearch & { 
     is_unread?: boolean;
@@ -277,7 +267,6 @@ export function SearchCard({ search, relatedSearches, onDelete, user, compact }:
   const { toast } = useToast();
   const supabase = useSupabase();
   const router = useRouter();
-  console.log(compact)
 
   // Sort related searches by date, newest first
   const sortedSearches = useMemo(() => {

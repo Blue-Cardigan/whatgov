@@ -1,365 +1,520 @@
-import jsPDF from 'jspdf';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { format } from 'date-fns';
-import { processCitations, constructHansardUrl } from '@/lib/openai-api';
-import createClient from '@/lib/supabase/client';
-import { marked } from 'marked';
-import { stripHtml } from 'string-strip-html';
-import { decode } from 'html-entities';
+import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
-interface ExportToPDFParams {
-  title: string;
-  content: string;
-  citations: string[];
-  date: Date;
-  doc?: jsPDF;
-  searchType?: 'ai' | 'hansard';
-  latestContribution?: {
-    memberName?: string;
-    house?: string;
-    debateSection?: string;
-    contributionText?: string;
-    sittingDate?: string;
-    debateExtId?: string;
-  };
+// Initialize pdfMake fonts
+if (pdfFonts.pdfMake) {
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+} else {
+  pdfMake.vfs = pdfFonts;
 }
 
-const ensureFullUrl = (url: string) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `https://whatgov.co.uk${url.startsWith('/') ? '' : '/'}${url}`;
+export const COLORS = {
+  primary: '#449441',
+  primaryForeground: '#fafafa',
+  secondary: '#f0fdf4',
+  muted: '#71717a',
+  border: '#e4e4e7',
+  background: '#ffffff',
+  warning: '#f59e0b',
 };
 
-const fitUrlToWidth = (doc: jsPDF, url: string, maxWidth: number, startX: number) => {
-  // Start with normal size
-  doc.setFontSize(10);
-  let textWidth = doc.getTextWidth(url);
-  
-  // If URL is too long, reduce font size until it fits
-  let fontSize = 10;
-  while (textWidth + startX > maxWidth && fontSize > 6) {
-    fontSize -= 0.5;
-    doc.setFontSize(fontSize);
-    textWidth = doc.getTextWidth(url);
+const SYMBOLS = {
+  calendar: '•',
+  location: '›',
+  type: '»',
+  analysis: '—',
+  person: '·',
+  reference: '†',
+};
+
+interface ExportOptions {
+  title: string;
+  content: string;
+  date: Date;
+  citations?: string[];
+  searchType: 'ai' | 'hansard' | 'calendar';
+  latestContribution?: {
+    memberName: string;
+    house: string;
+    debateSection: string;
+    contributionText: string;
+    sittingDate: string;
+    debateExtId: string;
+  };
+  doc?: any; // jsPDF instance for multi-item exports
+  markdown?: boolean;
+  returnContent?: boolean;
+}
+
+const processMarkdownLine = (line: string): Content => {
+  // Replace citation markers with standard brackets
+  const processedLine = line.replace(/【(\d+)】/g, '[$1]');
+
+  // Common margin definition that matches pdfmake's type requirements
+  const standardMargin: [number, number, number, number] = [0, 2, 0, 2];
+  const headerMargin: [number, number, number, number] = [0, 10, 0, 5];
+  const subheaderMargin: [number, number, number, number] = [0, 8, 0, 4];
+  const listItemMargin: [number, number, number, number] = [10, 2, 0, 2];
+  const subListItemMargin: [number, number, number, number] = [20, 1, 0, 1];
+
+  // Handle numbered lists with bold text
+  const numberedListMatch = processedLine.match(/^(\d+\.\s+)(.*)/);
+  if (numberedListMatch) {
+    const [_, number, content] = numberedListMatch;
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return {
+      text: [
+        { text: number, style: 'listNumber' },
+        ...parts
+      ],
+      style: 'bodyText',
+      margin: standardMargin
+    };
   }
-  
-  return fontSize;
+
+  // Handle headers
+  if (processedLine.startsWith('# ')) {
+    return { 
+      text: processedLine.substring(2), 
+      style: 'header', 
+      margin: headerMargin 
+    };
+  }
+  if (processedLine.startsWith('## ')) {
+    return { 
+      text: processedLine.substring(3), 
+      style: 'subheader', 
+      margin: subheaderMargin 
+    };
+  }
+
+  // Handle bullet lists
+  if (processedLine.startsWith('- ')) {
+    const content = processedLine.substring(2);
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'listItem', 
+      margin: listItemMargin 
+    };
+  }
+
+  // Handle sub-bullet lists
+  if (processedLine.startsWith('  • ')) {
+    const content = processedLine.substring(4);
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'subListItem', 
+      margin: subListItemMargin 
+    };
+  }
+
+  // Handle regular text with bold formatting
+  if (processedLine.match(/\*\*.*?\*\*/)) {
+    const parts = processedLine.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'bodyText', 
+      margin: standardMargin 
+    };
+  }
+
+  // Regular text
+  return { 
+    text: processedLine, 
+    style: 'bodyText', 
+    margin: standardMargin 
+  };
 };
 
 export async function exportToPDF({ 
   title, 
   content, 
-  citations, 
-  date,
-  doc,
+  date, 
+  citations = [], 
   searchType,
-  latestContribution
-}: ExportToPDFParams) {
-  // Use existing doc or create new one
-  const pdfDoc = doc || new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
+  latestContribution,
+  doc,
+  markdown,
+  returnContent
+}: ExportOptions) {
+  const PAGE_WIDTH = 595.28;
+  const CONTENT_WIDTH = PAGE_WIDTH - 80;
 
-  // Define consistent measurements
-  const pageWidth = pdfDoc.internal.pageSize.getWidth();
-  const pageHeight = pdfDoc.internal.pageSize.getHeight();
-  const margin = {
-    top: 25,
-    bottom: 25,
-    left: 25,
-    right: 25
-  };
-  const contentWidth = pageWidth - margin.left - margin.right;
-  let yPosition = margin.top;
-
-  // Add header with logo or watermark
-  pdfDoc.setFillColor(247, 247, 247);
-  pdfDoc.rect(0, 0, pageWidth, 15, 'F');
-  pdfDoc.setFontSize(8);
-  pdfDoc.setTextColor(128, 128, 128);
-  pdfDoc.text('Generated by WhatGov.co.uk', margin.left, 10);
-  pdfDoc.text(format(date, 'PPP'), pageWidth - margin.right, 10, { align: 'right' });
-  
-  // Add title with better typography
-  pdfDoc.setFontSize(24);
-  pdfDoc.setFont('helvetica', 'bold');
-  pdfDoc.setTextColor(33, 33, 33);
-  const titleLines = pdfDoc.splitTextToSize(title, contentWidth);
-  pdfDoc.text(titleLines, margin.left, yPosition);
-  yPosition += titleLines.length * 12;
-
-  // Add divider
-  yPosition += 5;
-  pdfDoc.setDrawColor(200, 200, 200);
-  pdfDoc.line(margin.left, yPosition, pageWidth - margin.right, yPosition);
-  yPosition += 10;
-
-  // Format AI content with markdown support
-  if (searchType === 'ai') {
-    // Parse markdown to HTML
-    const html = marked.parse(content);
-    // Strip HTML tags and decode HTML entities
-    const plainText = decode(
-      stripHtml(html as string, {
-        skipHtmlDecoding: true,
-      }).result
-    )
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/\n\n+/g, '\n\n')
-      .trim();
-
-    // Reset text formatting for content
-    pdfDoc.setFontSize(11);
-    pdfDoc.setFont('helvetica', 'normal');
-    pdfDoc.setTextColor(51, 51, 51);
-
-    // Split content into paragraphs
-    const paragraphs = plainText.split('\n\n');
-
-    for (const paragraph of paragraphs) {
-      if (yPosition + 20 > pageHeight - margin.bottom) {
-        pdfDoc.addPage();
-        yPosition = margin.top;
-      }
-
-      if (paragraph.trim().startsWith('•') || paragraph.trim().startsWith('-')) {
-        const bulletText = paragraph.trim().replace(/^[•-]\s*/, '');
-        const bulletLines = pdfDoc.splitTextToSize(bulletText, contentWidth - 10);
-        
-        // Draw bullet point
-        pdfDoc.text('•', margin.left, yPosition);
-        // Indent text after bullet
-        pdfDoc.text(bulletLines, margin.left + 5, yPosition);
-        yPosition += bulletLines.length * 5 + 3;
-      } else {
-        let currentX = margin.left;
-        let lineStart = true;
-        
-        // Split text and preserve citations
-        const segments = paragraph.split(/(【\d+】)/).filter(Boolean);
-        
-        for (const segment of segments) {
-          const isCitation = /^【\d+】$/.test(segment);
-          
-          if (isCitation) {
-            const citationWidth = pdfDoc.getTextWidth(segment);
-
-            if (!lineStart && currentX + citationWidth > margin.left + contentWidth) {
-              yPosition += 5;
-              currentX = margin.left;
-              lineStart = true;
-            }
-
-            pdfDoc.setFont('helvetica', 'bold');
-            pdfDoc.setTextColor(0, 102, 204);
-            pdfDoc.text(segment, currentX, yPosition);
-            
-            pdfDoc.setFont('helvetica', 'normal');
-            pdfDoc.setTextColor(51, 51, 51);
-            currentX += citationWidth;
-            lineStart = false;
-          } else {
-            // Decode any remaining HTML entities in the text
-            const decodedSegment = decode(segment);
-            const words = decodedSegment.split(' ').filter(word => word.length > 0);
-            
-            for (const word of words) {
-              const wordWidth = pdfDoc.getTextWidth(word + ' ');
-              
-              if (!lineStart && currentX + wordWidth > margin.left + contentWidth) {
-                yPosition += 5;
-                currentX = margin.left;
-                lineStart = true;
+  const getContentStack = (): Content[] => {
+    const stack: Content[] = [
+      // Header
+      {
+        text: title,
+        style: 'header',
+        margin: [0, 0, 0, 10]
+      },
+      {
+        columns: [
+          {
+            text: [
+              { text: `${SYMBOLS.calendar} `, fontSize: 12, color: COLORS.muted },
+              { text: format(date, 'PPP'), style: 'metadata' }
+            ]
+          },
+          {
+            text: [
+              { text: `${SYMBOLS.type} `, fontSize: 12, color: COLORS.muted },
+              { text: searchType === 'ai' ? 'AI Research' : 
+                      searchType === 'hansard' ? 'Hansard Search' : 
+                      'Calendar Event', 
+                style: 'metadata' 
               }
-              
-              pdfDoc.text(word + ' ', currentX, yPosition);
-              currentX += wordWidth;
-              lineStart = false;
-            }
+            ],
+            alignment: 'right'
           }
-        }
+        ],
+        margin: [0, 0, 0, 20]
+      }
+    ];
+
+    // Content section based on type
+    if (searchType === 'ai') {
+      if (markdown) {
+        // Process markdown content using the new processor
+        const processedContent = content
+          .split('\n')
+          .map(processMarkdownLine)
+          .filter(Boolean);
+
+        stack.push(...processedContent);
+      } else {
+        stack.push({
+          text: content,
+          style: 'bodyText',
+          margin: [0, 0, 0, 20]
+        });
+      }
+
+      // Add citations if present
+      if (citations.length > 0) {
+        stack.push(
+          {
+            text: 'Sources',
+            style: 'sectionHeader',
+            margin: [0, 10, 0, 5] as [number, number, number, number]
+          },
+          ...citations.map((citation, index) => ({
+            text: [
+              { text: `${index + 1}. `, style: 'citationNumber' },
+              { 
+                text: `https://whatgov.uk/debate/${citation}`,
+                link: `https://whatgov.uk/debate/${citation}`,
+                style: 'citationLink'
+              }
+            ],
+            margin: [0, 0, 0, 5] as [number, number, number, number]
+          }))
+        );
+      }
+    } else if (searchType === 'hansard') {
+      // Format Hansard content
+      try {
+        const response = typeof content === 'string' ? JSON.parse(content) : content;
         
-        yPosition += 8;
+        if (response.summary) {
+          stack.push(
+            {
+              text: 'Summary',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10]
+            },
+            {
+              columns: [
+                {
+                  width: 'auto',
+                  stack: [
+                    {
+                      text: response.summary.TotalContributions.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Contributions',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                },
+                {
+                  width: 'auto',
+                  stack: [
+                    {
+                      text: response.summary.TotalDebates.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Debates',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                },
+                {
+                  width: '*',
+                  stack: [
+                    {
+                      text: response.summary.TotalWrittenStatements.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Written Statements',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                }
+              ],
+              margin: [0, 0, 0, 20]
+            }
+          );
+        }
+
+        // Add latest contribution if available
+        if (latestContribution) {
+          stack.push(
+            {
+              text: 'Latest Contribution',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10]
+            },
+            {
+              stack: [
+                {
+                  text: [
+                    { text: `${SYMBOLS.person} `, color: COLORS.muted },
+                    { text: latestContribution.memberName, style: 'contributorName' }
+                  ]
+                },
+                {
+                  text: latestContribution.debateSection,
+                  style: 'debateSection',
+                  margin: [0, 5, 0, 5]
+                },
+                {
+                  text: latestContribution.contributionText,
+                  style: 'bodyText',
+                  margin: [0, 0, 0, 10]
+                },
+                {
+                  text: [
+                    { text: `${SYMBOLS.calendar} `, color: COLORS.muted },
+                    { 
+                      text: format(new Date(latestContribution.sittingDate), 'PPP'),
+                      style: 'metadata'
+                    }
+                  ]
+                }
+              ],
+              margin: [0, 0, 0, 20]
+            }
+          );
+        }
+      } catch (e) {
+        stack.push({
+          text: content,
+          style: 'bodyText'
+        });
+      }
+    } else {
+      if (searchType === 'calendar' && markdown) {
+        // Process markdown content
+        const processedContent = content.split('\n').map(line => {
+          if (line.startsWith('# ')) {
+            return { text: line.substring(2), style: 'header', margin: [0, 10, 0, 5] } as Content;
+          }
+          if (line.startsWith('## ')) {
+            return { text: line.substring(3), style: 'subheader', margin: [0, 8, 0, 4] } as Content;
+          }
+          if (line.startsWith('- ')) {
+            return { text: line, style: 'listItem', margin: [10, 2, 0, 2] } as Content;
+          }
+          if (line.startsWith('  • ')) {
+            return { text: line, style: 'subListItem', margin: [20, 1, 0, 1] } as Content;
+          }
+          return { text: line, style: 'bodyText', margin: [0, 2, 0, 2] } as Content;
+        });
+
+        stack.push(...processedContent);
+      } else {
+        // Calendar event content
+        stack.push({
+          text: content,
+          style: 'bodyText'
+        } as Content);
       }
     }
+
+    return stack;
+  };
+
+  const docDefinition: TDocumentDefinitions = {
+    pageMargins: [40, 80, 40, 60],
+    header: {
+      stack: [
+        {
+          canvas: [
+            {
+              type: 'rect',
+              x: 0,
+              y: 0,
+              w: PAGE_WIDTH,
+              h: 60,
+              color: COLORS.primary,
+            }
+          ]
+        },
+        {
+          columns: [
+            {
+              width: 40,
+              text: 'W',
+              font: 'Roboto',
+              fontSize: 24,
+              bold: true,
+              color: COLORS.primaryForeground,
+              margin: [40, -40, 0, 0]
+            },
+            {
+              width: '*',
+              text: 'WhatGov Export',
+              alignment: 'right',
+              color: COLORS.primaryForeground,
+              style: 'metadata',
+              margin: [0, -32, 40, 0]
+            }
+          ]
+        }
+      ]
+    },
+    footer: (currentPage, pageCount) => ({
+      columns: [
+        {
+          text: `Generated on ${format(new Date(), 'PPP')}`,
+          alignment: 'left',
+          margin: [40, 20, 0, 0],
+          style: 'metadata'
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          alignment: 'right',
+          margin: [0, 20, 40, 0],
+          style: 'metadata'
+        }
+      ]
+    }),
+    content: getContentStack(),
+    styles: {
+      header: {
+        fontSize: 18,
+        bold: true,
+        color: COLORS.primary
+      },
+      metadata: {
+        fontSize: 10,
+        color: COLORS.muted
+      },
+      sectionHeader: {
+        fontSize: 14,
+        bold: true,
+        color: COLORS.primary,
+        margin: [0, 10, 0, 5]
+      },
+      bodyText: {
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: COLORS.muted
+      },
+      citationNumber: {
+        fontSize: 10,
+        color: COLORS.primary
+      },
+      citationLink: {
+        fontSize: 10,
+        color: COLORS.primary,
+        decoration: 'underline'
+      },
+      statValue: {
+        fontSize: 24,
+        bold: true,
+        color: COLORS.primary
+      },
+      statLabel: {
+        fontSize: 10,
+        color: COLORS.muted
+      },
+      contributorName: {
+        fontSize: 12,
+        bold: true,
+        color: COLORS.primary
+      },
+      debateSection: {
+        fontSize: 11,
+        color: COLORS.muted,
+        italics: true
+      },
+      subheader: {
+        fontSize: 14,
+        bold: true,
+        color: COLORS.primary,
+        margin: [0, 8, 0, 4]
+      },
+      listItem: {
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: COLORS.muted
+      },
+      subListItem: {
+        fontSize: 10,
+        lineHeight: 1.3,
+        color: COLORS.muted,
+        italics: true
+      }
+    },
+    defaultStyle: {
+      font: 'Roboto'
+    }
+  };
+
+  if (returnContent) {
+    // Return just the content stack for bulk exports
+    return getContentStack();
+  } else if (doc) {
+    // For multi-item exports, return the content stack
+    return docDefinition.content;
   } else {
-    // Original content handling for non-AI content
-    pdfDoc.setFontSize(11);
-    pdfDoc.setFont('helvetica', 'normal');
-    pdfDoc.setTextColor(51, 51, 51);
-    const contentLines = pdfDoc.splitTextToSize(content, contentWidth - 10); // Reduce width slightly
-    pdfDoc.text(contentLines, margin.left, yPosition);
-    yPosition += contentLines.length * 5 + 10;
+    // For single item exports, create and download the PDF
+    const fileName = `${searchType}_${format(date, 'yyyy-MM-dd')}.pdf`;
+    pdfMake.createPdf(docDefinition).download(fileName);
   }
-
-  // Add content section
-  if (searchType === 'hansard' && latestContribution) {
-    // Add latest contribution details for Hansard searches
-    pdfDoc.setFontSize(14);
-    pdfDoc.setFont('helvetica', 'bold');
-    pdfDoc.text('Latest Contribution', margin.left, yPosition);
-    yPosition += 8;
-
-    pdfDoc.setFontSize(11);
-    pdfDoc.setFont('helvetica', 'normal');
-
-    // Member and House
-    pdfDoc.setFont('helvetica', 'bold');
-    pdfDoc.text(`${latestContribution.memberName}`, margin.left, yPosition);
-    pdfDoc.setFont('helvetica', 'normal');
-    pdfDoc.setTextColor(128, 128, 128);
-    pdfDoc.text(` (${latestContribution.house} Chamber)`, 
-      margin.left + pdfDoc.getTextWidth(`${latestContribution.memberName} `), 
-      yPosition
-    );
-    yPosition += 6;
-
-    // Debate Section
-    pdfDoc.setTextColor(128, 128, 128);
-    const debateLines = pdfDoc.splitTextToSize(latestContribution.debateSection || '', contentWidth);
-    pdfDoc.text(debateLines, margin.left, yPosition);
-    yPosition += debateLines.length * 6 + 4;
-
-    // Contribution Text
-    pdfDoc.setTextColor(51, 51, 51);
-    const contributionLines = pdfDoc.splitTextToSize(latestContribution.contributionText || '', contentWidth);
-    pdfDoc.text(contributionLines, margin.left, yPosition);
-    yPosition += contributionLines.length * 6 + 4;
-
-    // Date
-    pdfDoc.setTextColor(128, 128, 128);
-    pdfDoc.setFontSize(10);
-    if (latestContribution.sittingDate) {
-      pdfDoc.text(
-        format(new Date(latestContribution.sittingDate), 'PPP'),
-        margin.left,
-        yPosition
-      );
-    }
-    yPosition += 15;
-  }
-
-  // Add citations if they exist and it's an AI search
-  if (citations.length > 0 && searchType === 'ai') {
-    // Citations header
-    pdfDoc.addPage();
-    yPosition = margin.top;
-    pdfDoc.setFontSize(16);
-    pdfDoc.setFont('helvetica', 'bold');
-    pdfDoc.setTextColor(33, 33, 33);
-    pdfDoc.text('Sources', margin.left, yPosition);
-    yPosition += 10;
-
-    // Add divider under Sources header
-    pdfDoc.setDrawColor(200, 200, 200);
-    pdfDoc.line(margin.left, yPosition, pageWidth - margin.right, yPosition);
-    yPosition += 10;
-
-    const supabase = createClient();
-    
-    // Citations are now just the ext_ids directly
-    const { data: debates } = await supabase
-      .from('debates_new')
-      .select('ext_id, date, title, type, house, analysis, speaker_points')
-      .in('ext_id', citations);
-
-    const debateMap = new Map(debates?.map(d => [d.ext_id, d]));
-
-    // Process each citation with better formatting
-    citations.forEach((extId, index) => {
-      const debate = debateMap.get(extId);
-      
-      if (debate) {
-        // Check if we need a new page
-        if (yPosition + 40 > pageHeight - margin.bottom) {
-          pdfDoc.addPage();
-          yPosition = margin.top;
-        }
-
-        // Citation number and title
-        pdfDoc.setFontSize(14);
-        pdfDoc.setFont('helvetica', 'bold');
-        pdfDoc.setTextColor(33, 33, 33);
-        const citationText = `[${index + 1}] ${debate.title}`;
-        const citationLines = pdfDoc.splitTextToSize(citationText, contentWidth);
-        pdfDoc.text(citationLines, margin.left, yPosition);
-        yPosition += citationLines.length * 7 + 5;
-
-        // Date of debate
-        pdfDoc.setFontSize(10);
-        pdfDoc.setFont('helvetica', 'normal');
-        pdfDoc.setTextColor(128, 128, 128);
-        pdfDoc.text(
-          format(new Date(debate.date), 'PPPP'),
-          margin.left, 
-          yPosition
-        );
-        yPosition += 8;
-
-        // Links with icons or bullets
-        pdfDoc.setTextColor(0, 102, 204);
-        const labelX = margin.left + 35; // X position where URL starts
-
-        // Hansard link
-        const hansardUrl = constructHansardUrl(
-          debate.ext_id,
-          debate.title,
-          format(new Date(debate.date), 'yyyy-MM-dd')
-        );
-        
-        pdfDoc.setFontSize(10);
-        pdfDoc.text('• Official Transcript:', margin.left, yPosition);
-        
-        // Fit Hansard URL
-        const hansardFontSize = fitUrlToWidth(
-          pdfDoc, 
-          hansardUrl, 
-          pageWidth - margin.right, 
-          labelX
-        );
-        pdfDoc.setFontSize(hansardFontSize);
-        pdfDoc.text(hansardUrl, labelX, yPosition);
-        yPosition += 6;
-
-        // Add WhatGov link
-        const whatGovUrl = `https://whatgov.co.uk/debate/${debate.ext_id}`;
-        
-        pdfDoc.setFontSize(10);
-        pdfDoc.text('• WhatGov Analysis:', margin.left, yPosition);
-        
-        const whatGovFontSize = fitUrlToWidth(
-          pdfDoc, 
-          whatGovUrl, 
-          pageWidth - margin.right, 
-          labelX
-        );
-        pdfDoc.setFontSize(whatGovFontSize);
-        pdfDoc.text(whatGovUrl, labelX, yPosition);
-        yPosition += 15;
-      }
-    });
-  }
-
-  // Adjust footer position and formatting
-  const pageCount = pdfDoc.internal.pages.length - 1;
-  for (let i = 1; i <= pageCount; i++) {
-    pdfDoc.setPage(i);
-    pdfDoc.setFontSize(8);
-    pdfDoc.setTextColor(128, 128, 128);
-    pdfDoc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - margin.bottom,
-      { align: 'center' }
-    );
-  }
-  
-  // Only save if we created a new doc
-  if (!doc) {
-    const filename = `${title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(date, 'yyyy-MM-dd')}.pdf`;
-    pdfDoc.save(filename);
-  }
-
-  return pdfDoc; // Return the doc for potential further use
 } 

@@ -2,13 +2,11 @@
 
 import { DebateItem } from '@/types';
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Share2, ExternalLink, Search, Clock, UserIcon } from 'lucide-react';
+import { CalendarIcon, Share2, ExternalLink, Search, Clock, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect } from 'react';
 import { getDebateType, locationColors, partyColours } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -17,7 +15,9 @@ import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { HansardDebateResponse, HansardContribution } from "@/types/hansard";
-import { FormattedMarkdown } from '@/lib/utils';
+import { AnalysisData, ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
+import { exportDebateToPDF } from './debate-export';
+import { toast } from "@/hooks/use-toast";
 
 interface DebateViewProps {
   debate: DebateItem;
@@ -33,7 +33,12 @@ const constructHansardUrl = (debateExtId: string, title: string, date: string) =
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 };
 
-function DebateActions({ debate, onShare }: { debate: DebateItem; onShare: () => void }) {
+function DebateActions({ debate, onShare, onExport }: { 
+  debate: DebateItem; 
+  onShare: () => void;
+  onExport: () => void;
+}) {
+  console.log(debate.speaker_points);
   return (
     <div className="flex items-center gap-2">
       {debate.ext_id && (
@@ -56,6 +61,15 @@ function DebateActions({ debate, onShare }: { debate: DebateItem; onShare: () =>
         <Share2 className="h-4 w-4" />
         <span className="hidden sm:inline">Share</span>
       </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onExport}
+        className="gap-2"
+      >
+        <Download className="h-4 w-4" />
+        <span className="hidden sm:inline">Export</span>
+      </Button>
     </div>
   );
 }
@@ -64,74 +78,63 @@ function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, '');
 }
 
-interface SpeakerPoint {
-  speaker: {
-    name: string;
-    role: string;
-    party: string;
-    constituency: string;
-  };
-  contributions: {
-    point: string;
-    context: string;
-    keywords: string[];
-  }[];
-}
-
-function KeyPointsContent({ keyPoints }: { keyPoints: SpeakerPoint[] }) {
+function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: { 
+  analysis: string | ParsedAnalysisData;
+  speakerPoints: SpeakerPoint[];
+}) {
+  // Parse the speaker points if they're stored as a string
+  const parsedSpeakerPoints = useMemo(() => {
+    if (typeof speakerPoints === 'string') {
+      try {
+        return JSON.parse(speakerPoints) as SpeakerPoint[];
+      } catch (e) {
+        console.error('Failed to parse speaker points:', e);
+        return [];
+      }
+    }
+    return speakerPoints;
+  }, [speakerPoints]);
+  
   return (
     <div className="space-y-6">
-      {keyPoints.map((item, index) => (
-        <Card key={index} className="overflow-hidden">
-          <CardHeader className="pb-4 bg-muted/5">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <UserIcon className="h-5 w-5 text-primary" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold">{item.speaker.name}</h3>
-                <div className="flex flex-wrap gap-2 text-sm">
-                  <Badge variant="outline">{item.speaker.party}</Badge>
-                  {item.speaker.constituency && (
-                    <Badge variant="outline">{item.speaker.constituency}</Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {item.contributions.map((contribution, cIndex) => (
-              <div key={cIndex} className="space-y-3">
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground mb-2">
-                    {contribution.point}
-                  </p>
-                  <p className="text-sm">
-                    {contribution.context}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {contribution.keywords.map((keyword, kIndex) => (
-                    <Badge 
-                      key={kIndex} 
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {keyword}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+      <AnalysisData 
+        data={analysis}
+        speakerPoints={parsedSpeakerPoints}
+      />
     </div>
   );
 }
 
 export function DebateView({ debate, hansardData }: DebateViewProps) {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  // Handle export
+  const handleExport = async () => {
+    try {
+      toast({
+        title: "Generating PDF",
+        description: "Please wait while we prepare your document...",
+      });
+
+      await exportDebateToPDF({
+        debate,
+        hansardData
+      });
+
+      toast({
+        title: "PDF Generated",
+        description: "Your document has been downloaded successfully.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "There was a problem generating your PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Handle share
   const handleShare = async () => {
@@ -144,6 +147,11 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
     } catch {
       // Fallback to copying URL
       await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link Copied",
+        description: "The debate URL has been copied to your clipboard.",
+        variant: "default",
+      });
     }
   };
 
@@ -360,48 +368,34 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
                 {debate.title}
               </CardTitle>
             </div>
-            <DebateActions debate={debate} onShare={handleShare} />
+            <DebateActions 
+              debate={debate} 
+              onShare={handleShare}
+              onExport={handleExport}
+            />
           </div>
         </CardHeader>
 
-        {/* Analysis and Key Points Tabs */}
-        <Card>
-          <Tabs defaultValue="analysis" className="w-full">
-            <TabsList className="w-full justify-start h-auto p-4 bg-transparent space-x-4 border-b">
-              <TabsTrigger value="analysis">
-                Analysis
-              </TabsTrigger>
-                <TabsTrigger value="keyPoints">
-                  Key Points
-                </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="analysis" className="p-4">
-              <div className="text-sm text-muted-foreground">
-                <FormattedMarkdown content={debate.analysis} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="keyPoints" className="p-4">
-              <KeyPointsContent 
-                keyPoints={debate.speaker_points}
-              />
-            </TabsContent>
-          </Tabs>
-        </Card>
-
-        {/* Transcript Section */}
-        {hansardData && (
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="text-lg">Original Transcript</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {renderHansardContributions()}
-            </CardContent>
-          </Card>
-        )}
+        {/* Analysis and Speaker Points */}
+        <CardContent>
+          <AnalysisWithSpeakerPoints 
+            analysis={debate.analysis}
+            speakerPoints={debate.speaker_points as unknown as SpeakerPoint[]}
+          />
+        </CardContent>
       </Card>
+
+      {/* Transcript Section */}
+      {hansardData && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-lg">Original Transcript</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {renderHansardContributions()}
+          </CardContent>
+        </Card>
+      )}
 
       <UpgradeDialog 
         open={showUpgradeDialog} 

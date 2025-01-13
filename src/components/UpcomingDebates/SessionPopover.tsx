@@ -117,23 +117,22 @@ function EDMContent({ session }: { session: TimeSlot & { type: 'edm'; edm: NonNu
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <ProfileImage
-              src={session.edm?.PrimarySponsor.PhotoUrl}
-              alt={session.edm?.PrimarySponsor.Name || 'Member'}
+              src={session.edm?.primarySponsor.photoUrl}
+              alt={session.edm?.primarySponsor.name || 'Member'}
               size={40}
-              party={session.edm?.PrimarySponsor.Party}
+              party={session.edm?.primarySponsor.party}
             />
             <div>
-              <h4 className="font-medium text-sm">{session.edm.Title}</h4>
-              <SaveCalendarItemButton session={session} />
+              <h4 className="font-medium text-sm">{session.edm.title}</h4>
               <p className="text-xs text-muted-foreground">
-                {session.edm?.PrimarySponsor.Name}
+                {session.edm?.primarySponsor.name}
               </p>
             </div>
           </div>
         </div>
         <div className="p-4">
           <div className="text-sm text-muted-foreground max-h-[200px] overflow-y-auto">
-            {session.edm?.Text}
+            {session.edm?.text}
           </div>
         </div>
       </div>
@@ -335,7 +334,7 @@ export function SessionPopover({ session, size = 'normal', style }: SessionPopov
                     : session.type === 'oral-questions'
                     ? session.department
                     : session.type === 'edm'
-                    ? session.edm?.Title
+                    ? session.edm?.title
                     : ''}
                 </div>
                 {size === 'normal' && (
@@ -350,7 +349,7 @@ export function SessionPopover({ session, size = 'normal', style }: SessionPopov
                       : session.type === 'oral-questions'
                       ? `${session.questions?.length || 0} questions`
                       : session.type === 'edm'
-                      ? session.edm?.Title
+                      ? session.edm?.title
                       : ''}
                   </div>
                 )}

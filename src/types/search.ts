@@ -248,6 +248,7 @@ export interface MPSearchData {
 export interface SavedQuestionData {
   id: string;  // Unique identifier
   department: string;
+  answeringDate: string;
   minister?: {
     MnisId: number;
     Name: string;

@@ -2,10 +2,10 @@ import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
 import type { FetchOptions } from '@/types';
 import type { SearchParams } from '@/types/search';
+import { HansardDebateResponse } from '@/types/hansard';
 
-export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
+export const HANSARD_API_BASE = process.env.HANSARD_API_BASE || 'https://hansard-api.parliament.uk';
 
-// Add this new helper function
 export function constructSearchUrl(params: SearchParams): string {
   const searchParams = new URLSearchParams();
   
@@ -133,6 +133,46 @@ export class HansardAPI {
     } catch (error) {
       console.error('Failed to search members:', error);
       return [];
+    }
+  }
+
+  static async getDebateTranscript(extId: string): Promise<HansardDebateResponse | undefined> {
+    try {
+      const hansardUrl = `${HANSARD_API_BASE}/debates/debate/${extId}.json`;
+      
+      const response = await fetch(hansardUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+        next: { revalidate: 3600 }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Hansard API returned ${response.status}`);
+      }
+
+      // Ensure we properly consume the stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No readable stream available');
+      }
+
+      // Read all chunks
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+
+      // Concatenate chunks and decode
+      const decoder = new TextDecoder();
+      const text = decoder.decode(new Uint8Array(Buffer.concat(chunks)));
+      
+      return JSON.parse(text);
+    } catch (error) {
+      console.error('Failed to fetch debate transcript:', error);
+      return undefined;
     }
   }
 }

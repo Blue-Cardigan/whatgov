@@ -19,7 +19,7 @@ import type { Citation } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { exportToPDF } from '@/lib/pdf-export';
+import { exportToPDF } from './pdf-export';
 import {
   Tooltip,
   TooltipContent,

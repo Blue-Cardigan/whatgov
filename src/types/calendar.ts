@@ -9,23 +9,16 @@ export interface TimeInfo {
 export interface TimeSlot {
   type: 'oral-questions' | 'edm' | 'bill' | 'event';
   department?: string;
-  minister?: {
-    MnisId: number;
-    PimsId: number;
-    Name: string;
-    ListAs: string;
-    Constituency: string;
-    Status: string;
-    Party: string;
-    PartyId: number;
-    PartyColour: string;
-    PhotoUrl?: string;
-  };
+  departmentId?: number;
+  minister?: MemberForDate;
   ministerTitle?: string;
   questions?: {
     id: number;
     UIN: number;
     text: string;
+    questionType: 'Substantive' | 'Topical';
+    AnsweringBodyId: number;
+    answeringWhen: string;
     askingMembers: {
       Name: string;
       Constituency: string;
@@ -36,17 +29,18 @@ export interface TimeSlot {
   edm?: {
     id: number;
     UIN?: number;
-    Title: string;
-    Text: string;
-    PrimarySponsor: {
-      Name: string;
-      PhotoUrl?: string;
-      Party?: string;
+    title: string;
+    text: string;
+    primarySponsor: {
+      name: string;
+      photoUrl?: string;
+      party?: string;
     };
-    DateTabled: string;
+    dateTabled: string;
   };
   time?: TimeInfo;
   event?: WhatsOnEvent;
+  debate_ids?: string[];
 }
 
 export interface DaySchedule {
@@ -92,7 +86,7 @@ export interface MemberForDate {
     SponsorsCount: number;
   }
   
-  export interface PublishedOralQuestion {
+  export interface OralQuestion {
     Id: number;
     QuestionType: 'Substantive' | 'Topical';
     QuestionText: string;
@@ -113,7 +107,7 @@ export interface MemberForDate {
     AnsweringMinisterId: number;
   }
   
-  export interface PublishedOralQuestionTime {
+  export interface OralQuestionTime {
     Id: number;
     AnsweringWhen: string;
     DeadlineWhen: string;
@@ -192,8 +186,8 @@ export interface MemberForDate {
   
 export interface HansardData {
   earlyDayMotions: PublishedEarlyDayMotion[];
-  oralQuestions: PublishedOralQuestion[];
-  questionTimes: PublishedOralQuestionTime[];
+  oralQuestions: OralQuestion[];
+  questionTimes: OralQuestionTime[];
   events: WhatsOnEvent[];
 }
 

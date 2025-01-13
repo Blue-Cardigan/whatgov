@@ -2,53 +2,50 @@
 
 import { Button } from "@/components/ui/button";
 import { Bookmark } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { TimeSlot } from "@/types/calendar";
 import { cn } from "@/lib/utils";
-import { isCalendarItemSaved, saveCalendarItem, deleteCalendarItem } from "@/lib/supabase/saved-calendar-items";
+import { saveCalendarItem, deleteCalendarItem } from "@/lib/supabase/saved-calendar-items";
+import { SavedQuestionsContext } from "@/components/UpcomingDebates";
+import { useQueryClient } from '@tanstack/react-query';
+import { format } from "date-fns";
 
-// Define the Question type explicitly
-type Question = {
-  id: number;
-  UIN: number;
-  text: string;
-  askingMembers: {
-    Name: string;
-    Constituency: string;
-    Party: string;
-    PhotoUrl?: string;
-  }[];
-};
+type Question = NonNullable<TimeSlot['questions']>[number];
 
 interface SaveCalendarItemButtonProps {
   session: TimeSlot;
-  question?: Question;  // Use the explicit Question type
+  question?: Question;
   className?: string;
 }
 
 export function SaveCalendarItemButton({ session, question, className }: SaveCalendarItemButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const { savedQuestions, setSavedQuestions } = useContext(SavedQuestionsContext);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Generate the appropriate eventId based on whether it's a question or session
   const eventId = useMemo(() => {
-    if (session.type === 'event' && session.event?.id) {
-      return session.event.id;
-    } else if (session.type === 'oral-questions') {
+    if (session.type === 'oral-questions') {
+      const questionDate = question?.answeringWhen || session.questions?.[0]?.answeringWhen;
+      if (!questionDate) return '';
+      
       if (question) {
-        // For individual questions
-        return `oq-${session.department}-${session.time?.substantive}-q${question.id}`;
+        return `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}-q${question.id}`;
       } else {
-        // For entire session
-        return `oq-${session.department}-${session.time?.substantive}`;
+        return `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}`;
       }
+    } else if (session.type === 'event' && session.event?.id) {
+      return session.event.id;
     } else if (session.type === 'edm' && session.edm?.id) {
       return `edm-${session.edm.id}`;
     }
     return '';
   }, [session, question]);
+
+  const isSaved = useMemo(() => {
+    return savedQuestions.has(eventId);
+  }, [savedQuestions, eventId]);
 
   const handleToggle = async () => {
     if (!eventId) return;
@@ -58,7 +55,11 @@ export function SaveCalendarItemButton({ session, question, className }: SaveCal
       
       if (isSaved) {
         await deleteCalendarItem(eventId);
-        setIsSaved(false);
+        setSavedQuestions((prev: Set<string>) => {
+          const next = new Set(prev);
+          next.delete(eventId);
+          return next;
+        });
 
         toast({
           title: question ? "Question removed" : "Event removed",
@@ -67,20 +68,12 @@ export function SaveCalendarItemButton({ session, question, className }: SaveCal
             : "Event removed from your saved items"
         });
       } else {
-        // Create modified session object for saving
-        const saveData: TimeSlot = {
-          ...session,
-          // If this is an individual question, create a new session with just this question
-          questions: question ? [{
-            id: question.id,
-            UIN: question.UIN,
-            text: question.text,
-            askingMembers: question.askingMembers
-          }] : session.questions
-        };
-        
-        await saveCalendarItem(saveData);
-        setIsSaved(true);
+        await saveCalendarItem(session, question?.id);
+        setSavedQuestions((prev: Set<string>) => {
+          const next = new Set(prev);
+          next.add(eventId);
+          return next;
+        });
         
         toast({
           title: question ? "Question saved" : "Event saved",
@@ -89,6 +82,9 @@ export function SaveCalendarItemButton({ session, question, className }: SaveCal
             : "Event added to your saved items"
         });
       }
+
+      // Invalidate the saved items query to trigger a refresh
+      queryClient.invalidateQueries(['savedItems']);
     } catch (error) {
       console.error('Error toggling calendar item:', error);
       toast({
@@ -100,17 +96,6 @@ export function SaveCalendarItemButton({ session, question, className }: SaveCal
       setIsSaving(false);
     }
   };
-
-  // Check if item is already saved on mount
-  useEffect(() => {
-    const checkSavedStatus = async () => {
-      if (!eventId) return;
-      const saved = await isCalendarItemSaved(eventId);
-      setIsSaved(saved);
-    };
-
-    checkSavedStatus();
-  }, [eventId]);
 
   return (
     <Button

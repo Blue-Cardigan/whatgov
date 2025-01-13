@@ -1,8 +1,8 @@
 import { format, startOfWeek, endOfWeek, addWeeks, addMinutes, setHours, setMinutes } from 'date-fns';
 import type { 
   PublishedEarlyDayMotion, 
-  PublishedOralQuestion, 
-  PublishedOralQuestionTime,
+  OralQuestion, 
+  OralQuestionTime,
   PublishedBill,
   PublishedBillSitting,
   HansardData,
@@ -97,8 +97,8 @@ export class CalendarApi {
         const [questionsResponse, eventsResponse] = await Promise.all([
           this.fetchWithErrorHandling<{
             earlyDayMotions: PublishedEarlyDayMotion[];
-            oralQuestions: PublishedOralQuestion[];
-            questionTimes: PublishedOralQuestionTime[];
+            oralQuestions: OralQuestion[];
+            questionTimes: OralQuestionTime[];
           }>(`/api/hansard/questions?${params.toString()}`),
 
           this.fetchWithErrorHandling<{
@@ -197,86 +197,60 @@ export class CalendarApi {
     }
   }
 
-  static processScheduleData(data: HansardData): DaySchedule[] {
-    const dayMap = new Map<string, DaySchedule>();
+  private static processOralQuestions(questions: OralQuestion[]): Map<string, TimeSlot> {
+    const sessionMap = new Map<string, TimeSlot>();
 
-    // First, create the structure with question times
-    if (Array.isArray(data.questionTimes)) {
-      data.questionTimes.forEach((time) => {
-        if (!time.AnsweringWhen) return;
+    // First, group questions by department and date
+    questions.forEach(question => {
+      if (!question.AnsweringWhen) return;
 
-        const date = new Date(time.AnsweringWhen);
-        const dateKey = format(date, 'yyyy-MM-dd');
+      const date = new Date(question.AnsweringWhen);
+      const sessionKey = `oq-${question.AnsweringBodyId}-${format(date, 'yyyy-MM-dd')}`;
 
-        if (!dayMap.has(dateKey)) {
-          dayMap.set(dateKey, { date, timeSlots: [] });
-        }
-
-        const day = dayMap.get(dateKey)!;
+      let session = sessionMap.get(sessionKey);
+      if (!session) {
+        // Create new session with default time of 11:30 if not specified
+        const defaultTime = '11:30';
         
-        // Create a time slot for the department
-        const timeSlot: TimeSlot = {
+        session = {
           type: 'oral-questions',
-          department: time.AnsweringBodyNames,
-          ministerTitle: time.AnsweringMinisterTitles,
-          questions: [], // Initialize as undefined instead of empty array
+          department: question.AnsweringBody,
+          departmentId: question.AnsweringBodyId,
+          ministerTitle: question.AnsweringMinisterTitle,
+          minister: question.AnsweringMinister,
+          questions: [],
           time: {
-            substantive: time.SubstantiveTime || null,
-            topical: time.TopicalTime || null,
-            deadline: new Date(time.DeadlineWhen).toISOString()
+            substantive: defaultTime,
+            topical: null,
+            deadline: format(new Date(question.TabledWhen), 'yyyy-MM-dd')
           }
         };
+        sessionMap.set(sessionKey, session);
+      }
 
-        day.timeSlots.push(timeSlot);
-      });
-    }
-
-    // Then populate the questions into their corresponding time slots
-    if (Array.isArray(data.oralQuestions)) {
-      data.oralQuestions.forEach((question: PublishedOralQuestion) => {
-        if (!question.AnsweringWhen) return;
-
-        const date = new Date(question.AnsweringWhen);
-        const dateKey = format(date, 'yyyy-MM-dd');
-        const day = dayMap.get(dateKey);
-
-        if (!day) return;
-
-        // Find the matching time slot for this question
-        const timeSlot = day.timeSlots.find(
-          slot => slot.type === 'oral-questions' && 
-                  slot.department === question.AnsweringBody
-        );
-
-        if (!timeSlot) return;
-
-        // Initialize questions array if it doesn't exist
-        if (!timeSlot.questions) {
-          timeSlot.questions = [];
-        }
-
-        // Update minister info if not already set
-        if (!timeSlot.minister && question.AnsweringMinister) {
-          timeSlot.minister = question.AnsweringMinister;
-        }
-
-        // Add question to existing array or create new one
-        const existingQuestion = timeSlot.questions.find(q => 
-          q.text === question.QuestionText
-        );
-
-        if (existingQuestion && question.AskingMember) {
-          existingQuestion.askingMembers.push({
-            Name: question.AskingMember.Name,
-            Constituency: question.AskingMember.Constituency,
-            Party: question.AskingMember.Party,
-            PhotoUrl: question.AskingMember.PhotoUrl
-          });
-        } else if (question.AskingMember) {
-          timeSlot.questions.push({
+      // Add question to session
+      if (session.questions && question.AskingMember) {
+        const existingQuestion = session.questions.find(q => q.id === question.Id);
+        
+        if (existingQuestion) {
+          // Add asking member if not already present
+          if (!existingQuestion.askingMembers.some(m => m.Name === question.AskingMember.Name)) {
+            existingQuestion.askingMembers.push({
+              Name: question.AskingMember.Name,
+              Constituency: question.AskingMember.Constituency,
+              Party: question.AskingMember.Party,
+              PhotoUrl: question.AskingMember.PhotoUrl
+            });
+          }
+        } else {
+          // Add new question
+          session?.questions?.push({
             id: question.Id,
             UIN: question.UIN,
             text: question.QuestionText,
+            questionType: question.QuestionType === 'Substantive' ? 'Substantive' : 'Topical',
+            answeringWhen: question.AnsweringWhen,
+            AnsweringBodyId: question.AnsweringBodyId,
             askingMembers: [{
               Name: question.AskingMember.Name,
               Constituency: question.AskingMember.Constituency,
@@ -285,6 +259,29 @@ export class CalendarApi {
             }]
           });
         }
+      }
+    });
+
+    return sessionMap;
+  }
+
+  static processScheduleData(data: HansardData): DaySchedule[] {
+    const dayMap = new Map<string, DaySchedule>();
+
+    // Process oral questions
+    if (Array.isArray(data.oralQuestions)) {
+      const sessionMap = this.processOralQuestions(data.oralQuestions);
+      
+      // Add sessions to appropriate days
+      sessionMap.forEach(session => {
+        const date = new Date(session.questions?.[0]?.answeringWhen ?? '');
+        const dateKey = format(date, 'yyyy-MM-dd');
+
+        if (!dayMap.has(dateKey)) {
+          dayMap.set(dateKey, { date, timeSlots: [] });
+        }
+
+        dayMap.get(dateKey)!.timeSlots.push(session);
       });
     }
 
@@ -327,14 +324,14 @@ export class CalendarApi {
             edm: {
               id: edm.Id,
               UIN: edm.UIN,
-              Title: edm.Title,
-              Text: edm.MotionText,
-              PrimarySponsor: {
-                Name: edm.PrimarySponsor.Name,
-                PhotoUrl: edm.PrimarySponsor.PhotoUrl,
-                Party: edm.PrimarySponsor.Party
+              title: edm.Title,
+              text: edm.MotionText,
+              primarySponsor: {
+                name: edm.PrimarySponsor.Name,
+                photoUrl: edm.PrimarySponsor.PhotoUrl,
+                party: edm.PrimarySponsor.Party
               },
-              DateTabled: edm.DateTabled
+              dateTabled: edm.DateTabled
             }
           });
         });
@@ -383,12 +380,9 @@ export class CalendarApi {
       .map(day => ({
         ...day,
         timeSlots: day.timeSlots.sort((a, b) => {
-          if (a.time?.substantive && !b.time?.substantive) return -1;
-          if (!a.time?.substantive && b.time?.substantive) return 1;
-          if (a.time?.substantive && b.time?.substantive) {
-            return a.time.substantive.localeCompare(b.time.substantive);
-          }
-          return 0;
+          const timeA = a.time?.substantive ?? '';
+          const timeB = b.time?.substantive ?? '';
+          return timeA.localeCompare(timeB);
         })
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
