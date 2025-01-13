@@ -9,11 +9,23 @@ interface AnalysisDataPoint {
   context: string;
 }
 
+interface KeyDate {
+  date: string;
+  significance: string;
+}
+
+interface KeyStatistic {
+  value: string;
+  context: string;
+}
+
 export interface ParsedAnalysisData {
-  main_content: string;
-  policy_terms: string[];
-  dates: string[];
-  data: AnalysisDataPoint[];
+  main_content?: string;
+  outcome?: string;
+  policy_terms?: string[];
+  dates?: string[] | KeyDate[];
+  data?: AnalysisDataPoint[];
+  key_statistics?: KeyStatistic[];
 }
 
 export interface SpeakerPoint {
@@ -72,7 +84,7 @@ export function AnalysisData({ data, speakerPoints }: AnalysisDataProps) {
       <Card>
         <CardContent className="pt-6">
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <FormattedMarkdown content={parsedData.main_content} />
+            <FormattedMarkdown content={parsedData.main_content || ''} />
           </div>
         </CardContent>
       </Card>
@@ -134,10 +146,10 @@ export function AnalysisData({ data, speakerPoints }: AnalysisDataProps) {
         </div>
       )}
 
-      {/* Key Statistics */}
-      {parsedData.data?.length > 0 && (
+      {/* Key Statistics - Updated to handle both formats */}
+      {(parsedData.data?.length || 0 > 0 || parsedData.key_statistics?.length || 0 > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {parsedData.data.map((stat, index) => (
+          {(parsedData.key_statistics || parsedData.data)?.map((stat, index) => (
             <Card key={index} className="relative overflow-hidden">
               <CardContent className="pt-6">
                 <div className="absolute top-0 right-0 p-2">
@@ -159,12 +171,12 @@ export function AnalysisData({ data, speakerPoints }: AnalysisDataProps) {
 
       {/* Policy Terms and Dates */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {parsedData.policy_terms?.length > 0 && (
+        {parsedData.policy_terms?.length || 0 > 0 && (
           <Card>
             <CardContent className="pt-6">
               <h3 className="text-sm font-medium mb-3">Related Policies</h3>
               <div className="flex flex-wrap gap-2">
-                {parsedData.policy_terms.map((term, index) => (
+                {parsedData.policy_terms?.map((term, index) => (
                   <Badge 
                     key={index} 
                     variant="secondary"
@@ -178,18 +190,27 @@ export function AnalysisData({ data, speakerPoints }: AnalysisDataProps) {
           </Card>
         )}
 
-        {parsedData.dates?.length > 0 && (
+        {parsedData.dates?.length || 0 > 0 && (
           <Card>
             <CardContent className="pt-6">
               <h3 className="text-sm font-medium mb-3">Key Dates</h3>
               <div className="space-y-2">
-                {parsedData.dates.map((date, index) => (
+                {(parsedData.dates || []).map((date, index) => (
                   <div 
                     key={index}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
+                    className="flex items-start gap-2 text-sm text-muted-foreground"
                   >
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>{date}</span>
+                    <CalendarIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium">
+                        {typeof date === 'string' ? date : date.date}
+                      </span>
+                      {typeof date !== 'string' && date.significance && (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {date.significance}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

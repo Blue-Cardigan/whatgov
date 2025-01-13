@@ -16,12 +16,12 @@ const SpeakerSchema = z.object({
   role: z.string().optional(),
   party: z.string().optional(),
   constituency: z.string().optional(),
-  key_contributions: z.array(ContributionSchema)
+  contributions: z.array(ContributionSchema)
 });
 
 export const DebateAnalysisSchema = z.object({
   analysis: z.object({
-    main_points: z.string(),
+    main_content: z.string(),
     outcome: z.string(),
     key_statistics: z.array(z.object({
       value: z.string(),

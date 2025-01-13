@@ -38,7 +38,6 @@ function DebateActions({ debate, onShare, onExport }: {
   onShare: () => void;
   onExport: () => void;
 }) {
-  console.log(debate.speaker_points);
   return (
     <div className="flex items-center gap-2">
       {debate.ext_id && (

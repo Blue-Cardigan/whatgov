@@ -50,8 +50,8 @@ const formatAnalysisData = (analysis: string) => {
   try {
     const data = JSON.parse(analysis);
     return `
-## Main Points
-${data.main_points}
+## Main Content
+${data.main_content}
 
 ## Outcome
 ${data.outcome}
