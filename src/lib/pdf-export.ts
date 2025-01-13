@@ -1,221 +1,520 @@
-import jsPDF from 'jspdf';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { format } from 'date-fns';
-import { processCitations, constructHansardUrl } from '@/lib/openai-api';
-import createClient from '@/lib/supabase/client';
+import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
-interface ExportToPDFParams {
-  title: string;
-  content: string;
-  citations: string[];
-  date: Date;
+// Initialize pdfMake fonts
+if (pdfFonts.pdfMake) {
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+} else {
+  pdfMake.vfs = pdfFonts;
 }
 
-const ensureFullUrl = (url: string) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `https://whatgov.co.uk${url.startsWith('/') ? '' : '/'}${url}`;
+export const COLORS = {
+  primary: '#449441',
+  primaryForeground: '#fafafa',
+  secondary: '#f0fdf4',
+  muted: '#71717a',
+  border: '#e4e4e7',
+  background: '#ffffff',
+  warning: '#f59e0b',
 };
 
-const fitUrlToWidth = (doc: jsPDF, url: string, maxWidth: number, startX: number) => {
-  // Start with normal size
-  doc.setFontSize(10);
-  let textWidth = doc.getTextWidth(url);
-  
-  // If URL is too long, reduce font size until it fits
-  let fontSize = 10;
-  while (textWidth + startX > maxWidth && fontSize > 6) {
-    fontSize -= 0.5;
-    doc.setFontSize(fontSize);
-    textWidth = doc.getTextWidth(url);
+const SYMBOLS = {
+  calendar: '•',
+  location: '›',
+  type: '»',
+  analysis: '—',
+  person: '·',
+  reference: '†',
+};
+
+interface ExportOptions {
+  title: string;
+  content: string;
+  date: Date;
+  citations?: string[];
+  searchType: 'ai' | 'hansard' | 'calendar';
+  latestContribution?: {
+    memberName: string;
+    house: string;
+    debateSection: string;
+    contributionText: string;
+    sittingDate: string;
+    debateExtId: string;
+  };
+  doc?: any; // jsPDF instance for multi-item exports
+  markdown?: boolean;
+  returnContent?: boolean;
+}
+
+const processMarkdownLine = (line: string): Content => {
+  // Replace citation markers with standard brackets
+  const processedLine = line.replace(/【(\d+)】/g, '[$1]');
+
+  // Common margin definition that matches pdfmake's type requirements
+  const standardMargin: [number, number, number, number] = [0, 2, 0, 2];
+  const headerMargin: [number, number, number, number] = [0, 10, 0, 5];
+  const subheaderMargin: [number, number, number, number] = [0, 8, 0, 4];
+  const listItemMargin: [number, number, number, number] = [10, 2, 0, 2];
+  const subListItemMargin: [number, number, number, number] = [20, 1, 0, 1];
+
+  // Handle numbered lists with bold text
+  const numberedListMatch = processedLine.match(/^(\d+\.\s+)(.*)/);
+  if (numberedListMatch) {
+    const [_, number, content] = numberedListMatch;
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return {
+      text: [
+        { text: number, style: 'listNumber' },
+        ...parts
+      ],
+      style: 'bodyText',
+      margin: standardMargin
+    };
   }
-  
-  return fontSize;
+
+  // Handle headers
+  if (processedLine.startsWith('# ')) {
+    return { 
+      text: processedLine.substring(2), 
+      style: 'header', 
+      margin: headerMargin 
+    };
+  }
+  if (processedLine.startsWith('## ')) {
+    return { 
+      text: processedLine.substring(3), 
+      style: 'subheader', 
+      margin: subheaderMargin 
+    };
+  }
+
+  // Handle bullet lists
+  if (processedLine.startsWith('- ')) {
+    const content = processedLine.substring(2);
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'listItem', 
+      margin: listItemMargin 
+    };
+  }
+
+  // Handle sub-bullet lists
+  if (processedLine.startsWith('  • ')) {
+    const content = processedLine.substring(4);
+    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'subListItem', 
+      margin: subListItemMargin 
+    };
+  }
+
+  // Handle regular text with bold formatting
+  if (processedLine.match(/\*\*.*?\*\*/)) {
+    const parts = processedLine.split(/(\*\*.*?\*\*)/g).map(part => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return { text: part.slice(2, -2), bold: true };
+      }
+      return { text: part };
+    });
+    return { 
+      text: parts, 
+      style: 'bodyText', 
+      margin: standardMargin 
+    };
+  }
+
+  // Regular text
+  return { 
+    text: processedLine, 
+    style: 'bodyText', 
+    margin: standardMargin 
+  };
 };
 
 export async function exportToPDF({ 
   title, 
   content, 
-  citations, 
-  date 
-}: ExportToPDFParams) {
-  // Initialize PDF with better default settings
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
+  date, 
+  citations = [], 
+  searchType,
+  latestContribution,
+  doc,
+  markdown,
+  returnContent
+}: ExportOptions) {
+  const PAGE_WIDTH = 595.28;
+  const CONTENT_WIDTH = PAGE_WIDTH - 80;
 
-  // Define consistent measurements
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = {
-    top: 25,
-    bottom: 25,
-    left: 25,
-    right: 25
-  };
-  const contentWidth = pageWidth - margin.left - margin.right;
-  let yPosition = margin.top;
+  const getContentStack = (): Content[] => {
+    const stack: Content[] = [
+      // Header
+      {
+        text: title,
+        style: 'header',
+        margin: [0, 0, 0, 10]
+      },
+      {
+        columns: [
+          {
+            text: [
+              { text: `${SYMBOLS.calendar} `, fontSize: 12, color: COLORS.muted },
+              { text: format(date, 'PPP'), style: 'metadata' }
+            ]
+          },
+          {
+            text: [
+              { text: `${SYMBOLS.type} `, fontSize: 12, color: COLORS.muted },
+              { text: searchType === 'ai' ? 'AI Research' : 
+                      searchType === 'hansard' ? 'Hansard Search' : 
+                      'Calendar Event', 
+                style: 'metadata' 
+              }
+            ],
+            alignment: 'right'
+          }
+        ],
+        margin: [0, 0, 0, 20]
+      }
+    ];
 
-  // Add header with logo or watermark
-  doc.setFillColor(247, 247, 247);
-  doc.rect(0, 0, pageWidth, 15, 'F');
-  doc.setFontSize(8);
-  doc.setTextColor(128, 128, 128);
-  doc.text('Generated by WhatGov.co.uk', margin.left, 10);
-  doc.text(format(date, 'PPP'), pageWidth - margin.right, 10, { align: 'right' });
-  
-  // Add title with better typography
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(33, 33, 33);
-  const titleLines = doc.splitTextToSize(title, contentWidth);
-  doc.text(titleLines, margin.left, yPosition);
-  yPosition += titleLines.length * 12;
+    // Content section based on type
+    if (searchType === 'ai') {
+      if (markdown) {
+        // Process markdown content using the new processor
+        const processedContent = content
+          .split('\n')
+          .map(processMarkdownLine)
+          .filter(Boolean);
 
-  // Add divider
-  yPosition += 5;
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin.left, yPosition, pageWidth - margin.right, yPosition);
-  yPosition += 10;
+        stack.push(...processedContent);
+      } else {
+        stack.push({
+          text: content,
+          style: 'bodyText',
+          margin: [0, 0, 0, 20]
+        });
+      }
 
-  // Add content with improved readability
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 51, 51);
-  const contentLines = doc.splitTextToSize(content, contentWidth);
-  doc.text(contentLines, margin.left, yPosition);
-  yPosition += contentLines.length * 6 + 15;
-
-  // Add citations if they exist
-  if (citations.length > 0) {
-    // Citations header
-    doc.addPage();
-    yPosition = margin.top;
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(33, 33, 33);
-    doc.text('Sources', margin.left, yPosition);
-    yPosition += 10;
-
-    // Add divider under Sources header
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin.left, yPosition, pageWidth - margin.right, yPosition);
-    yPosition += 10;
-
-    const supabase = createClient();
-    const extIds = citations.map(citation => {
-      const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
-      return match ? match[2] : null;
-    }).filter(Boolean);
-
-    const { data: debates } = await supabase
-      .from('debates')
-      .select('ext_id, date, title, ai_title, house')
-      .in('ext_id', extIds);
-
-    const debateMap = new Map(debates?.map(d => [d.ext_id, d]));
-    const { citationLinks } = processCitations('', citations);
-
-    // Process each citation with better formatting
-    for (const citation of citations) {
-      const match = citation.match(/\[(\d+)\]\s+(.+?)\.txt$/);
-      if (!match) continue;
-      
-      const [index, extId] = match;
-      const debate = debateMap.get(extId);
-      
-      if (debate) {
-        // Check if we need a new page
-        if (yPosition + 40 > pageHeight - margin.bottom) {
-          doc.addPage();
-          yPosition = margin.top;
+      // Add citations if present
+      if (citations.length > 0) {
+        stack.push(
+          {
+            text: 'Sources',
+            style: 'sectionHeader',
+            margin: [0, 10, 0, 5] as [number, number, number, number]
+          },
+          ...citations.map((citation, index) => ({
+            text: [
+              { text: `${index + 1}. `, style: 'citationNumber' },
+              { 
+                text: `https://whatgov.uk/debate/${citation}`,
+                link: `https://whatgov.uk/debate/${citation}`,
+                style: 'citationLink'
+              }
+            ],
+            margin: [0, 0, 0, 5] as [number, number, number, number]
+          }))
+        );
+      }
+    } else if (searchType === 'hansard') {
+      // Format Hansard content
+      try {
+        const response = typeof content === 'string' ? JSON.parse(content) : content;
+        
+        if (response.summary) {
+          stack.push(
+            {
+              text: 'Summary',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10]
+            },
+            {
+              columns: [
+                {
+                  width: 'auto',
+                  stack: [
+                    {
+                      text: response.summary.TotalContributions.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Contributions',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                },
+                {
+                  width: 'auto',
+                  stack: [
+                    {
+                      text: response.summary.TotalDebates.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Debates',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                },
+                {
+                  width: '*',
+                  stack: [
+                    {
+                      text: response.summary.TotalWrittenStatements.toString(),
+                      style: 'statValue',
+                      alignment: 'center'
+                    },
+                    {
+                      text: 'Written Statements',
+                      style: 'statLabel',
+                      alignment: 'center'
+                    }
+                  ]
+                }
+              ],
+              margin: [0, 0, 0, 20]
+            }
+          );
         }
 
-        // Citation number and title
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(33, 33, 33);
-        const citationText = `[${index}] ${debate.ai_title || debate.title}`;
-        const citationLines = doc.splitTextToSize(citationText, contentWidth);
-        doc.text(citationLines, margin.left, yPosition);
-        yPosition += citationLines.length * 7 + 5;
+        // Add latest contribution if available
+        if (latestContribution) {
+          stack.push(
+            {
+              text: 'Latest Contribution',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10]
+            },
+            {
+              stack: [
+                {
+                  text: [
+                    { text: `${SYMBOLS.person} `, color: COLORS.muted },
+                    { text: latestContribution.memberName, style: 'contributorName' }
+                  ]
+                },
+                {
+                  text: latestContribution.debateSection,
+                  style: 'debateSection',
+                  margin: [0, 5, 0, 5]
+                },
+                {
+                  text: latestContribution.contributionText,
+                  style: 'bodyText',
+                  margin: [0, 0, 0, 10]
+                },
+                {
+                  text: [
+                    { text: `${SYMBOLS.calendar} `, color: COLORS.muted },
+                    { 
+                      text: format(new Date(latestContribution.sittingDate), 'PPP'),
+                      style: 'metadata'
+                    }
+                  ]
+                }
+              ],
+              margin: [0, 0, 0, 20]
+            }
+          );
+        }
+      } catch (e) {
+        stack.push({
+          text: content,
+          style: 'bodyText'
+        });
+      }
+    } else {
+      if (searchType === 'calendar' && markdown) {
+        // Process markdown content
+        const processedContent = content.split('\n').map(line => {
+          if (line.startsWith('# ')) {
+            return { text: line.substring(2), style: 'header', margin: [0, 10, 0, 5] } as Content;
+          }
+          if (line.startsWith('## ')) {
+            return { text: line.substring(3), style: 'subheader', margin: [0, 8, 0, 4] } as Content;
+          }
+          if (line.startsWith('- ')) {
+            return { text: line, style: 'listItem', margin: [10, 2, 0, 2] } as Content;
+          }
+          if (line.startsWith('  • ')) {
+            return { text: line, style: 'subListItem', margin: [20, 1, 0, 1] } as Content;
+          }
+          return { text: line, style: 'bodyText', margin: [0, 2, 0, 2] } as Content;
+        });
 
-        // Date of debate
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(128, 128, 128);
-        doc.text(
-          format(new Date(debate.date), 'PPPP'),
-          margin.left, 
-          yPosition
-        );
-        yPosition += 8;
-
-        // Links with icons or bullets
-        doc.setTextColor(0, 102, 204);
-
-        // Hansard link
-        const hansardUrl = constructHansardUrl(
-          debate.ext_id,
-          debate.title || debate.ai_title,
-          format(new Date(debate.date), 'yyyy-MM-dd')
-        );
-        const labelX = margin.left + 35; // X position where URL starts
-        
-        doc.setFontSize(10);
-        doc.text('• Official Transcript:', margin.left, yPosition);
-        
-        // Fit Hansard URL
-        const hansardFontSize = fitUrlToWidth(
-          doc, 
-          hansardUrl, 
-          pageWidth - margin.right, 
-          labelX
-        );
-        doc.setFontSize(hansardFontSize);
-        doc.text(hansardUrl, labelX, yPosition);
-        yPosition += 6;
-
-        // WhatGov link
-        const whatGovUrl = ensureFullUrl(
-          citationLinks.find(link => 
-            link.index === Number(index)
-          )?.url || ''
-        );
-        
-        doc.setFontSize(10);
-        doc.text('• Full Analysis:', margin.left, yPosition);
-        
-        // Fit WhatGov URL
-        const whatGovFontSize = fitUrlToWidth(
-          doc, 
-          whatGovUrl, 
-          pageWidth - margin.right, 
-          labelX
-        );
-        doc.setFontSize(whatGovFontSize);
-        doc.text(whatGovUrl, labelX, yPosition);
-        yPosition += 15;
+        stack.push(...processedContent);
+      } else {
+        // Calendar event content
+        stack.push({
+          text: content,
+          style: 'bodyText'
+        } as Content);
       }
     }
-  }
 
-  // Add footer with page numbers
-  const pageCount = doc.internal.pages.length;
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
+    return stack;
+  };
+
+  const docDefinition: TDocumentDefinitions = {
+    pageMargins: [40, 80, 40, 60],
+    header: {
+      stack: [
+        {
+          canvas: [
+            {
+              type: 'rect',
+              x: 0,
+              y: 0,
+              w: PAGE_WIDTH,
+              h: 60,
+              color: COLORS.primary,
+            }
+          ]
+        },
+        {
+          columns: [
+            {
+              width: 40,
+              text: 'W',
+              font: 'Roboto',
+              fontSize: 24,
+              bold: true,
+              color: COLORS.primaryForeground,
+              margin: [40, -40, 0, 0]
+            },
+            {
+              width: '*',
+              text: 'WhatGov Export',
+              alignment: 'right',
+              color: COLORS.primaryForeground,
+              style: 'metadata',
+              margin: [0, -32, 40, 0]
+            }
+          ]
+        }
+      ]
+    },
+    footer: (currentPage, pageCount) => ({
+      columns: [
+        {
+          text: `Generated on ${format(new Date(), 'PPP')}`,
+          alignment: 'left',
+          margin: [40, 20, 0, 0],
+          style: 'metadata'
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          alignment: 'right',
+          margin: [0, 20, 40, 0],
+          style: 'metadata'
+        }
+      ]
+    }),
+    content: getContentStack(),
+    styles: {
+      header: {
+        fontSize: 18,
+        bold: true,
+        color: COLORS.primary
+      },
+      metadata: {
+        fontSize: 10,
+        color: COLORS.muted
+      },
+      sectionHeader: {
+        fontSize: 14,
+        bold: true,
+        color: COLORS.primary,
+        margin: [0, 10, 0, 5]
+      },
+      bodyText: {
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: COLORS.muted
+      },
+      citationNumber: {
+        fontSize: 10,
+        color: COLORS.primary
+      },
+      citationLink: {
+        fontSize: 10,
+        color: COLORS.primary,
+        decoration: 'underline'
+      },
+      statValue: {
+        fontSize: 24,
+        bold: true,
+        color: COLORS.primary
+      },
+      statLabel: {
+        fontSize: 10,
+        color: COLORS.muted
+      },
+      contributorName: {
+        fontSize: 12,
+        bold: true,
+        color: COLORS.primary
+      },
+      debateSection: {
+        fontSize: 11,
+        color: COLORS.muted,
+        italics: true
+      },
+      subheader: {
+        fontSize: 14,
+        bold: true,
+        color: COLORS.primary,
+        margin: [0, 8, 0, 4]
+      },
+      listItem: {
+        fontSize: 11,
+        lineHeight: 1.4,
+        color: COLORS.muted
+      },
+      subListItem: {
+        fontSize: 10,
+        lineHeight: 1.3,
+        color: COLORS.muted,
+        italics: true
+      }
+    },
+    defaultStyle: {
+      font: 'Roboto'
+    }
+  };
+
+  if (returnContent) {
+    // Return just the content stack for bulk exports
+    return getContentStack();
+  } else if (doc) {
+    // For multi-item exports, return the content stack
+    return docDefinition.content;
+  } else {
+    // For single item exports, create and download the PDF
+    const fileName = `${searchType}_${format(date, 'yyyy-MM-dd')}.pdf`;
+    pdfMake.createPdf(docDefinition).download(fileName);
   }
-  
-  // Save the PDF with formatted filename
-  const filename = `${title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(date, 'yyyy-MM-dd')}.pdf`;
-  doc.save(filename);
 } 

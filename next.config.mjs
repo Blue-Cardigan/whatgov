@@ -20,11 +20,35 @@ const nextConfig = {
         hostname: 'members-api.parliament.uk',
         pathname: '/api/Members/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'data.parliament.uk',
+      },
     ],
   },
   webpack: (config, { dev, isServer }) => {
     // Disable webpack caching in production
+    config.module.rules.push({
+      test: /\.(ttf)$/,
+      use: [
+        {
+          loader: 'url-loader',
+          options: {
+            limit: Infinity,
+            encoding: 'base64',
+          },
+        },
+      ],
+    });
     config.cache = false;
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        stream: false,
+        zlib: false
+      };
+    }
     return config;
   },
   async headers() {

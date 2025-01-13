@@ -21,27 +21,36 @@ interface GenerateMetadataProps {
 async function getDebateFromServer(extId: string) {
   const supabase = await createServerSupabaseClient();
   
-  const { data: debates, error } = await supabase.rpc('get_unvoted_debates_unauth', {
-    p_ext_id: extId
-  });
+  const { data: debate, error } = await supabase
+    .from('debates_new')
+    .select('*')
+    .eq('ext_id', extId)
+    .single();
 
   if (error) throw error;
-  if (!debates || debates.length === 0) return null;
+  if (!debate) return null;
 
-  return debates[0];
+  return debate;
 }
 
 export default async function DebatePage({ params }: DebatePageProps) {
   const { extId } = await params;
   
   try {
-    const [rawDebate, hansardData] = await Promise.all([
-      getDebateFromServer(extId),
-      HansardAPI.getDebateTranscript(extId)
-    ]);
-
+    // First, check if debate exists in database
+    const rawDebate = await getDebateFromServer(extId);
     if (!rawDebate) {
+      console.log(`Debate not found in database: ${extId}`);
       notFound();
+    }
+
+    // Then try to get Hansard data - don't fail if this errors
+    let hansardData;
+    try {
+      hansardData = await HansardAPI.getDebateTranscript(extId);
+    } catch (error) {
+      console.error('Failed to fetch Hansard data:', error);
+      // Don't return 404 - just continue without Hansard data
     }
 
     return (
@@ -59,8 +68,9 @@ export default async function DebatePage({ params }: DebatePageProps) {
         </div>
       </AuthProvider>
     );
-  } catch {
-    notFound();
+  } catch (error) {
+    console.error('Error in DebatePage:', error);
+    throw error; // Let Next.js handle the error
   }
 }
 
@@ -76,18 +86,17 @@ export async function generateMetadata({ params }: GenerateMetadataProps) {
   }
 
   return {
-    title: debate.ai_title || 'Debate',
-    description: debate.ai_summary || '',
+    title: debate.title || 'Debate',
     openGraph: {
-      title: debate.ai_title || 'Debate',
-      description: debate.ai_summary || '',
+      title: debate.title || 'Debate',
+      description: debate.analysis.split(0, 100) || '',
       type: 'article',
       publishedTime: debate.date,
     },
     twitter: {
       card: 'summary_large_image',
-      title: debate.ai_title || 'Debate',
-      description: debate.ai_summary || '',
+      title: debate.title || 'Debate',
+      description: debate.analysis.split(0, 100) || '',
     },
   };
 } 

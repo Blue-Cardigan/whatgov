@@ -7,7 +7,6 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { DivisionContent } from './DivisionContent';
 import { DebateContent } from './DebateContent';
-import { CommentsContent } from './CommentsContent';
 import { useSwipeable } from 'react-swipeable';
 import { locationColors, getDebateType } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -15,7 +14,6 @@ import { memo } from 'react';
 import { KeyPointsContent } from './KeyPointsContent';
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
-import { useVotes } from '@/hooks/useVotes';
 import { PartyDistribution } from './PartyDistribution';
 import { useContentNavigation, PostActions } from './PostCardUtils';
 
@@ -55,7 +53,6 @@ export const PostCard = memo(function PostCard({
   const [showKeyPoints, setShowKeyPoints] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { user, isEngagedCitizen } = useAuth();
-  const { submitVote } = useVotes();
 
   // Memoize computed values
   const isUserMpSpeaker = useMemo(() => 
@@ -89,18 +86,6 @@ export const PostCard = memo(function PostCard({
     delta: 10,
     swipeDuration: 500,
   });
-
-  // Handle vote submission
-  const handleVote = useCallback(async (debateId: string, vote: boolean) => {
-    try {
-      await submitVote({ debate_id: debateId, vote });
-      onVote?.(debateId, vote);
-      return true;
-    } catch (error) {
-      console.error('Failed to submit vote:', error);
-      throw error; // Re-throw to let DebateContent handle the error UI
-    }
-  }, [submitVote, onVote]);
 
   // Handle key points interaction
   const handleKeyPointsClick = useCallback(() => {
@@ -254,7 +239,6 @@ export const PostCard = memo(function PostCard({
                 debate={item}
                 readOnly={readOnly}
                 hasReachedLimit={hasReachedLimit}
-                onVote={handleVote}
                 analysisPreviewVariant="subtle"
                 hideAnalysis={true}
               />
@@ -365,14 +349,13 @@ export const PostCard = memo(function PostCard({
             )}
 
             {/* Content Section */}
-            {showComments && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                {showKeyPoints ? (
+                showKeyPoints ? (
                   isEngagedCitizen && item.ai_key_points && (
                     <KeyPointsContent 
                       keyPoints={item.ai_key_points}
@@ -380,16 +363,8 @@ export const PostCard = memo(function PostCard({
                       userMp={userMp}
                     />
                   )
-                ) : (
-                  item.ai_comment_thread && (
-                    <CommentsContent 
-                      comments={item.ai_comment_thread}
-                      isActive={true}
-                    />
-                  )
-                )}
+                )
               </motion.div>
-            )}
           </div>
         )}
       </Card>

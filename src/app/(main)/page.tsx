@@ -1,17 +1,10 @@
 import dynamic from 'next/dynamic'
-import { DebateSkeleton } from '@/components/debates/DebateSkeleton'
-
-// Lazy load non-critical components
-const DebateFeed = dynamic(
-  () => import('@/components/debates/DebateFeed').then(mod => mod.DebateFeed),
+import { WeekSkeleton } from '@/components/UpcomingDebates/CalendarSkeleton'
+// Lazy load UpcomingDebates component
+const UpcomingDebates = dynamic(
+  () => import('@/components/UpcomingDebates').then(mod => mod.UpcomingDebates),
   {
-    loading: () => (
-      <div className="min-h-screen flex flex-col md:pr-20">
-        <div className="container max-w-xl mx-auto px-4 flex-1">
-          <DebateSkeleton />
-        </div>
-      </div>
-    ),
+    loading: () => <WeekSkeleton />,
     ssr: true
   }
 )
@@ -23,8 +16,10 @@ export const metadata = {
 
 export default function DebatesPage() {
   return (
-    <>
-      <DebateFeed />
-    </>
+    <main className="h-full flex flex-col p-4 md:p-6">
+      <div className="flex-1">
+        <UpcomingDebates />
+      </div>
+    </main>
   );
 }

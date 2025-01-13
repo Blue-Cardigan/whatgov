@@ -29,13 +29,16 @@ export function parseStreamingResponse(chunk: string): {
   content: StreamingResponseContent;
 } {
   try {
-    const data = JSON.parse(chunk);
+    // Remove the 'data: ' prefix if it exists
+    const jsonStr = chunk.startsWith('data: ') ? chunk.slice(6) : chunk;
+    const data = JSON.parse(jsonStr);
     return {
       type: data.type,
       content: data.content || (data.type === 'citations' ? [] : ''),
     };
   } catch (error) {
     console.error('Error parsing streaming response:', error);
+    console.error('Problematic chunk:', chunk);
     return {
       type: 'error',
       content: 'Failed to parse response',

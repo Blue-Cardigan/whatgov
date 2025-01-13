@@ -1,36 +1,25 @@
 import { getRedisValue, setRedisValue } from '@/app/actions/redis';
 import type { Member, MemberSearchResponse, SearchResponse } from '@/types/search';
-import getSupabase from '@/lib/supabase/client';
-import { parseKeyPoints } from '@/lib/utils';
 import type { FetchOptions } from '@/types';
-import type { SearchResultAIContent } from '@/types/search';
 import type { SearchParams } from '@/types/search';
-import type { HansardDebateResponse } from '@/types/hansard';
+import { HansardDebateResponse } from '@/types/hansard';
 
-export const HANSARD_API_BASE = 'https://hansard-api.parliament.uk';
+export const HANSARD_API_BASE = process.env.HANSARD_API_BASE || 'https://hansard-api.parliament.uk';
 
-// Add this new helper function
 export function constructSearchUrl(params: SearchParams): string {
   const searchParams = new URLSearchParams();
   
-  // Add each parameter with the correct prefix
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      // Skip the house parameter if both houses are selected
-      if (key === 'house' && value === 'Commons,Lords') {
-        return;
-      }
-      
-      // Handle arrays specially (like memberIds)
-      if (Array.isArray(value)) {
-        value.forEach(item => {
-          searchParams.append(`queryParameters.${key}`, item.toString());
-        });
-      } else {
-        searchParams.append(`queryParameters.${key}`, value.toString());
-      }
-    }
-  });
+  // Handle advanced search parameters
+  if (params.searchTerm) {
+    // The searchTerm will already be formatted with the correct directives
+    // from the QueryBuilder's constructSearchQuery method
+    searchParams.append('queryParameters.searchTerm', params.searchTerm);
+  }
+  
+  // Add other parameters
+  if (params.house) {
+    searchParams.append('queryParameters.house', params.house);
+  }
 
   return `${process.env.NEXT_PUBLIC_API_BASE || ''}/api/hansard/search?${searchParams.toString()}`;
 }
@@ -105,84 +94,18 @@ export class HansardAPI {
     }
   }
 
-  private static async fetchAIContent(externalIds: string[], enableAI: boolean = false): Promise<Record<string, SearchResultAIContent>> {
-    // Return empty object if AI is not enabled
-    if (!enableAI) return {};
-
-    const supabase = getSupabase();
-    const results: Record<string, SearchResultAIContent> = {};
-    
-    try {
-      const { data, error } = await supabase
-        .from('debates')
-        .select(`
-          id,
-          ext_id,
-          title,
-          date,
-          type,
-          house,
-          location,
-          ai_title,
-          ai_summary,
-          ai_key_points,
-          speaker_count,
-          party_count,
-          speakers
-        `)
-        .in('ext_id', externalIds.map(id => id.toUpperCase()));
-
-      if (error) throw error;
-
-      data?.forEach((item: SearchResultAIContent) => {
-        // Convert KeyPoint[] to Json before parsing
-        const keyPoints = item.ai_key_points ? parseKeyPoints(JSON.parse(JSON.stringify(item.ai_key_points))) : undefined;
-        
-        results[item.ext_id] = {
-          id: item.id,
-          ext_id: item.ext_id,
-          title: item.title,
-          ai_title: item.ai_title || undefined,
-          date: item.date,
-          type: item.type,
-          house: item.house,
-          location: item.location,
-          ai_summary: item.ai_summary || undefined,
-          ai_key_points: keyPoints,
-          speaker_count: item.speaker_count || undefined,
-          party_count: item.party_count || undefined,
-          speakers: item.speakers || undefined
-        };
-      });
-
-      return results;
-    } catch (error) {
-      console.error('Failed to fetch AI content:', error);
-      return results;
-    }
-  }
-
-  static async search(params: SearchParams): Promise<SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }> {
+  static async search(params: SearchParams): Promise<SearchResponse> {
     const url = constructSearchUrl(params);
-    const cacheKey = `search:${url}:ai=${params.enableAI ? '1' : '0'}`;
+    const cacheKey = `search:${url}:ai='0'}`;
 
     try {
-      const cachedResult = await this.fetchWithCache<SearchResponse & { aiContent?: Record<string, SearchResultAIContent> }>(
+      const cachedResult = await this.fetchWithCache<SearchResponse>(
         cacheKey,
         async () => {
           const searchResults = await this.fetchWithErrorHandling<SearchResponse>(url);
-          
-          const debateIds = Array.from(
-            new Set(
-              searchResults.Contributions?.map(c => c.DebateSectionExtId) || []
-            )
-          );
-
-          const aiContent = await this.fetchAIContent(debateIds, params.enableAI);
 
           return {
             ...searchResults,
-            aiContent: params.enableAI ? aiContent : undefined
           };
         },
         {
@@ -210,60 +133,6 @@ export class HansardAPI {
     } catch (error) {
       console.error('Failed to search members:', error);
       return [];
-    }
-  }
-
-  static async getSearchResultAIContent(externalId: string): Promise<SearchResultAIContent | null> {
-    const supabase = getSupabase();
-    
-  try {
-    const formattedExtId = externalId.toUpperCase();
-    
-    const { data, error } = await supabase
-      .from('debates')
-      .select(`
-        id,
-        ext_id,
-        title,
-        date,
-        type,
-        house,
-        location,
-        ai_title,
-        ai_summary,
-        ai_key_points,
-        speaker_count,
-        party_count,
-        speakers
-      `)
-      .eq('ext_id', formattedExtId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      console.error('Error fetching debate content:', error);
-      return null;
-    }
-    const keyPoints = data.ai_key_points ? parseKeyPoints(data.ai_key_points) : undefined;
-
-    return {
-      id: data.id,
-      ext_id: data.ext_id,
-      title: data.title,
-      ai_title: data.ai_title || undefined,
-      date: data.date,
-      type: data.type,
-      house: data.house,
-      location: data.location,
-      ai_summary: data.ai_summary || undefined,
-      ai_key_points: keyPoints,
-      speaker_count: data.speaker_count || undefined,
-      party_count: data.party_count || undefined,
-      speakers: data.speakers || undefined
-    };
-  } catch (error) {
-    console.error('Failed to fetch debate content:', error);
-      return null;
     }
   }
 

@@ -10,13 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { TOPICS } from "@/lib/utils";
 import Steps from "./steps";
-import { migrateAnonymousVotes } from "@/lib/supabase/votes";
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
-
-interface MigrationStatus {
-  total: number;
-  migrated: number;
-}
 
 const TOTAL_STEPS = 5;
 
@@ -25,7 +19,6 @@ export default function SignUp() {
   const { signUp, user } = useAuth();
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
-  const [migrationStatus, setMigrationStatus] = useState<MigrationStatus | null>(null);
   const [loadingStates, setLoadingStates] = useState({
     submission: false,
     postcode: false
@@ -51,30 +44,6 @@ export default function SignUp() {
       router.push('/');
     }
   }, [user, router]);
-
-  const migrateVotes = async (userId: string) => {
-    const ANON_VOTES_KEY = 'whatgov_anon_votes';
-    try {
-      const votes = JSON.parse(localStorage.getItem(ANON_VOTES_KEY) || '[]');
-      if (!votes.length) return true;
-
-      setMigrationStatus({ total: votes.length, migrated: 0 });
-      
-      const { success, error } = await migrateAnonymousVotes(votes, userId);
-      
-      if (success) {
-        localStorage.removeItem(ANON_VOTES_KEY);
-        return true;
-      } else {
-        throw new Error(error || 'Failed to migrate votes');
-      }
-    } catch (error) {
-      console.error('Vote migration error:', error);
-      return false;
-    } finally {
-      setMigrationStatus(null);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,13 +85,8 @@ export default function SignUp() {
         localStorage.setItem('verification_email', formData.email);
         router.push('/accounts/verify');
       } else if (response.user?.id) {
-        // Migrate anonymous votes if any exist
-        const migrationSuccess = await migrateVotes(response.user.id);
-        if (!migrationSuccess) {
-          console.error('Failed to migrate anonymous votes');
-        }
         router.push('/');
-      }
+        }
     } catch (err) {
       console.error('Signup error:', err);
       setError(
@@ -308,20 +272,6 @@ export default function SignUp() {
         </p>
       </div>
       <SimpleFooter />
-      {migrationStatus && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center"
-        >
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-sm text-muted-foreground">
-              Migrating your votes ({migrationStatus.migrated}/{migrationStatus.total})
-            </p>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 } 

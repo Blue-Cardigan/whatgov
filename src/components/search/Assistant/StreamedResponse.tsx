@@ -1,18 +1,9 @@
 import { Citation } from '@/types/search';
 import ReactMarkdown from 'react-markdown';
 import { DebateHeader } from '@/components/debates/DebateHeader';
-import { SaveSearchButton } from '../SaveSearchButton';
-import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
-import { exportToPDF } from '@/lib/pdf-export';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Children, ReactNode, useState } from 'react';
+import { Children, cloneElement, isValidElement, ReactNode } from 'react';
 import { InlineCitation } from '@/components/ui/inline-citation';
+import { LoadingAnimation } from '@/components/ui/loading-animation';
 
 interface StreamedResponseProps {
   streamingText: string;
@@ -21,29 +12,17 @@ interface StreamedResponseProps {
   query: string;
 }
 
-export function StreamedResponse({ streamingText, citations, isLoading, query }: StreamedResponseProps) {
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExport = async () => {
-    try {
-      setIsExporting(true);
-      await exportToPDF({
-        title: query,
-        content: streamingText,
-        citations: citations.map(citation => citation.chunk_text),
-        date: new Date(),
-      });
-    } catch (error) {
-      console.error('Error exporting to PDF:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
+export function StreamedResponse({ streamingText, citations, isLoading }: StreamedResponseProps) {
 
   const formatCitationIndexes = (citations: Citation[]): string => {
+    if (!citations || citations.length === 0) return '【】';
+
     const sortedIndexes = citations
       .map(c => c.citation_index)
+      .filter(index => typeof index === 'number') // Ensure we only have valid numbers
       .sort((a, b) => a - b);
+
+    if (sortedIndexes.length === 0) return '【】';
 
     // Find consecutive sequences
     const sequences: number[][] = [];
@@ -52,25 +31,28 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
     sortedIndexes.forEach((num, i) => {
       if (i === 0 || num !== sortedIndexes[i - 1] + 1) {
         if (currentSeq.length > 0) {
-          sequences.push(currentSeq);
+          sequences.push([...currentSeq]);
         }
         currentSeq = [num];
       } else {
         currentSeq.push(num);
       }
     });
+    
+    // Don't forget to push the last sequence
     if (currentSeq.length > 0) {
       sequences.push(currentSeq);
     }
 
-    // Format sequences
+    // Format sequences with null checks
     const formattedSequences = sequences.map(seq => {
-      if (seq.length === 1) return seq[0].toString();
+      if (!seq || seq.length === 0) return '';
+      if (seq.length === 1) return `${seq[0]}`;
       if (seq.length === 2) return seq.join(", ");
       return `${seq[0]}-${seq[seq.length - 1]}`;
-    });
+    }).filter(Boolean); // Remove any empty strings
 
-    return `【${formattedSequences.join(", ")}】`;
+    return formattedSequences.length > 0 ? `【${formattedSequences.join(", ")}】` : '【】';
   };
 
   const CitationsList = ({ citations }: { citations: Citation[] }) => {
@@ -128,7 +110,7 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
               />
             );
           }
-          return <span key={`unmatched-citation-${i}`}>【{citationNumber}】</span>;
+          return <span key={`unmatched-citation-${i}`}>{part}</span>;
         }
         return part ? <span key={`text-${i}`}>{part}</span> : null;
       }).filter(Boolean);
@@ -181,9 +163,21 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
           ),
           li: ({ children }) => (
             <li className="mb-1 text-foreground">
-              {Children.map(children, (child: ReactNode) =>
-                typeof child === 'string' ? renderWithCitations(child) : child
-              )}
+              {Children.map(children, (child: ReactNode) => {
+                if (typeof child === 'string') {
+                  return renderWithCitations(child);
+                }
+                // Handle nested paragraph elements inside list items
+                if (isValidElement(child)) {
+                  return cloneElement<any>(child, {
+                    ...child.props,
+                    children: typeof child.props.children === 'string' 
+                      ? renderWithCitations(child.props.children)
+                      : child.props.children
+                  });
+                }
+                return child;
+              })}
             </li>
           ),
           blockquote: ({ children }) => (
@@ -211,68 +205,23 @@ export function StreamedResponse({ streamingText, citations, isLoading, query }:
   };
 
   if (isLoading && !streamingText) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Searching through parliamentary records...</p>
-        </div>
-      </div>
-    );
+    return <LoadingAnimation />;
   }
 
-  if (!streamingText) {
+  if (!isLoading && !streamingText) {
     return (
       <div className="text-muted-foreground text-center py-8">
         <p>Enter a query to search through parliamentary records...</p>
-        <p className="text-sm mt-2">Example: &ldquo;What has been said about climate change this week?&rdquo;</p>
       </div>
     );
   }
 
   return (
     <div className="prose dark:prose-invert prose-slate max-w-none">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          {streamingText && !isLoading && (
-            <>
-              <SaveSearchButton
-                aiSearch={{
-                  query,
-                  streamingText,
-                  citations: citations.map(citation => ({
-                    citation_index: citation.citation_index,
-                    debate_id: citation.debate_id,
-                    chunk_text: citation.chunk_text
-                  }))
-                }}
-                searchType="ai"
-              />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleExport}
-                      disabled={isExporting}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Export to PDF
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
-          )}
-        </div>
-      </div>
-
       <MarkdownWithCitations text={streamingText} />
-
-      <CitationsList citations={citations} />
+      {citations?.length > 0 && (
+        <CitationsList citations={citations} />
+      )}
     </div>
   );
 } 

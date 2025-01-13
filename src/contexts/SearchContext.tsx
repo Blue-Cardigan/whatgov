@@ -1,19 +1,18 @@
 "use client";
 
 import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
-import type { SearchParams, SearchResponse, SearchResultAIContent } from '@/types/search';
+import type { Citation, SearchParams, SearchResponse } from '@/types/search';
 
-// Add new type for citations
-type Citation = {
-  citation_index: number;
-  debate_id: string;
-  chunk_text: string;
-};
+
+interface MPSearchState {
+  query: string;
+  mpId?: string;
+  keywords: string[];
+}
 
 interface SearchState {
   results: SearchResponse | null;
   searchParams: SearchParams;
-  aiContent?: Record<string, SearchResultAIContent>;
   isLoading: boolean;
   aiSearch: {
     query: string;
@@ -21,7 +20,8 @@ interface SearchState {
     citations: Citation[];
     isLoading: boolean;
   };
-  searchType?: 'ai' | 'hansard';
+  searchType?: 'ai' | 'hansard' | 'mp';
+  mpSearch: MPSearchState;
 }
 
 type SearchAction =
@@ -31,17 +31,21 @@ type SearchAction =
   | { type: 'APPEND_RESULTS'; payload: SearchResponse }
   | { type: 'CLEAR_RESULTS' }
   | { type: 'SET_AI_LOADING'; payload: boolean }
-  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[] } }
+  | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[]; isFinal?: boolean } }
   | { type: 'CLEAR_AI_SEARCH' }
-  | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' };
+  | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
+  | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
+  | { type: 'CLEAR_MP_SEARCH' };
 
 const initialState: SearchState = {
   results: null,
   searchParams: {
     searchTerm: '',
+    house: undefined,
     skip: 0,
     take: 10,
-    orderBy: 'SittingDateDesc'
+    orderBy: 'SittingDateDesc',
+    resultType: 'all'
   },
   isLoading: false,
   aiSearch: {
@@ -50,7 +54,12 @@ const initialState: SearchState = {
     citations: [],
     isLoading: false
   },
-  searchType: undefined
+  searchType: undefined,
+  mpSearch: {
+    query: '',
+    mpId: undefined,
+    keywords: []
+  },
 };
 
 const SearchContext = createContext<{
@@ -93,7 +102,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
         citations: state.aiSearch.citations,
         isLoading: state.aiSearch.isLoading
       },
-      searchType: state.searchType
+      searchType: state.searchType,
+      mpSearch: state.mpSearch
     }));
   }, [
     state.results, 
@@ -102,7 +112,8 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     state.aiSearch.streamingText,
     state.aiSearch.citations,
     state.aiSearch.isLoading,
-    state.searchType
+    state.searchType,
+    state.mpSearch
   ]);
 
   return (
@@ -122,28 +133,17 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
     case 'SET_PARAMS':
       return {
         ...state,
-        searchParams: action.payload
+        searchParams: {
+          ...state.searchParams,
+          ...action.payload,
+          // Reset pagination when changing result type
+          skip: action.payload.resultType !== state.searchParams.resultType ? 0 : action.payload.skip
+        }
       };
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload
-      };
-    case 'APPEND_RESULTS':
-      if (!state.results) return { ...state, results: action.payload };
-      return {
-        ...state,
-        results: {
-          ...action.payload,
-          Contributions: [
-            ...state.results.Contributions,
-            ...action.payload.Contributions
-          ],
-          aiContent: {
-            ...(state.results.aiContent || {}),
-            ...(action.payload.aiContent || {})
-          }
-        }
       };
     case 'CLEAR_RESULTS':
       return {
@@ -160,24 +160,54 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         }
       };
     case 'SET_AI_SEARCH':
+      if (action.payload.isFinal) {
+        return {
+          ...state,
+          aiSearch: {
+            ...state.aiSearch,
+            query: action.payload.query || state.searchParams.searchTerm,
+            streamingText: action.payload.streamingText,
+            citations: action.payload.citations
+          }
+        };
+      }
+      
       return {
         ...state,
         aiSearch: {
           ...state.aiSearch,
-          query: action.payload.query,
-          streamingText: action.payload.streamingText,
+          query: action.payload.query || state.searchParams.searchTerm,
+          streamingText: state.aiSearch.streamingText + action.payload.streamingText,
           citations: action.payload.citations
         }
       };
     case 'CLEAR_AI_SEARCH':
       return {
         ...state,
-        aiSearch: initialState.aiSearch
+        aiSearch: {
+          query: '',
+          streamingText: '',
+          citations: [],
+          isLoading: false
+        }
       };
     case 'SET_SEARCH_TYPE':
       return {
         ...state,
         searchType: action.payload
+      };
+    case 'SET_MP_SEARCH':
+      return {
+        ...state,
+        mpSearch: {
+          ...state.mpSearch,
+          ...action.payload
+        }
+      };
+    case 'CLEAR_MP_SEARCH':
+      return {
+        ...state,
+        mpSearch: initialState.mpSearch
       };
     default:
       return state;

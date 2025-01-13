@@ -13,6 +13,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+
+// Helper function to get last 7 weekdays
+export function getLastSevenDays(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  let currentDate = new Date(today);
+  let daysCollected = 0;
+
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+  while (daysCollected < 7) {
+    const dayOfWeek = currentDate.getDay();
+    // Only include weekdays (Monday-Friday)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      const weekday = weekdays[dayOfWeek - 1];
+      const dateStr = currentDate.toISOString().split('T')[0];
+      days.push(`${weekday} ${dateStr}`);
+      daysCollected++;
+    }
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+
+  return days;
+} 
+
 export const getThreeFourPortraitUrl = (memberId: number) => 
   `https://members-api.parliament.uk/api/Members/${memberId}/Portrait?croptype=threefour&webversion=true`;
 
@@ -109,139 +134,6 @@ export function FormattedMarkdown({ content, citations }: FormattedMarkdownProps
       {content}
     </ReactMarkdown>
   );
-}
-
-// Helper function to safely parse JSON fields
-export function parseKeyPoints(json: Json): KeyPoint[] {
-  if (!json) return [];
-  
-  let parsedJson = json;
-  if (typeof json === 'string') {
-    try {
-      parsedJson = JSON.parse(json);
-    } catch (e) {
-      console.error('Error parsing key points JSON string:', e);
-      return [];
-    }
-  }
-  
-  if (!Array.isArray(parsedJson)) {
-    console.error('Key points data is not an array:', parsedJson);
-    return [];
-  }
-  
-  return parsedJson
-    .filter(item => item !== null && typeof item === 'object')
-    .map(item => {
-      const keyPoint = item as Record<string, unknown>;
-      
-      // Ensure support and opposition are arrays of Speaker objects
-      const support = Array.isArray(keyPoint.support) 
-        ? keyPoint.support
-            .filter(s => s !== null)
-            .map(s => parseSpeaker(s))
-        : [];
-      const opposition = Array.isArray(keyPoint.opposition)
-        ? keyPoint.opposition
-            .filter(s => s !== null)
-            .map(s => parseSpeaker(s))
-        : [];
-
-      // Handle speaker parsing with standardized Speaker fields
-      let speaker;
-      if (typeof keyPoint.speaker === 'string') {
-        // Parse old format (string with party in parentheses)
-        const name = keyPoint.speaker.replace(/\s*\([^)]*\)\s*$/, '');
-        const party = (keyPoint.speaker.match(/\(([^)]+)\)$/) || [])[1] || '';
-        speaker = {
-          name,
-          party,
-          display_as: name,
-          member_id: 0,
-          memberId: '0',
-          constituency: ''
-        } as Speaker;
-      } else if (typeof keyPoint.speaker === 'object' && keyPoint.speaker) {
-        const spk = keyPoint.speaker as Record<string, unknown>;
-        const member_id = typeof spk.member_id === 'number' ? spk.member_id :
-                         typeof spk.memberId === 'string' ? parseInt(spk.memberId, 10) : 0;
-        
-        speaker = {
-          name: String(spk.name || ''),
-          party: String(spk.party || ''),
-          display_as: String(spk.display_as || spk.name || ''),
-          member_id,
-          memberId: String(spk.memberId || spk.member_id || '0'),
-          constituency: String(spk.constituency || '')
-        } as Speaker;
-      } else {
-        // Default speaker for invalid data
-        speaker = {
-          name: 'Unknown',
-          party: '',
-          display_as: 'Unknown',
-          member_id: 0,
-          memberId: '0',
-          constituency: ''
-        } as Speaker;
-      }
-
-      return {
-        point: String(keyPoint.point || ''),
-        context: typeof keyPoint.context === 'string' ? keyPoint.context : null,
-        speaker,
-        support,
-        opposition
-      };
-    })
-    .filter((item): item is KeyPoint => 
-      item !== null && 
-      item.point !== '' &&
-      item.speaker &&
-      typeof item.speaker.memberId === 'string' &&
-      Array.isArray(item.support) &&
-      Array.isArray(item.opposition)
-    );
-}
-
-// Helper function to parse speaker data
-function parseSpeaker(data: unknown): Speaker {
-  if (typeof data === 'string') {
-    // Handle string format (name with optional party in parentheses)
-    const name = data.replace(/\s*\([^)]*\)\s*$/, '');
-    const party = (data.match(/\(([^)]+)\)$/) || [])[1] || '';
-    return {
-      name,
-      party,
-      display_as: name,
-      member_id: 0,
-      memberId: '0',
-      constituency: ''
-    };
-  } else if (typeof data === 'object' && data) {
-    const spk = data as Record<string, unknown>;
-    const member_id = typeof spk.member_id === 'number' ? spk.member_id :
-                     typeof spk.memberId === 'string' ? parseInt(spk.memberId, 10) : 0;
-    
-    return {
-      name: String(spk.name || ''),
-      party: String(spk.party || ''),
-      display_as: String(spk.display_as || spk.name || ''),
-      member_id,
-      memberId: String(spk.memberId || spk.member_id || '0'),
-      constituency: String(spk.constituency || '')
-    };
-  }
-  
-  // Default speaker for invalid data
-  return {
-    name: 'Unknown',
-    party: '',
-    display_as: 'Unknown',
-    member_id: 0,
-    memberId: '0',
-    constituency: ''
-  };
 }
 
 export function constructHansardUrl(result: Contribution, searchTerm?: string) {

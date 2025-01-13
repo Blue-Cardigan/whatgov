@@ -48,7 +48,7 @@ interface AuthContextValue extends AuthState {
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   getAuthHeader: () => Promise<string>;
-  isPremium: boolean;
+  isProfessional: boolean;
   isEngagedCitizen: boolean;
   refreshSubscription: () => Promise<void>;
 }
@@ -114,19 +114,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update useMemo dependencies to include updateState
   const value = useMemo(() => {
-    // Add internal subscription verification
-    const verifySubscription = (subscription: Subscription | null): boolean => {
-      try {
-        if (!subscription) return false;
-        
-        return (subscription.status === 'active' || subscription.status === 'trialing') && 
-          (!subscription.current_period_end || 
-           new Date(subscription.current_period_end).getTime() + 259200000 > Date.now());
-      } catch (error) {
-        console.error('Error verifying subscription:', error);
-        return false;
-      }
-    };
+
+    const hasActiveSubscription = state.subscription?.status === 'active' || 
+                                 state.subscription?.status === 'trialing';
 
     const signIn = async (email: string, password: string) => {
       try {
@@ -298,9 +288,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword: async () => ({ success: false }),
       updatePassword: async () => ({ success: false }),
       getAuthHeader,
-      isPremium: verifySubscription(state.subscription) && 
+      isProfessional: hasActiveSubscription && 
         state.subscription?.plan === 'PROFESSIONAL',
-      isEngagedCitizen: verifySubscription(state.subscription) && 
+      isEngagedCitizen: hasActiveSubscription && 
         ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan || ''),
       refreshSubscription: async () => {
         if (state.user?.id) {
@@ -308,7 +298,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-  }, [state, router, fetchProfile, fetchSubscription, supabase, updateState]);
+  }, [
+    state,
+    router, 
+    fetchProfile, 
+    fetchSubscription, 
+    supabase, 
+    updateState
+  ]);
 
   // Update useEffect dependencies to include updateState
   useEffect(() => {

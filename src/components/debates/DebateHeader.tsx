@@ -6,8 +6,6 @@ import { locationColors, getDebateType } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import createClient from '@/lib/supabase/client';
 import Link from 'next/link';
-import { PartyDistribution } from '../posts/PartyDistribution';
-import { PartyCount } from '@/types';
 
 interface DebateHeaderProps {
   extId: string;
@@ -16,12 +14,10 @@ interface DebateHeaderProps {
 }
 
 type DebateInfo = {
-  party_count: PartyCount;
-  contribution_count: number;
   house: string;
   date: string;
   type: string;
-  ai_title: string | null;
+  title: string | null;
 }
 
 export function DebateHeader({
@@ -37,8 +33,8 @@ export function DebateHeader({
       const supabase = createClient();
       
       const { data, error } = await supabase
-        .from('debates')
-        .select('party_count, contribution_count, house, date, type, ai_title, title')
+        .from('debates_new')
+        .select('title, type, house, date, analysis, speaker_points')
         .eq('ext_id', extId)
         .single();
 
@@ -86,7 +82,7 @@ export function DebateHeader({
     >
       {/* Title */}
       <h1 className="text-lg sm:text-xl font-bold text-foreground line-clamp-2">
-        {debate.ai_title}
+        {debate.title}
       </h1>
 
       {/* Meta information */}
@@ -104,15 +100,6 @@ export function DebateHeader({
               {debateType.label}
             </Badge>
           )}
-        </div>
-
-        {/* Replace Stats with PartyDistribution */}
-        <div className="flex items-center gap-3 ml-auto">
-          <PartyDistribution partyCount={debate.party_count} />
-          <span className="flex items-center gap-1.5">
-            <MessageSquare className="h-4 w-4" />
-            {debate.contribution_count}
-          </span>
         </div>
       </div>
     </div>

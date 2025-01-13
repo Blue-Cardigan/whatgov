@@ -8,17 +8,16 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useAssistant() {
   const { getAuthHeader } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingText, setStreamingText] = useState<string>('');
-  const [citations, setCitations] = useState<Citation[]>([]);
   const { hasReachedResearchSearchLimit, recordResearchSearch } = useEngagement();
   const { toast } = useToast();
 
   const performFileSearch = useCallback(async (
     query: string, 
     openaiAssistantId: string | null,
-    onStreamingUpdate?: (text: string, citations: Citation[]) => void
+    onStreamingUpdate?: (text: string, citations: Citation[], isFinal: boolean) => void,
+    onComplete?: () => void,
+    useRecentFiles: boolean = false
   ) => {
-    // Check limits before proceeding
     if (hasReachedResearchSearchLimit()) {
       toast({
         title: "Search limit reached",
@@ -29,15 +28,13 @@ export function useAssistant() {
     }
 
     setIsLoading(true);
-    setStreamingText('');
-    setCitations([]);
 
     try {
-      // Record the AI search before making the request
       await recordResearchSearch();
-
-      // Get auth header
       const authHeader = await getAuthHeader();
+
+      console.log('[Assistant] Starting search with query:', query);
+      console.log('[Assistant] Using recent files:', useRecentFiles);
 
       const response = await fetch('/api/assistant/stream', {
         method: 'POST',
@@ -45,7 +42,11 @@ export function useAssistant() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authHeader}`
         },
-        body: JSON.stringify({ query, assistantId: openaiAssistantId }),
+        body: JSON.stringify({ 
+          query, 
+          assistantId: openaiAssistantId,
+          useRecentFiles
+        }),
       });
 
       if (!response.ok) {
@@ -56,14 +57,24 @@ export function useAssistant() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
 
+      let hasStartedStreaming = false;
       const decoder = new TextDecoder();
       let buffer = '';
-      let currentText = '';
       let currentCitations: Citation[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        
+        if (done) {
+          console.log('[Assistant] Stream complete');
+          onComplete?.();
+          break;
+        }
+
+        if (!hasStartedStreaming) {
+          setIsLoading(false);
+          hasStartedStreaming = true;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -72,55 +83,44 @@ export function useAssistant() {
         for (const line of lines) {
           if (line.trim()) {
             try {
-              const { type, content } = parseStreamingResponse(line);
-              
+              const { type, content } = JSON.parse(line);              
               switch (type) {
-                case 'citations':
-                  if (Array.isArray(content)) {
-                    currentCitations = (content as Citation[]).map((citation) => ({
-                      citation_index: Number(citation.citation_index),
-                      debate_id: citation.debate_id,
-                      chunk_text: citation.chunk_text
-                    }));
-                    currentCitations.sort((a, b) => a.citation_index - b.citation_index);
-                    setCitations(currentCitations);
-                  } else {
-                    console.error('Citations content is not an array:', content);
-                  }
-                  break;
                 case 'text':
+                  onStreamingUpdate?.(
+                    content.content || content,
+                    currentCitations,
+                    false
+                  );
+                  break;
+
                 case 'finalText':
-                  const textContent = typeof content === 'string' ? content : String(content);
-                  currentText = type === 'finalText' ? textContent : currentText + textContent;
-                  setStreamingText(currentText);
+                  onStreamingUpdate?.(
+                    content.text,
+                    currentCitations,
+                    true
+                  );
                   break;
-                case 'error':
-                  throw new Error(typeof content === 'string' ? content : 'Unknown error');
-                  break;
-                // Ignore other message types like debateRefs
-                default:
+
+                case 'citations':
+                  currentCitations = content.content || content;
+                  onStreamingUpdate?.(
+                    buffer,
+                    currentCitations,
+                    false
+                  );
                   break;
               }
-              
-              // Update streaming content after processing each line
-              onStreamingUpdate?.(currentText, currentCitations);
             } catch (e) {
-              console.error('Error processing line:', e);
+              console.error('[Assistant] Error processing stream chunk:', e);
             }
           }
         }
       }
 
-      // Ensure final state is set
-      setStreamingText(currentText);
-      setCitations(currentCitations);
-      onStreamingUpdate?.(currentText, currentCitations);
-
     } catch (error) {
-      console.error('Error in file search:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while searching.';
-      setStreamingText(errorMessage);
-      onStreamingUpdate?.(errorMessage, []);
+      console.error('[Assistant] Search error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      onStreamingUpdate?.(errorMessage, [], false);
       
       toast({
         title: "Search failed",
@@ -134,8 +134,6 @@ export function useAssistant() {
 
   return {
     isLoading,
-    performFileSearch,
-    streamingText,
-    citations
+    performFileSearch
   };
 } 

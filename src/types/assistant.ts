@@ -1,6 +1,8 @@
+import type { Citation } from './search';
+
 export interface StreamResponse {
   text: string;
-  citations: Array<{ citation_index: number; debate_id: string; chunk_text: string }>;
+  citations: Citation[];
 }
 
 export interface AssistantResponse {

@@ -38,7 +38,7 @@ interface EngagementStats {
 }
 
 export function useEngagement() {
-  const { user, profile, updateProfile, isEngagedCitizen, isPremium } = useAuth();
+  const { user, profile, updateProfile, isEngagedCitizen, isProfessional } = useAuth();
   const { toast } = useToast();
 
   const [stats, setStats] = useState<EngagementStats>(() => {
@@ -237,7 +237,7 @@ export function useEngagement() {
   // Add separate functions to get remaining searches for each type
   const getRemainingResearchSearches = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PROFESSIONAL.RESEARCH_SEARCHES;
+    if (isProfessional) return AI_LIMITS.PROFESSIONAL.RESEARCH_SEARCHES;
     
     const limit = isEngagedCitizen ? 
       AI_LIMITS.ENGAGED_CITIZEN.RESEARCH_SEARCHES : 
@@ -248,11 +248,11 @@ export function useEngagement() {
     }
 
     return Math.max(0, limit - (profile?.ai_searches_count || 0));
-  }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
+  }, [user, isProfessional, isEngagedCitizen, profile, shouldResetAISearches]);
 
   const getRemainingHansardAISearches = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PROFESSIONAL.HANSARD_AI;
+    if (isProfessional) return AI_LIMITS.PROFESSIONAL.HANSARD_AI;
     
     const limit = isEngagedCitizen ? 
       AI_LIMITS.ENGAGED_CITIZEN.HANSARD_AI : 
@@ -263,30 +263,30 @@ export function useEngagement() {
     }
 
     return Math.max(0, limit - (profile?.hansard_ai_searches_count || 0));
-  }, [user, isPremium, isEngagedCitizen, profile, shouldResetAISearches]);
+  }, [user, isProfessional, isEngagedCitizen, profile, shouldResetAISearches]);
 
   // Add separate functions to check limits for each type
   const hasReachedResearchSearchLimit = useCallback((): boolean => {
     if (!user) return true;
-    if (isPremium) return false;
+    if (isProfessional) return false;
     
     if (shouldResetAISearches()) {
       return false;
     }
     
     return getRemainingResearchSearches() <= 0;
-  }, [user, isPremium, getRemainingResearchSearches, shouldResetAISearches]);
+  }, [user, isProfessional, getRemainingResearchSearches, shouldResetAISearches]);
 
   const hasReachedHansardAISearchLimit = useCallback((): boolean => {
     if (!user) return true;
-    if (isPremium) return false;
+    if (isProfessional) return false;
     
     if (shouldResetAISearches()) {
       return false;
     }
     
     return getRemainingHansardAISearches() <= 0;
-  }, [user, isPremium, getRemainingHansardAISearches, shouldResetAISearches]);
+  }, [user, isProfessional, getRemainingHansardAISearches, shouldResetAISearches]);
 
   // Add function to record assistant creation
   const recordAssistantCreation = useCallback(() => {
@@ -299,22 +299,22 @@ export function useEngagement() {
   // Add function to get remaining assistant creations
   const getRemainingAssistants = useCallback((): number => {
     if (!user) return 0;
-    if (isPremium) return AI_LIMITS.PROFESSIONAL.ASSISTANTS;
+    if (isProfessional) return AI_LIMITS.PROFESSIONAL.ASSISTANTS;
     
     const limit = isEngagedCitizen ? 
       AI_LIMITS.ENGAGED_CITIZEN.ASSISTANTS : 
       AI_LIMITS.FREE.ASSISTANTS;
     
     return Math.max(0, limit - stats.assistantsCreated);
-  }, [user, isPremium, isEngagedCitizen, stats.assistantsCreated]);
+  }, [user, isProfessional, isEngagedCitizen, stats.assistantsCreated]);
 
   // Add function to check if user has reached assistant creation limit
   const hasReachedAssistantLimit = useCallback((): boolean => {
     if (!user) return true;
-    if (isPremium) return false;
+    if (isProfessional) return false;
     
     return getRemainingAssistants() <= 0;
-  }, [user, isPremium, getRemainingAssistants]);
+  }, [user, isProfessional, getRemainingAssistants]);
 
   const shouldShowVotePrompt = useCallback((): boolean => {
     if (user) return false;
