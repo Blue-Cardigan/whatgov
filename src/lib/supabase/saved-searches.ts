@@ -1,5 +1,6 @@
 import createClient from './client';
 import type { SavedSearch, SaveSearchParams } from '@/types/search';
+import type { RealtimePostgresChangesPayload } from '@/types/supabase';
 
 export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch> {
   const supabase = createClient();
@@ -120,9 +121,9 @@ export async function markSearchesAsRead(searchIds: string[], userId: string) {
 }
 
 export function subscribeToSearchUpdates(userId: string, callbacks: {
-  onUpdate?: (payload: any) => void;
-  onInsert?: (payload: any) => void;
-  onDelete?: (payload: any) => void;
+  onUpdate?: (payload: RealtimePostgresChangesPayload<SavedSearch>) => void;
+  onInsert?: (payload: RealtimePostgresChangesPayload<SavedSearch>) => void;
+  onDelete?: (payload: RealtimePostgresChangesPayload<SavedSearch>) => void;
 }) {
   const supabase = createClient();
 
@@ -138,11 +139,11 @@ export function subscribeToSearchUpdates(userId: string, callbacks: {
       },
       (payload) => {
         if (payload.eventType === 'UPDATE' && callbacks.onUpdate) {
-          callbacks.onUpdate(payload);
+          callbacks.onUpdate(payload as unknown as RealtimePostgresChangesPayload<SavedSearch>);
         } else if (payload.eventType === 'INSERT' && callbacks.onInsert) {
-          callbacks.onInsert(payload);
+          callbacks.onInsert(payload as unknown as RealtimePostgresChangesPayload<SavedSearch>);
         } else if (payload.eventType === 'DELETE' && callbacks.onDelete) {
-          callbacks.onDelete(payload);
+          callbacks.onDelete(payload as unknown as RealtimePostgresChangesPayload<SavedSearch>);
         }
       }
     )

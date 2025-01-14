@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import createClient from './client';
 import type { TimeSlot } from '@/types/calendar';
+import type { RealtimePostgresChangesPayload, SavedCalendarItem } from '@/types/supabase';
 
 export async function isCalendarItemSaved(eventId: string): Promise<boolean> {
   const supabase = createClient();
@@ -87,7 +88,15 @@ export async function saveCalendarItem(session: TimeSlot, questionId?: number) {
     }
     eventDate = format(new Date(questionDate), 'yyyy-MM-dd');
   } else if (session.type === 'event' && session.event) {
-    eventId = `${session.event.type?.toLowerCase().trim()}-${session.event.id}`;
+    // Normalize the event type to a consistent format
+    const eventType = session.event.type?.toLowerCase().trim()
+      .replace('debate', '')
+      .replace(/\s+/g, '-')
+      .trim();
+    
+    eventId = `${eventType}-${session.event.id}`;
+    // This will create IDs like "westminster-hall-50140"
+    
     eventDate = session.event.startTime ? 
       format(new Date(session.event.startTime), 'yyyy-MM-dd') : null;
     eventData = {
@@ -214,9 +223,9 @@ export async function markCalendarItemsAsRead(itemIds: string[], userId: string)
 }
 
 export function subscribeToCalendarUpdates(userId: string, callbacks: {
-  onUpdate?: (payload: any) => void;
-  onInsert?: (payload: any) => void;
-  onDelete?: (payload: any) => void;
+  onUpdate?: (payload: RealtimePostgresChangesPayload<SavedCalendarItem>) => void;
+  onInsert?: (payload: RealtimePostgresChangesPayload<SavedCalendarItem>) => void;
+  onDelete?: (payload: RealtimePostgresChangesPayload<SavedCalendarItem>) => void;
 }) {
   const supabase = createClient();
 
@@ -232,11 +241,11 @@ export function subscribeToCalendarUpdates(userId: string, callbacks: {
       },
       (payload) => {
         if (payload.eventType === 'UPDATE' && callbacks.onUpdate) {
-          callbacks.onUpdate(payload);
+          callbacks.onUpdate(payload as unknown as RealtimePostgresChangesPayload<SavedCalendarItem>);
         } else if (payload.eventType === 'INSERT' && callbacks.onInsert) {
-          callbacks.onInsert(payload);
+          callbacks.onInsert(payload as unknown as RealtimePostgresChangesPayload<SavedCalendarItem>);
         } else if (payload.eventType === 'DELETE' && callbacks.onDelete) {
-          callbacks.onDelete(payload);
+          callbacks.onDelete(payload as unknown as RealtimePostgresChangesPayload<SavedCalendarItem>);
         }
       }
     )

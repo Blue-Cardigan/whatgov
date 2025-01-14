@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { parseStreamingResponse } from '@/lib/openai-api';
 import { useEngagement } from '@/hooks/useEngagement';
 import { useToast } from '@/hooks/use-toast';
 import { Citation } from '@/types/search';

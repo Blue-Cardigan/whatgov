@@ -84,41 +84,6 @@ export function ResultCard({
     return excerpt;
   };
     
-    // Move namesMatch function inside useMemo
-    const namesMatch = (name1: string, name2: string): boolean => {
-      const normalizeName = (name: string): string => {
-        return name
-          .toLowerCase()
-          .replace(/[^\w\s]/g, '') // Remove special characters
-          .replace(/\s+/g, ' ')    // Normalize whitespace
-          .trim();
-      };
-
-      const n1 = normalizeName(name1);
-      const n2 = normalizeName(name2);
-
-      // Direct match
-      if (n1 === n2) return true;
-
-      // Check if one name contains the other
-      if (n1.includes(n2) || n2.includes(n1)) return true;
-
-      // Split names into parts and check for partial matches
-      const parts1 = n1.split(' ');
-      const parts2 = n2.split(' ');
-
-      // Check if last names match
-      if (parts1[parts1.length - 1] === parts2[parts2.length - 1]) return true;
-
-      // Check if first names match and are not common titles
-      const commonTitles = ['mr', 'mrs', 'ms', 'dr', 'sir', 'lord', 'lady', 'hon'];
-      const firstName1 = parts1[0];
-      const firstName2 = parts2[0];
-      if (firstName1 === firstName2 && !commonTitles.includes(firstName1)) return true;
-
-      return false;
-    };
-
   // Simplified contribution rendering
   const renderContribution = (contribution: Contribution) => {
     if (!contribution) return null;

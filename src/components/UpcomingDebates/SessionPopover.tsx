@@ -67,7 +67,7 @@ function OralQuestionsContent({ session }: { session: TimeSlot & { type: 'oral-q
         
         <div>
           {session.questions?.length ? (
-            session.questions.map((question, index) => (
+            session.questions.map((question) => (
               <div key={question.id} className="p-4 border-b last:border-b-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm mb-2">{question.text}</p>

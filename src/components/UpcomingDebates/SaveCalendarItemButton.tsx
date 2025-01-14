@@ -36,7 +36,11 @@ export function SaveCalendarItemButton({ session, question, className }: SaveCal
         return `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}`;
       }
     } else if (session.type === 'event' && session.event?.id) {
-      return session.event.id;
+      const eventType = session.event.type?.toLowerCase().trim()
+        .replace('debate', '')
+        .replace(/\s+/g, '-')
+        .trim();
+      return `${eventType}-${session.event.id}`;
     } else if (session.type === 'edm' && session.edm?.id) {
       return `edm-${session.edm.id}`;
     }

@@ -8,7 +8,23 @@ interface ApiResponse<T> {
 interface ApiError {
   ok: false;
   status: number;
-  error: any;
+  error: Error;
+}
+
+interface HansardApiError {
+  message: string;
+}
+
+interface HansardApiResponse<T> {
+  Success: boolean;
+  Response: T[];
+  Errors?: HansardApiError[];
+}
+
+interface HansardApiFallback {
+  Success: boolean;
+  Response: never[];
+  Errors?: HansardApiError[];
 }
 
 const MAX_ITEMS_PER_REQUEST = 100;
@@ -112,21 +128,27 @@ export async function GET(request: NextRequest) {
     // Try to parse successful responses
     const [edmsData, questionsData, timesData] = await Promise.all([
       edmsResponse instanceof Response
-        ? edmsResponse.json().catch(() => ({ Success: false, Response: [] })) 
-        : { Success: false, Response: [] },
+        ? (edmsResponse.json() as Promise<HansardApiResponse<unknown>>).catch(
+            (): HansardApiFallback => ({ Success: false, Response: [], Errors: [] })
+          ) 
+        : { Success: false, Response: [], Errors: [] },
       questionsResponse instanceof Response
-        ? questionsResponse.json().catch(() => ({ Success: false, Response: [] })) 
-        : { Success: false, Response: [] },
+        ? (questionsResponse.json() as Promise<HansardApiResponse<unknown>>).catch(
+            (): HansardApiFallback => ({ Success: false, Response: [], Errors: [] })
+          ) 
+        : { Success: false, Response: [], Errors: [] },
       timesResponse instanceof Response
-        ? timesResponse.json().catch(() => ({ Success: false, Response: [] })) 
-        : { Success: false, Response: [] }
+        ? (timesResponse.json() as Promise<HansardApiResponse<unknown>>).catch(
+            (): HansardApiFallback => ({ Success: false, Response: [], Errors: [] })
+          ) 
+        : { Success: false, Response: [], Errors: [] }
     ]);
 
     // Combine and structure the response
     const combinedResponse: ApiResponse<{
-      earlyDayMotions: any[];
-      oralQuestions: any[];
-      questionTimes: any[];
+      earlyDayMotions: unknown[];
+      oralQuestions: unknown[];
+      questionTimes: unknown[];
     }> = {
       data: {
         earlyDayMotions: edmsData?.Response || [],
@@ -138,9 +160,9 @@ export async function GET(request: NextRequest) {
     // Add API errors to the error message if present
     if (edmsData?.Errors?.length || questionsData?.Errors?.length || timesData?.Errors?.length) {
       const apiErrors = [
-        ...(edmsData?.Errors || []).map((e: any) => `EDMs: ${e}`),
-        ...(questionsData?.Errors || []).map((e: any) => `Questions: ${e}`),
-        ...(timesData?.Errors || []).map((e: any) => `Times: ${e}`)
+        ...(edmsData?.Errors || []).map((e: HansardApiError) => `EDMs: ${e.message}`),
+        ...(questionsData?.Errors || []).map((e: HansardApiError) => `Questions: ${e.message}`),
+        ...(timesData?.Errors || []).map((e: HansardApiError) => `Times: ${e.message}`)
       ];
       if (apiErrors.length > 0) {
         combinedResponse.error = `API Errors: ${apiErrors.join(', ')}`;

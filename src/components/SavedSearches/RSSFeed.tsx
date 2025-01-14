@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,12 @@ interface FeedData {
   };
 }
 
+// Add interface for RSS API response
+interface RSSApiResponse {
+  items: Omit<FeedItem, 'source' | 'isRead'>[];
+  title?: string;
+}
+
 export function RSSFeed() {
   const { profile, updateProfile } = useAuth();
   const [newFeedUrl, setNewFeedUrl] = useState('');
@@ -48,9 +54,9 @@ export function RSSFeed() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
-  const feeds = profile?.rss_feeds || [];
+  const feeds = useMemo(() => profile?.rss_feeds || [], [profile]);
 
-  const refreshFeed = async (url: string) => {
+  const refreshFeed = useCallback(async (url: string) => {
     setFeedData(prev => ({
       ...prev,
       [url]: { ...prev[url], isLoading: true, error: undefined }
@@ -65,11 +71,11 @@ export function RSSFeed() {
       
       if (!response.ok) throw new Error('Failed to fetch feed');
       
-      const data = await response.json();
+      const data = await response.json() as RSSApiResponse;
 
       // Merge new items with existing ones, preserving read status
       const existingItems = feedData[url]?.items || [];
-      const newItems = data.items.map((item: any) => ({
+      const newItems = data.items.map((item) => ({
         ...item,
         source: data.title || new URL(url).hostname,
         isRead: existingItems.find(existing => existing.link === item.link)?.isRead || false
@@ -96,7 +102,7 @@ export function RSSFeed() {
         }
       }));
     }
-  };
+  }, [feedData]);
 
   const refreshAllFeeds = async () => {
     if (!Array.isArray(feeds)) return;
@@ -111,6 +117,7 @@ export function RSSFeed() {
         description: "All feeds have been updated",
       });
     } catch (error) {
+      console.error('Error refreshing feeds:', error);
       toast({
         title: "Error refreshing feeds",
         description: "Some feeds may have failed to update",
@@ -175,6 +182,7 @@ export function RSSFeed() {
         description: "The RSS feed has been added to your profile",
       });
     } catch (error) {
+      console.error('Error adding feed:', error);
       toast({
         title: "Error adding feed",
         description: "Please check the URL and try again",
@@ -190,10 +198,11 @@ export function RSSFeed() {
       const updatedFeeds = feeds.filter(feed => feed.url !== url);
       await updateProfile({ rss_feeds: updatedFeeds });
       
-      // Remove feed data
+      // Remove feed data without creating unused variable
       setFeedData(prev => {
-        const { [url]: _, ...rest } = prev;
-        return rest;
+        const newFeedData = { ...prev };
+        delete newFeedData[url];
+        return newFeedData;
       });
 
       // Reset selection if needed
@@ -206,6 +215,7 @@ export function RSSFeed() {
         description: "The RSS feed has been removed from your profile",
       });
     } catch (error) {
+      console.error('Error removing feed:', error);
       toast({
         title: "Error removing feed",
         description: "Please try again",
@@ -223,7 +233,7 @@ export function RSSFeed() {
         }
       });
     }
-  }, [feeds]);
+  }, [feeds, refreshFeed, feedData]);
 
   useEffect(() => {
     if (profile) {

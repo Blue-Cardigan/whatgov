@@ -4,6 +4,26 @@ import type { Content, TDocumentDefinitions, ContentText } from 'pdfmake/interfa
 import type { SavedSearch } from '@/types/search';
 import type { TimeSlot } from '@/types/calendar';
 
+interface AnalysisData {
+  main_content: string;
+  outcome: string;
+  key_statistics?: Array<{ value: string; context: string }>;
+  key_dates?: Array<{ date: string; significance: string }>;
+}
+
+interface SpeakerContribution {
+  content: string;
+  references?: Array<{ text: string }>;
+}
+
+interface SpeakerPoint {
+  name: string;
+  role: string;
+  constituency?: string;
+  party: string;
+  contributions?: SpeakerContribution[];
+}
+
 export const COLORS = {
     primary: '#449441',
     primaryForeground: '#fafafa',
@@ -27,7 +47,7 @@ export const PAGE_WIDTH = 595.28;
 
 const formatAnalysisData = (analysis: string) => {
   try {
-    const data = JSON.parse(analysis);
+    const data: AnalysisData = JSON.parse(analysis);
     return `
 ## Main Content
 ${data.main_content}
@@ -36,10 +56,10 @@ ${data.main_content}
 ${data.outcome}
 
 ## Key Statistics
-${data.key_statistics?.map((stat: any) => `- ${stat.value}: ${stat.context}`).join('\n')}
+${data.key_statistics?.map((stat) => `- ${stat.value}: ${stat.context}`).join('\n')}
 
 ## Key Dates
-${data.key_dates?.map((date: any) => `- ${date.date}: ${date.significance}`).join('\n')}
+${data.key_dates?.map((date) => `- ${date.date}: ${date.significance}`).join('\n')}
 `.trim();
   } catch (e) {
     console.warn('Failed to parse analysis JSON:', e);
@@ -47,21 +67,21 @@ ${data.key_dates?.map((date: any) => `- ${date.date}: ${date.significance}`).joi
   }
 };
 
-const formatSpeakerPoints = (speakerPoints: string | any[]) => {
+const formatSpeakerPoints = (speakerPoints: string | SpeakerPoint[]) => {
   try {
-    const points = Array.isArray(speakerPoints) 
-      ? speakerPoints 
+    const points: SpeakerPoint[] = Array.isArray(speakerPoints)
+      ? speakerPoints
       : JSON.parse(speakerPoints || '[]');
     
-    return points.map((speaker: any) => `
+    return points.map((speaker: SpeakerPoint) => `
 ## ${speaker.name}
 ${speaker.role}${speaker.constituency ? ` - ${speaker.constituency}` : ''}
 Party: ${speaker.party}
 
 Key Contributions:
-${speaker.contributions?.map((contribution: any) => `
+${speaker.contributions?.map((contribution) => `
 - ${contribution.content}
-  ${contribution.references?.map((ref: any) => `  • ${ref.text}`).join('\n') || ''}
+  ${contribution.references?.map((ref) => `  • ${ref.text}`).join('\n') || ''}
 `).join('\n')}
 `.trim()).join('\n\n');
   } catch (e) {
@@ -69,6 +89,11 @@ ${speaker.contributions?.map((contribution: any) => `
     return '';
   }
 };
+
+interface CalendarItem {
+  event_data: TimeSlot;
+  date: string;
+}
 
 export async function exportSearchToPDF(search: SavedSearch) {
   const docDefinition: TDocumentDefinitions = {
@@ -108,7 +133,13 @@ export async function exportSearchToPDF(search: SavedSearch) {
   pdfMake.createPdf(docDefinition).download(filename);
 }
 
-export async function exportCalendarItemToPDF(item: { event_data: TimeSlot, date: string }, debateData?: any) {
+export async function exportCalendarItemToPDF(
+  item: { event_data: TimeSlot; date: string },
+  debateData?: {
+    analysis: string;
+    speaker_points: string | SpeakerPoint[];
+  }
+) {
   let title = 'Calendar Event';
   let content: Content[] = [];
 
@@ -170,7 +201,7 @@ export async function exportCalendarItemToPDF(item: { event_data: TimeSlot, date
   pdfMake.createPdf(docDefinition).download(filename);
 }
 
-export async function exportAllToPDF(searches: SavedSearch[], calendarItems: any[]) {
+export async function exportAllToPDF(searches: SavedSearch[], calendarItems: CalendarItem[]) {
   const allContent: Content[] = [];
 
   // Add searches

@@ -69,8 +69,7 @@ const WEEKDAYS = [
 export function SaveSearchButton({ 
   searchType,
   aiSearch,
-  hansardSearch,
-  mpSearch
+  hansardSearch
 }: SaveSearchButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

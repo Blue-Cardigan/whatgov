@@ -97,7 +97,7 @@ export function CalendarFilters({ filters, onChange }: CalendarFiltersProps) {
           checked={filters["Private Members' Bills"]}
           onCheckedChange={() => handleToggle("Private Members' Bills")}
         >
-          Private Members' Bills
+          Private Members&apos; Bills
         </DropdownMenuCheckboxItem>
         
         <DropdownMenuCheckboxItem

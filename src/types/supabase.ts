@@ -1,5 +1,6 @@
 import { Session } from "@supabase/supabase-js";
 import { User } from "@supabase/supabase-js";
+import type { TimeSlot } from './calendar';
   
 export type AuthError = {
   message: string;
@@ -317,3 +318,22 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export interface RealtimePostgresChangesPayload<T> {
+  commit_timestamp: string;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
+  new: T;
+  old: T;
+}
+
+export interface SavedCalendarItem {
+  id: string;
+  user_id: string;
+  event_id: string;
+  event_data: Partial<TimeSlot>;
+  date: string | null;
+  created_at: string;
+  is_unread: boolean;
+}

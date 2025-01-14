@@ -4,6 +4,7 @@ import { getLastSevenDays } from '@/lib/utils';
 import { SearchResponse } from '@/types/search';
 import { HANSARD_API_BASE } from '@/lib/search-api';
 import { getPrompt, debateResponseFormat } from './debatePrompts';
+import { Question } from './debatePrompts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -31,6 +32,33 @@ type Schedule = {
     dayOfWeek: number;
   };
   saved_searches: SavedSearch;
+}
+
+// Define interfaces for the API responses
+interface DebateResult {
+  DebateSectionExtId: string;
+}
+
+interface Contribution {
+  DebateSectionExtId: string;
+  ContributionExtId: string;
+}
+
+interface DebateItem {
+  AttributedTo: string;
+  Value: string;
+  HRSTag: string;
+}
+
+interface ChildDebate {
+  Overview: {
+    Title: string;
+  };
+  Items?: DebateItem[];
+}
+
+interface DepartmentDebate {
+  ChildDebates?: ChildDebate[];
 }
 
 export async function POST(request: Request) {
@@ -106,14 +134,14 @@ export async function POST(request: Request) {
             }
 
             const debateData = await debateResponse.json();
-            const debateResults = debateData.Results || [];
+            const debateResults = debateData.Results || [] as DebateResult[];
 
             if (debateResults.length > 0) {
               // Update the calendar item with debate IDs and AI response
               const { error: updateError } = await supabase
                 .from('saved_calendar_items')
                 .update({
-                  debate_ids: debateResults.map((d: any) => d.DebateSectionExtId),
+                  debate_ids: debateResults.map((d: DebateResult) => d.DebateSectionExtId),
                   is_unread: true
                 })
                 .eq('id', item.id);
@@ -143,7 +171,7 @@ export async function POST(request: Request) {
             // Check if this is a whole session or individual question
             const isWholeSession = !item.event_id.includes('-q');
             let allDebateIds: string[] = [];
-            let questionResponses: { [key: string]: string } = {};
+            const questionResponses: { [key: string]: string } = {};
 
             // Process each oral question
             for (const question of eventData.questions) {
@@ -164,7 +192,7 @@ export async function POST(request: Request) {
               }
 
               const questionData = await questionResponse.json();
-              const debateIds = questionData.Contributions?.map((c: any) => c.DebateSectionExtId) || [];
+              const debateIds = (questionData.Contributions as Contribution[])?.map((c) => c.DebateSectionExtId) || [];
               allDebateIds.push(...debateIds);
 
               // If we found any debates and this is a whole session, fetch the top-level debate
@@ -194,10 +222,10 @@ export async function POST(request: Request) {
                           const debateContent = await debateResponse.json();
                           
                           // Extract all child debates (individual questions)
-                          const childDebates = debateContent.ChildDebates?.flatMap((dept: any) => 
-                            dept.ChildDebates?.map((question: any) => ({
+                          const childDebates = debateContent.ChildDebates?.flatMap((dept: DepartmentDebate) => 
+                            dept.ChildDebates?.map((question: ChildDebate) => ({
                               title: question.Overview.Title,
-                              content: question.Items?.map((item: any) => ({
+                              exchanges: question.Items?.map((item: DebateItem) => ({
                                 speaker: item.AttributedTo,
                                 text: item.Value.replace(/<[^>]*>/g, ''), // Strip HTML tags
                                 isQuestion: item.HRSTag === 'Question'
@@ -215,9 +243,9 @@ export async function POST(request: Request) {
                             },
                             context: {
                               department: eventData.department,
-                              questions: childDebates.map((d: any) => ({
+                              questions: childDebates.map((d: Question) => ({
                                 title: d.title,
-                                exchanges: d.content
+                                exchanges: d.exchanges
                               }))
                             }
                           });
@@ -305,7 +333,7 @@ export async function POST(request: Request) {
       }
 
       // For the saved_searches record, summarize all calendar processing
-      const { data: processedItems } = await supabase
+      await supabase
         .from('saved_calendar_items')
         .select('debate_ids, response')
         .not('debate_ids', 'is', null)
@@ -351,7 +379,10 @@ export async function POST(request: Request) {
       console.log(`[Scheduler] Filtering for search type: ${searchType}`);
     }
 
-    const { data: schedules, error: schedulesError } = await query as { data: Schedule[] | null, error: any };
+    const { data: schedules, error: schedulesError } = await query as { 
+      data: Schedule[] | null, 
+      error: Error | null 
+    };
 
     console.log(`[Scheduler] Query conditions:`, {
       is_active: true,

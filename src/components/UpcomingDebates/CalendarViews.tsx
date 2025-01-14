@@ -55,7 +55,6 @@ export function WeekView({ currentDate, schedule }: {
 
     sortedSessions.forEach((session, index) => {
       const sessionStart = session.time?.substantive || session.time?.topical || '';
-      const sessionEnd = session.time?.topical || session.time?.substantive || '';
       
       if (index === 0) {
         currentGroup.push(session);

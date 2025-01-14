@@ -6,8 +6,6 @@ import { Contribution } from "@/types/search";
 import { useMemo } from 'react';
 import type { SearchParams } from '@/types/search';
 import { ResultCard } from './ResultCard';
-import { locationColors } from '@/lib/utils';
-import { format } from 'date-fns';
 import type { SearchResponse } from '@/types/search';
 
 interface GroupedContributions {
@@ -24,7 +22,6 @@ export enum DateRange {
 export function SearchResults({ 
   results, 
   isLoading, 
-  totalResults,
   searchParams,
 }: {
   results: SearchResponse;

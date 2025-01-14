@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/mpsearch";
-import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
 import { useAuth } from "@/contexts/AuthContext";
 import { MPProfileCard } from "./MPProfileCard";
 import { MPLinks } from "./MPLinks";
@@ -45,9 +44,6 @@ export function MPProfile() {
   }, [pathname, router, searchParams]);
 
   const [mpData, setMPData] = useState<MPData | null>(null);
-  const [keyPoints, setKeyPoints] = useState<MPKeyPointDetails[]>([]);
-  const [topics, setTopics] = useState<AiTopic[]>([]);
-  const [totalMentions, setTotalMentions] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [topicsLoading, setTopicsLoading] = useState(true);
@@ -87,8 +83,6 @@ export function MPProfile() {
         if (!mpData) {
           setError(`No MP found matching "${mpNameToFetch}"`);
           setMPData(null);
-          setKeyPoints([]);
-          setTopics([]);
           return;
         }
 
@@ -98,8 +92,6 @@ export function MPProfile() {
         const isUserMP = mpData.member_id.toString() === profile?.mp;
         if (!isEngagedCitizen || (!isProfessional && !isUserMP)) {
           // User doesn't have permission to view key points
-          setKeyPoints([]);
-          setTopics([]);
           setKeyPointsLoading(false);
           setTopicsLoading(false);
           return;
@@ -109,14 +101,10 @@ export function MPProfile() {
         const { data: points } = await getMPKeyPointsByName(mpData.member_id);
         
         if (points) {
-          setKeyPoints(points);
-          
           // Process topics
           const topicsMap = new Map<string, AiTopic>();
-          let mentionsCount = 0;
           
           points.forEach(point => {
-            mentionsCount++;
             if (Array.isArray(point.ai_topics)) {
               point.ai_topics.forEach(topic => {
                 const existingTopic = topicsMap.get(topic.name);
@@ -149,9 +137,6 @@ export function MPProfile() {
               });
             }
           });
-
-          setTopics(Array.from(topicsMap.values()));
-          setTotalMentions(mentionsCount);
         }
       } catch (e) {
         console.error('Error fetching MP data:', e);

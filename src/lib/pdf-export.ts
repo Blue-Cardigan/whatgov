@@ -17,7 +17,7 @@ interface ExportOptions {
     sittingDate: string;
     debateExtId: string;
   };
-  doc?: any; // jsPDF instance for multi-item exports
+  doc?: TDocumentDefinitions;
   markdown?: boolean;
   returnContent?: boolean;
 }
@@ -36,7 +36,7 @@ const processMarkdownLine = (line: string): Content => {
   // Handle numbered lists with bold text
   const numberedListMatch = processedLine.match(/^(\d+\.\s+)(.*)/);
   if (numberedListMatch) {
-    const [_, number, content] = numberedListMatch;
+    const [, number, content] = numberedListMatch;
     const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return { text: part.slice(2, -2), bold: true };
@@ -313,6 +313,7 @@ export async function exportToPDF({
           );
         }
       } catch (e) {
+        console.warn('Failed to parse Hansard JSON:', e);
         stack.push({
           text: content,
           style: 'bodyText'

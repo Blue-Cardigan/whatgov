@@ -34,6 +34,8 @@ MVP:
 [ ] Include links to original debates from saved hansard and calendar cards
       [/] Calendar
       [/] Hansard
+[ ] Fix mountainous lint issues
+[ ] Update engagement controls
 [-] Update whatgov and whatgov-backend to point to main then push
 
 Next:

@@ -1,5 +1,3 @@
-import { KeyPoint, Speaker } from "@/types";
-import { Json } from "@/types/supabase";
 import { clsx, type ClassValue } from "clsx"
 import { Leaf, Heart, Building2, Microscope, Scale, Globe2, LandPlot, GraduationCap, type LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge"
@@ -18,7 +16,7 @@ export function cn(...inputs: ClassValue[]) {
 export function getLastSevenDays(): string[] {
   const days: string[] = [];
   const today = new Date();
-  let currentDate = new Date(today);
+  const currentDate = new Date(today);
   let daysCollected = 0;
 
   const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];

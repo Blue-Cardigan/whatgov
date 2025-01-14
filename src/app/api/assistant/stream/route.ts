@@ -55,7 +55,6 @@ export async function POST(request: Request) {
           );
 
           let citations: Array<{ citation_index: number; debate_id: string }> = [];
-          let processedText = '';
           let hasCompletedMessage = false;
 
           for await (const part of runStream) {
@@ -66,7 +65,6 @@ export async function POST(request: Request) {
                 if ('text' in firstContent) {
                   const textContent = firstContent.text?.value;
                   if (textContent && !hasCompletedMessage) {
-                    processedText += textContent;
                     controller.enqueue(encoder.encode(
                       JSON.stringify({ 
                         type: 'text', 

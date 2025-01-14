@@ -3,8 +3,6 @@ import type {
   PublishedEarlyDayMotion, 
   OralQuestion, 
   OralQuestionTime,
-  PublishedBill,
-  PublishedBillSitting,
   HansardData,
   TimeSlot,
   DaySchedule,
@@ -76,7 +74,7 @@ export class CalendarApi {
     startDate: Date,
     endDate: Date
   ): Promise<HansardData> {
-    let allData: HansardData = {
+    const allData: HansardData = {
       earlyDayMotions: [],
       oralQuestions: [],
       questionTimes: [],

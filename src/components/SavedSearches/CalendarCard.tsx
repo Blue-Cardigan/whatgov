@@ -26,6 +26,7 @@ import { exportCalendarItemToPDF } from '@/lib/pdf-utilities';
 import { useToast } from "@/hooks/use-toast";
 import { useState } from 'react';
 import createClient from '@/lib/supabase/client';
+import type { SpeakerPoint } from '../debates/AnalysisData';
 
 interface CalendarCardProps {
   item: {
@@ -40,26 +41,33 @@ interface CalendarCardProps {
   onDownload: () => void;
 }
 
-export function CalendarCard({ item, onDelete, onDownload }: CalendarCardProps) {
+export function CalendarCard({ item, onDelete }: CalendarCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      // If there are debate IDs, we might want to fetch debate data first
-      let debateData;
+      let debateData: { analysis: string; speaker_points: string | SpeakerPoint[] } | undefined;
+        
       if (item.debate_ids?.[0]) {
-        // Fetch debate data if needed
         const supabase = createClient();
       
         const { data, error } = await supabase
           .from('debates_new')
-          .select('title, type, house, date, analysis, speaker_points')
+          .select('analysis, speaker_points')
           .eq('ext_id', item.debate_ids[0])
           .single();
-        debateData = data;
+
+        if (data && !error) {
+          // Ensure the data matches the expected type for exportCalendarItemToPDF
+          debateData = {
+            analysis: data.analysis || '',
+            speaker_points: data.speaker_points || []
+          };
+        }
       }
+      
       await exportCalendarItemToPDF(item, debateData);
     } catch (error) {
       console.error('Error exporting calendar item:', error);

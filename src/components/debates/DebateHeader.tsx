@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { MessageSquare } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
 import { locationColors, getDebateType } from '@/lib/utils';

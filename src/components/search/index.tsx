@@ -6,14 +6,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEngagement } from '@/hooks/useEngagement';
 import { HansardAPI } from '@/lib/search-api';
 import { QueryBuilder } from './QueryBuilder';
-import { DateRange, SearchResults } from './Hansard/SearchResults';
+import { SearchResults } from './Hansard/SearchResults';
 import { StreamedResponse } from './Assistant/StreamedResponse';
 import { MPProfileCard } from '@/components/search/MPProfile/MPProfileCard';
 import { MPLinks } from '@/components/search/MPProfile/MPLinks';
 import { SubscriptionCTA } from '@/components/ui/subscription-cta';
-import { getMPData, getMPKeyPointsByName } from "@/lib/supabase/mpsearch";
-import type { MPData, AiTopic } from "@/types";
-import type { MPKeyPointDetails } from "@/lib/supabase/mpsearch";
+import { getMPData } from "@/lib/supabase/mpsearch";
+import type { MPData } from "@/types";
 import { useAssistant } from '@/hooks/useAssistant';
 import type { Citation } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
@@ -32,11 +31,9 @@ import { Card } from "@/components/ui/card";
 import { Clock } from "lucide-react";
 import { Check } from "lucide-react";
 
-const PAGE_SIZE = 10;
-
 export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 'mp' }) {
   const { state: searchState, dispatch } = useSearch();
-  const { user, isEngagedCitizen, isProfessional, loading: authLoading } = useAuth();
+  const { user, isEngagedCitizen, isProfessional } = useAuth();
   const { recordResearchSearch } = useEngagement();
   const { 
     performFileSearch, 
@@ -44,9 +41,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   
   // MP Search state
   const [mpData, setMPData] = useState<MPData | null>(null);
-  const [keyPoints, setKeyPoints] = useState<MPKeyPointDetails[]>([]);
-  const [topics, setTopics] = useState<AiTopic[]>([]);
-  const [totalMentions, setTotalMentions] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -108,7 +102,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         case 'mp':
           const mpData = await getMPData(searchParams.searchTerm);
           if (mpData) {
-            const { data: keyPoints } = await getMPKeyPointsByName(mpData.member_id);
             dispatch({ 
               type: 'SET_MP_SEARCH', 
               payload: { 
@@ -118,7 +111,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
               }
             });
             setMPData(mpData);
-            setKeyPoints(keyPoints);
           } else {
             setError(`No MP found matching "${searchParams.searchTerm}"`);
           }
@@ -171,8 +163,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     setActiveSearchType(type);
     dispatch({ type: 'CLEAR_RESULTS' });
     setMPData(null);
-    setKeyPoints([]);
-    setTopics([]);
     setError(null);
   };
 
@@ -301,7 +291,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
                     <h3 className="text-xl font-semibold">Coming Soon</h3>
                   </div>
                   <p className="text-muted-foreground">
-                    We're working on analyzing parliamentary data to provide detailed insights into MP activities and positions. Check back soon!
+                    We&apos;re working on analyzing parliamentary data to provide detailed insights into MP activities and positions. Check back soon!
                   </p>
                   <ul className="space-y-3">
                     <li className="flex items-center gap-2">

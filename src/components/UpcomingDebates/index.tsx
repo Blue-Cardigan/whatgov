@@ -51,17 +51,15 @@ function UpcomingDebatesContent() {
   const { data: schedule = [], isFetching } = useQuery({
     queryKey: ['calendar', weekStart.toISOString()],
     queryFn: async () => {
-      // Calculate week offset from current week
       const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekDiff = differenceInWeeks(weekStart, currentWeekStart);
-      
       const data = await CalendarApi.getWeeklyEvents(weekDiff);
       return CalendarApi.processScheduleData(data);
     }
   });
 
-  // Add new query for saved items
-  const { data: savedItems = [] } = useQuery({
+  // The savedItems query depends on schedule being loaded
+  useQuery({
     queryKey: ['savedItems', weekStart.toISOString()],
     queryFn: async () => {
       const items = await getSavedCalendarItems(weekStart, weekEnd);
@@ -70,12 +68,11 @@ function UpcomingDebatesContent() {
       const allIds = new Set<string>();
       
       items.forEach(eventId => {
-        // Add the original ID
         allIds.add(eventId);
         
         // If this is a session ID, also add IDs for all questions in that session
         if (eventId.startsWith('oq-') && !eventId.includes('-q')) {
-          const [prefix, deptId, date] = eventId.split('-');
+          const [deptId, date] = eventId.split('-');
           
           // Find the corresponding session in the schedule
           schedule.forEach(day => {
@@ -91,11 +88,13 @@ function UpcomingDebatesContent() {
                 });
               });
           });
+          console.log(allIds);
         }
       });
       
       return Array.from(allIds);
     },
+    enabled: schedule.length > 0,
     onSuccess: (data) => {
       setSavedQuestions(new Set(data));
     }

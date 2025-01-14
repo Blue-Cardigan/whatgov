@@ -38,12 +38,37 @@ export const DebateAnalysisSchema = z.object({
 export const debateResponseFormat = (schema = DebateAnalysisSchema) => 
   zodResponseFormat(schema, "debate_analysis");
 
-export function getPrompt(debate: any) {
+interface Exchange {
+  speaker: string;
+  text: string;
+}
+
+export interface Question {
+  title: string;
+  exchanges: Exchange[];
+}
+
+interface DebateContext {
+  department: string;
+  questions: Question[];
+}
+
+interface Debate {
+  overview: {
+    Type: string;
+    Title: string;
+    House: string;
+    Date: string;
+  };
+  context: DebateContext;
+}
+
+export function getPrompt(debate: Debate) {
   return `As an expert UK parliamentary analyst, provide a briefing on this parliamentary questions session. Focus on key information and outcomes.
 
 Context:
-${debate.context.questions.map((q: any) => `**${q.title}**
-${q.exchanges.map((e: any) => `${e.speaker}: ${e.text}`).join('\n')}`).join('\n\n')}
+${debate.context.questions.map((q: Question) => `**${q.title}**
+${q.exchanges.map((e: Exchange) => `${e.speaker}: ${e.text}`).join('\n')}`).join('\n\n')}
 
 Provide:
 1. ANALYSIS

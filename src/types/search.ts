@@ -67,6 +67,13 @@ export interface SavedSearchSchedule {
   created_at: string;
 }
 
+export interface SavedSearchMetadata {
+  questionId?: string;
+  department?: string;
+  deadline?: string;
+  [key: string]: string | undefined;
+}
+
 export interface SavedSearch {
   id: string;
   user_id: string;
@@ -84,12 +91,7 @@ export interface SavedSearch {
     house?: 'Commons' | 'Lords';
     enableAI?: boolean;
   };
-  metadata?: {
-    questionId?: string;
-    department?: string;
-    deadline?: string;
-    [key: string]: any;
-  };
+  metadata?: SavedSearchMetadata;
   mp_data?: MPSearchData;
   saved_search_schedules?: SavedSearchSchedule[];
 }

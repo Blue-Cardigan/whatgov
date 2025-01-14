@@ -1,5 +1,4 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { DebateItem } from '@/types';
 import { HansardDebateResponse } from '@/types/hansard';
 import { format } from 'date-fns';
@@ -29,27 +28,24 @@ const SYMBOLS = {
   stat: '∙',          // Bullet operator
 };
 
-export async function exportDebateToPDF({ debate, hansardData }: {
-  debate: DebateItem;
+interface ExportDebateProps {
+  debate: DebateItem & {
+    speaker_points?: SpeakerPoint[] | string[] | string;
+  };
   hansardData?: HansardDebateResponse;
-}) {
-  if (pdfFonts.pdfMake) {
-    pdfMake.vfs = pdfFonts.pdfMake.vfs;
-  } else {
-    pdfMake.vfs = pdfFonts;
-  }
+}
+
+export async function exportDebateToPDF({ debate }: ExportDebateProps) {
 
   const PAGE_WIDTH = 595.28;
   const CONTENT_WIDTH = PAGE_WIDTH - 80;
-  const PILL_WIDTH = 120;
-  const STAT_WIDTH = (CONTENT_WIDTH - 40) / 3;
-
   let parsedAnalysis: ParsedAnalysisData;
   try {
     parsedAnalysis = typeof debate.analysis === 'string' 
       ? JSON.parse(debate.analysis) 
       : debate.analysis;
   } catch (e) {
+    console.error('Error parsing analysis:', e);
     parsedAnalysis = {
       main_content: debate.analysis as string,
       policy_terms: [],
@@ -234,71 +230,84 @@ export async function exportDebateToPDF({ debate, hansardData }: {
         margin: [0, 0, 0, 30]
       }] : []),
 
-      // Speaker Points - Fixed typing
-      ...(debate.speaker_points && Array.isArray(debate.speaker_points) && 
-        debate.speaker_points.every((item: unknown): item is SpeakerPoint => 
-          typeof item === 'object' && 
-          item !== null && 
-          'name' in item && 
-          'contributions' in item &&
-          Array.isArray((item as SpeakerPoint).contributions)
-        ) ? 
-        debate.speaker_points.map((speaker) => ({
-          margin: [0, 0, 0, 20],
-          padding: 20,
-          fillColor: COLORS.background,
-          table: {
-            widths: [CONTENT_WIDTH],
-            body: [[{
-              stack: [
-                // Speaker Header
-                {
-                  columns: [
-                    {
-                      stack: [
-                        {
-                          text: [
-                            { text: `${SYMBOLS.person} `, color: COLORS.muted },
-                            { text: speaker.name, style: 'speakerName' }
-                          ]
-                        },
-                        {
-                          text: `${speaker.party} ${SYMBOLS.calendar} ${speaker.constituency || speaker.role}`,
-                          style: 'speakerMeta'
-                        }
-                      ]
-                    }
-                  ]
-                },
-                // Contributions
-                ...speaker.contributions.map(contribution => ({
-                  stack: [
-                    contribution.type ? {
-                      text: [
-                        { text: `${SYMBOLS.type} `, color: COLORS.muted },
-                        { text: contribution.type.charAt(0).toUpperCase() + contribution.type.slice(1), style: 'contributionType' }
-                      ],
-                      margin: [0, 10, 0, 5]
-                    } : {},
-                    {
-                      text: contribution.content,
-                      style: 'bodyText',
-                      margin: [0, 0, 0, 5]
-                    },
-                    contribution.references?.length ? {
-                      text: [
-                        { text: `${SYMBOLS.reference} `, color: COLORS.muted },
-                        { text: contribution.references.map((ref: { value: string }) => ref.value).join(' • '), style: 'references' }
-                      ],
-                      margin: [0, 0, 0, 10]
-                    } : {}
-                  ]
-                }))
-              ]
-            }]]
-          },
-          layout: 'noBorders'
-        })) 
+      // Speaker Points
+      ...(debate.speaker_points ? 
+        (typeof debate.speaker_points === 'string' 
+          ? JSON.parse(debate.speaker_points)
+          : Array.isArray(debate.speaker_points) 
+            ? debate.speaker_points 
+            : []
+        )
+          .filter((point: unknown): point is SpeakerPoint => {
+            // First check if it's a string
+            if (typeof point === 'string') return false;
+            
+            // Then check if it's a valid SpeakerPoint object
+            return point !== null && 
+                   typeof point === 'object' &&
+                   'name' in point &&
+                   'party' in point &&
+                   'role' in point &&
+                   'constituency' in point &&
+                   'contributions' in point && 
+                   Array.isArray((point as SpeakerPoint).contributions);
+          })
+          .map((speaker: SpeakerPoint) => ({
+            margin: [0, 0, 0, 20],
+            padding: 20,
+            fillColor: COLORS.background,
+            table: {
+              widths: [CONTENT_WIDTH],
+              body: [[{
+                stack: [
+                  // Speaker Header - Updated to handle optional fields
+                  {
+                    columns: [
+                      {
+                        stack: [
+                          {
+                            text: [
+                              { text: `${SYMBOLS.person} `, color: COLORS.muted },
+                              { text: speaker.name, style: 'speakerName' }
+                            ]
+                          },
+                          {
+                            text: `${speaker.party || 'Unknown Party'} ${SYMBOLS.calendar} ${speaker.constituency || speaker.role || ''}`,
+                            style: 'speakerMeta'
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  // Contributions
+                  ...speaker.contributions.map(contribution => ({
+                    stack: [
+                      contribution.type ? {
+                        text: [
+                          { text: `${SYMBOLS.type} `, color: COLORS.muted },
+                          { text: contribution.type.charAt(0).toUpperCase() + contribution.type.slice(1), style: 'contributionType' }
+                        ],
+                        margin: [0, 10, 0, 5]
+                      } : {},
+                      {
+                        text: contribution.content,
+                        style: 'bodyText',
+                        margin: [0, 0, 0, 5]
+                      },
+                      contribution.references?.length ? {
+                        text: [
+                          { text: `${SYMBOLS.reference} `, color: COLORS.muted },
+                          { text: contribution.references.map((ref: { value: string }) => ref.value).join(' • '), style: 'references' }
+                        ],
+                        margin: [0, 0, 0, 10]
+                      } : {}
+                    ]
+                  }))
+                ]
+              }]]
+            },
+            layout: 'noBorders'
+          }))
         : []),
 
       // Footer Links

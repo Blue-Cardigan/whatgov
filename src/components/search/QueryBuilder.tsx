@@ -13,6 +13,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useSearch } from '@/contexts/SearchContext';
+import { SearchParams } from '@/types/search';
 
 const searchTypes = [
   { 
@@ -66,7 +67,7 @@ interface QueryBuilderProps {
     endDate?: string;
     house?: 'Commons' | 'Lords';
   };
-  onSearch: (params: any) => void;
+  onSearch: (params: SearchParams) => void;
   searchType: SearchType;
   onSearchTypeChange: (type: SearchType) => void;
   useRecentFiles?: boolean;
@@ -85,7 +86,6 @@ export function QueryBuilder({
   advancedSearch = {},
   onAdvancedSearchChange = () => {}
 }: QueryBuilderProps) {
-  const { dispatch } = useSearch();
   const router = useRouter();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
@@ -149,13 +149,6 @@ export function QueryBuilder({
       };
     });
   };
-
-  const currentSearchType = searchTypes.find(t => t.id === searchType);
-
-  // Get active filters count - now only for house filter
-  const activeFiltersCount = currentSearchType?.showFilters ? [
-    localParams.house
-  ].filter(Boolean).length : 0;
 
   return (
     <div className="space-y-4">

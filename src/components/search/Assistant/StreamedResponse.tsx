@@ -169,7 +169,7 @@ export function StreamedResponse({ streamingText, citations, isLoading }: Stream
                 }
                 // Handle nested paragraph elements inside list items
                 if (isValidElement(child)) {
-                  return cloneElement<any>(child, {
+                  return cloneElement(child, {
                     ...child.props,
                     children: typeof child.props.children === 'string' 
                       ? renderWithCitations(child.props.children)

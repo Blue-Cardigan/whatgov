@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CalendarCard } from './CalendarCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, BellRing, Settings } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { exportCalendarItemToPDF, exportAllToPDF } from '@/lib/pdf-utilities';
 import { fetchSavedSearches, deleteSavedSearch, markSearchesAsRead } from '@/lib/supabase/saved-searches';
@@ -45,8 +45,6 @@ export function SavedSearches() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
-
-  const supabase = useSupabase();
 
   // Fetch data
   useEffect(() => {
