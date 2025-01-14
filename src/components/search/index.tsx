@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEngagement } from '@/hooks/useEngagement';
 import { HansardAPI } from '@/lib/search-api';
 import { QueryBuilder } from './QueryBuilder';
 import { SearchResults } from './Hansard/SearchResults';
@@ -33,10 +32,9 @@ import { Check } from "lucide-react";
 
 export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 'mp' }) {
   const { state: searchState, dispatch } = useSearch();
-  const { user, isEngagedCitizen, isProfessional } = useAuth();
-  const { recordResearchSearch } = useEngagement();
+  const { isProfessional } = useAuth();
   const { 
-    performFileSearch, 
+    performAISearch, 
   } = useAssistant();
   
   // MP Search state
@@ -129,7 +127,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           const searchTerm = searchParams.searchTerm || '';
           dispatch({ type: 'SET_PARAMS', payload: { searchTerm } });
 
-          await performFileSearch(
+          await performAISearch(
             searchTerm,
             null,
             handleStreamingUpdate,
@@ -157,7 +155,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     } finally {
       setLoading(false);
     }
-  }, [activeSearchType, performFileSearch, handleStreamingUpdate, handleStreamingComplete, useRecentFiles, dispatch]);
+  }, [activeSearchType, performAISearch, handleStreamingUpdate, handleStreamingComplete, useRecentFiles, dispatch]);
 
   const handleSearchTypeChange = (type: 'ai' | 'hansard' | 'mp') => {
     setActiveSearchType(type);
@@ -283,7 +281,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           <div className="space-y-6">
             <MPProfileCard mpData={mpData} />
             <MPLinks mpData={mpData} />
-            {isProfessional || isEngagedCitizen ? (
+            {isProfessional ? (
               <Card className="p-6 bg-muted/50">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">

@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { 
   LightbulbIcon, 
@@ -12,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useSearch } from '@/contexts/SearchContext';
+import { useEngagement } from '@/hooks/useEngagement';
 import { SearchParams } from '@/types/search';
 
 const searchTypes = [
@@ -87,7 +86,7 @@ export function QueryBuilder({
   onAdvancedSearchChange = () => {}
 }: QueryBuilderProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { getRemainingAISearches, hasReachedAISearchLimit } = useEngagement();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
   
   const [localParams, setLocalParams] = useState({
@@ -117,6 +116,11 @@ export function QueryBuilder({
   };
 
   const handleSubmit = () => {
+    if (hasReachedAISearchLimit()) {
+      router.push('/pricing');
+      return;
+    }
+
     const query = constructSearchQuery();
     if (query.trim()) {
       const params = {
@@ -207,6 +211,13 @@ export function QueryBuilder({
             Search
           </Button>
         </div>
+
+        {/* Remaining Searches Indicator */}
+        {searchType === 'ai' && (
+          <p className="text-sm text-muted-foreground">
+            {`You have ${getRemainingAISearches()} free searches remaining today.`}
+          </p>
+        )}
 
         {/* Advanced Search Toggle for Hansard */}
         {searchType === 'hansard' && (

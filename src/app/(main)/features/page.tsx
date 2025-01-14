@@ -54,51 +54,27 @@ const plans = [
     description: "For all citizens - because democracy should be accessible",
     features: [
       { icon: <Target />, title: "Follow What Matters", items: [
-        "Unlimited votes on key questions",
-        "See MPs battle it out in the comments",
-        "View basic MP profiles",
-      ]},
-      { icon: <Calendar />, title: "Stay Updated", items: [
-        "Parliamentary calendar and upcoming debates",
-        "Basic debate search and filtering",
-        "Personalised feed based on your interests",
+          "See the whole parliamentary schedule",
+          "Save events and searches",
+          "PDF export of your searches",
+          "Add your RSS feeds to the app",
+          "Advanced Hansard search",
+          "Try the AI research assistant with Hansard-wide analysis capabilities",
       ]}
     ],
     cta: { text: "Start Free", href: "/signup" }
   },
   {
-    name: "Engaged Citizen",
-    price: "£2.49/month",
-    description: "For engaged citizens who want deeper insights",
-    features: [
-      { icon: <Search />, title: "Deeper Access", items: [
-        "Filter your feed by House, day, divisions, session type, and topics covered",
-        "Unlimited Advanced Hansard search to include our summary and key points",
-        "Track everything your MP says in Parliament",
-        "See how your votes stack up against the rest of the country"
-      ]}
-    ],
-    cta: { text: "Start Engaged Citizen Trial", href: "/pricing" }
-  },
-  {
     name: "Professional",
-    price: "£15.99/month",
+    price: "£12.99/month",
     description: "Advanced research and analysis tools for policy professionals",
-    comingSoon: true,
+    comingSoon: false,
     features: [
       { icon: <Search />, title: "Research Power", items: [
-        "Everything in Engaged Citizen, plus:",
-        "Subscribe to searches",
-        "Extra information about MPs and their offices",
-        "Track all MPs, not just your own",
-        "AI research assistant with Hansard-wide analysis capabilities",
-        "Turn your research into a report",
-      ]},
-      { icon: <Database />, title: "Smart Tools", items: [
-        "Track bills and their progress",
-        "Access constituency-wide trends",
-        "Add your RSS feeds to the app",
-        "API access",
+        "Everything in Free, plus:",
+        "Unlimited AI briefings on any topic",
+        "Subscribe to upcoming events to never miss out",
+        "Subscribe to Hansard searches",
       ]}
     ],
     cta: { text: "Coming Soon", href: "#" }
@@ -110,13 +86,9 @@ const plans = [
     features: [
       { icon: <Users />, title: "Team Features", items: [
         "Everything in Professional, plus:",
-        "Custom cards for your website",
-        "Custom feature development",
-      ]},
-      { icon: <BarChart2 />, title: "Analysis Tools", items: [
-        "Constituency-level analysis",
-        "Advanced API access",
-        "Usage analytics",
+        "User Management",
+        "Collaboration workspaces",
+        "Fine control over prompts and schedules",
       ]},
       { icon: <Database />, title: "Enterprise Support", items: [
         "Bulk data export",

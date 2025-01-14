@@ -1,14 +1,42 @@
 import createClient from './client';
 import type { SavedSearch, SaveSearchParams } from '@/types/search';
 import type { RealtimePostgresChangesPayload } from '@/types/supabase';
+import { useToast } from '@/hooks/use-toast';
 
-export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch> {
+export async function saveSearch(
+  params: SaveSearchParams, 
+  toast: ReturnType<typeof useToast>['toast']
+): Promise<SavedSearch> {
   const supabase = createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   try {
+    // Fetch the user's subscription to determine their tier
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (subscriptionError) throw subscriptionError;
+
+    const isProfessional = subscriptionData?.plan === 'PROFESSIONAL';
+
+    // Check for existing identical saved searches
+    const { data: existingSearches, error: existingSearchError } = await supabase
+      .from('saved_searches')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('query', params.query)
+      .eq('search_type', params.searchType);
+
+    if (existingSearchError) throw existingSearchError;
+
+    // If an identical search exists, set is_active to false
+    const shouldSetInactive = existingSearches && existingSearches.length > 0;
+
     // Prepare query state based on search type
     let queryState;
     
@@ -50,12 +78,11 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
         .insert({
           search_id: savedSearch.id,
           user_id: user.id,
-          is_active: true,
-          repeat_on // This will be properly stored as JSONB
+          is_active: isProfessional && !shouldSetInactive,
+          repeat_on
         });
 
       if (scheduleError) {
-        // If schedule creation fails, delete the saved search
         await supabase
           .from('saved_searches')
           .delete()
@@ -64,6 +91,15 @@ export async function saveSearch(params: SaveSearchParams): Promise<SavedSearch>
         throw scheduleError;
       }
     }
+
+    // Show toast notification
+    toast({
+      title: "Search saved",
+      description: isProfessional
+        ? "Your search has been saved and will repeat as scheduled."
+        : "Create a professional account to activate repeating searches.",
+      variant: "default"
+    });
 
     return savedSearch;
 
@@ -119,6 +155,58 @@ export async function markSearchesAsRead(searchIds: string[], userId: string) {
 
   if (error) throw error;
 }
+
+export async function updateSearchSchedule(
+  searchId: string, 
+  userId: string, 
+  scheduleData: {
+    is_active: boolean;
+    repeat_on: { frequency: 'weekly'; dayOfWeek: number } | null;
+  }
+) {
+  const supabase = createClient();
+
+  try {
+    // First, check if a schedule exists
+    const { data: existingSchedule } = await supabase
+      .from('saved_search_schedules')
+      .select('id')
+      .eq('search_id', searchId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingSchedule) {
+      // Update existing schedule
+      const { error } = await supabase
+        .from('saved_search_schedules')
+        .update({
+          is_active: scheduleData.is_active,
+          repeat_on: scheduleData.repeat_on,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingSchedule.id);
+
+      if (error) throw error;
+    } else {
+      // Create new schedule
+      const { error } = await supabase
+        .from('saved_search_schedules')
+        .insert({
+          search_id: searchId,
+          user_id: userId,
+          is_active: scheduleData.is_active,
+          repeat_on: scheduleData.repeat_on
+        });
+
+      if (error) throw error;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating search schedule:', error);
+    throw error;
+  }
+} 
 
 export function subscribeToSearchUpdates(userId: string, callbacks: {
   onUpdate?: (payload: RealtimePostgresChangesPayload<SavedSearch>) => void;

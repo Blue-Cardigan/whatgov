@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { TOPIC_DEFINITIONS, LOCATION_GROUPS, DEBATE_TYPES, partyColours } from '@/lib/utils';
+import { partyColours } from '@/lib/utils';
 import { SearchFilterParams } from '@/types/assistant';
 
 export type SearchFilter = {
@@ -338,17 +338,10 @@ export class AssistantQueryBuilder {
     return true;
   }
 }
-
-// Export constants for the UI
 export const FILTER_OPTIONS = {
   houses: ['Commons', 'Lords', 'Both'] as const,
-  locations: LOCATION_GROUPS,
-  debateTypes: DEBATE_TYPES,
   daysOfWeek: [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
   ] as const,
   parties: Object.keys(partyColours),
-  topics: Object.entries(TOPIC_DEFINITIONS).flatMap(([category, subtopics]) => 
-    subtopics.map(topic => ({ category, topic }))
-  )
 }; 

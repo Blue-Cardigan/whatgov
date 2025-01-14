@@ -37,6 +37,7 @@ export interface SpeakerPoint {
     type: string;
     content: string;
     references: Array<{
+      text: string;
       value: string;
       source?: string;
     }>;

@@ -100,7 +100,7 @@ export function SaveSearchButton({
               searchTerm: aiSearch.query
             },
             repeat_on
-          });
+          }, toast);
           break;
 
         case 'hansard':
@@ -133,7 +133,7 @@ export function SaveSearchButton({
             queryState: hansardSearch.queryState,
             searchType: 'hansard',
             repeat_on
-          });
+          }, toast);
           break;
 
         default:

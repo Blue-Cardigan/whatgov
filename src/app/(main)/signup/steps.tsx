@@ -4,14 +4,12 @@ import { cn } from "@/lib/utils";
 import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { TOPICS } from "@/lib/utils";
-import { lookupPostcode } from "@/lib/supabase/mpsearch";
 import { ChartBarIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { lookupPostcode } from "@/lib/supabase/mpsearch";
 
 type FormData = {
   name: string;
@@ -21,7 +19,6 @@ type FormData = {
   gender: string;
   age: string;
   postcode: string;
-  selectedTopics: string[];
   newsletter: boolean;
 };
 
@@ -48,22 +45,6 @@ export default function Steps({
   isLookingUpPostcode,
   setIsLookingUpPostcode
 }: StepsProps) {
-  const handleTopicToggle = (topicId: string) => {
-    setFormData((prev: FormData) => ({
-      ...prev,
-      selectedTopics: prev.selectedTopics.includes(topicId)
-        ? prev.selectedTopics.filter((t: string) => t !== topicId)
-        : [...prev.selectedTopics, topicId]
-    }));
-  };
-
-  const handleSelectAllTopics = () => {
-    setFormData((prev: FormData) => ({
-      ...prev,
-      selectedTopics: prev.selectedTopics.length === TOPICS.length ? [] : TOPICS.map(t => t.id)
-    }));
-  };
-
   const handlePostcodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const formatted = formatPostcode(value);
@@ -320,77 +301,6 @@ export default function Steps({
             exit={{ opacity: 0, x: -20 }}
             className="space-y-8"
           >
-            <div>
-              <h2 className="text-3xl font-semibold mb-3">Choose your interests</h2>
-              <p className="text-muted-foreground mb-6 text-lg">
-                Select topics you want to follow
-              </p>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="mb-4 w-full py-6 text-lg border-dashed"
-                onClick={handleSelectAllTopics}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  {formData.selectedTopics.length === TOPICS.length ? (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      <span>Deselect All Topics</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-5 w-5" />
-                      <span>Select All Topics</span>
-                    </>
-                  )}
-                </div>
-              </Button>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {TOPICS.map((topic) => {
-                  const isSelected = formData.selectedTopics.includes(topic.id);
-                  const Icon = topic.icon;
-                  
-                  return (
-                    <motion.div
-                      key={topic.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <Badge
-                        variant={isSelected ? "default" : "outline"}
-                        className={cn(
-                          "w-full cursor-pointer transition-all py-4 px-4",
-                          isSelected ? "bg-primary hover:bg-primary/90" : "hover:bg-muted",
-                          "flex items-center justify-between gap-3"
-                        )}
-                        onClick={() => handleTopicToggle(topic.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="h-5 w-5 shrink-0" />
-                          <span className="text-sm font-medium">{topic.label}</span>
-                        </div>
-                        {isSelected && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            <CheckCircle2 className="h-4 w-4 shrink-0" />
-                          </motion.div>
-                        )}
-                      </Badge>
-                    </motion.div>
-                  );  
-                })}
-              </div>
-              {formData.selectedTopics.length === 0 && (
-                <p className="text-sm text-muted-foreground mt-4">
-                  Please select at least one topic
-                </p>
-              )}
-            </div>
-
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

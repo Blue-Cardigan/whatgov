@@ -2,7 +2,6 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import { DebateItem } from '@/types';
 import { HansardDebateResponse } from '@/types/hansard';
 import { format } from 'date-fns';
-import { getDebateType } from '@/lib/utils';
 import type { ParsedAnalysisData, SpeakerPoint } from '@/components/debates/AnalysisData';
 import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
 
@@ -55,7 +54,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
   }
 
   const date = format(new Date(debate.date), 'dd MMMM yyyy');
-  const debateType = getDebateType(debate.type);
+  const debateType = debate.type;
 
   const docDefinition: TDocumentDefinitions = {
     pageMargins: [40, 80, 40, 60] as [number, number, number, number],
@@ -157,7 +156,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
           {
             text: [
               { text: `${SYMBOLS.type} `, fontSize: 12, color: COLORS.muted },
-              { text: debateType?.label || 'Debate', style: 'metadata' }
+              { text: debateType || 'Debate', style: 'metadata' }
             ],
             alignment: 'right'
           }

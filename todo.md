@@ -1,9 +1,9 @@
 MVP:
 [/] Remove voting and feed functionality
-[ ] Update the assistant vector store daily. 
+[-] Update the assistant vector store daily. 
       [/] Add a summary/analysis at the start of each
       [/] Ensure Member names etc. are included.
-      [ ] Run script daily with cron job
+      [-] Run script daily with cron job
 [/] Fix assistant citations when streaming
 [/] Unique page for each debate
 [/] Maintain a weekly Vector DB
@@ -31,12 +31,15 @@ MVP:
       [/] Display calendar items with responses in main section
 [ ] Create cron job to search and find saved debates
       [-] Endpoint searches hansard for saved events and question sessions, then generates and stores response for each
-[ ] Include links to original debates from saved hansard and calendar cards
+[/] Include links to original debates from saved hansard and calendar cards
       [/] Calendar
       [/] Hansard
-[ ] Fix mountainous lint issues
-[ ] Update engagement controls
+[-] Fix mountainous lint issues
+[/] Update engagement controls
 [-] Update whatgov and whatgov-backend to point to main then push
+[ ] Discount Link
+[ ] Email people in the database
+
 
 Next:
 [ ] Update prompts based on feedback

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { MPSearch } from './MPSearch';
 
 export function MPProfile() {
-  const { user, profile, loading, isEngagedCitizen, isProfessional } = useAuth();
+  const { user, profile, loading, isProfessional } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -90,7 +90,7 @@ export function MPProfile() {
         
         // Check permissions before loading key points
         const isUserMP = mpData.member_id.toString() === profile?.mp;
-        if (!isEngagedCitizen || (!isProfessional && !isUserMP)) {
+        if (!isProfessional || (!isProfessional && !isUserMP)) {
           // User doesn't have permission to view key points
           setKeyPointsLoading(false);
           setTopicsLoading(false);
@@ -149,7 +149,7 @@ export function MPProfile() {
     }
 
     fetchData();
-  }, [searchedMpId, profile?.mp, isEngagedCitizen, isProfessional]);
+  }, [searchedMpId, profile?.mp, isProfessional]);
 
   if (loading) {
     return <Card className="p-3 sm:p-4">
@@ -227,7 +227,7 @@ export function MPProfile() {
             {!profileLoading && mpData && (
               <>
                 <MPLinks mpData={mpData} />
-                {isEngagedCitizen ? (
+                {isProfessional ? (
                   <>
                     {(isProfessional || mpData.member_id.toString() === profile?.mp) ? (
                       <>

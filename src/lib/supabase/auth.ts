@@ -45,7 +45,7 @@ export const signUpWithEmail = async (
         user_constituency: profile.constituency || '',
         user_mp: profile.mp || '',
         user_mp_id: profile.mp_id || null,
-        user_selected_topics: profile.selected_topics || [],
+        user_rss_feeds: profile.rss_feeds || [],
         user_newsletter: profile.newsletter ?? true
       }
     );

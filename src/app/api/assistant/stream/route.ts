@@ -23,15 +23,33 @@ export async function POST(request: Request) {
       const mondayString = monday.toISOString().split('T')[0];
 
       const supabase = await createServerSupabaseClient();
-      const { data: vectorStore, error } = await supabase
+      let { data: vectorStore, error } = await supabase
         .from('vector_stores')
         .select('assistant_id')
         .eq('store_name', `Weekly Debates ${mondayString}`)
         .single();
 
-      if (error) {
-        console.error('[Assistant Stream] Error fetching weekly assistant:', error);
-      } else if (vectorStore?.assistant_id) {
+      if (error || !vectorStore?.assistant_id) {
+        console.error('[Assistant Stream] Error fetching current weekly assistant or none found:', error);
+
+        // Fallback to previous week
+        const previousMonday = new Date(monday);
+        previousMonday.setDate(monday.getDate() - 7);
+        const previousMondayString = previousMonday.toISOString().split('T')[0];
+
+        ({ data: vectorStore, error } = await supabase
+          .from('vector_stores')
+          .select('assistant_id')
+          .eq('store_name', `Weekly Debates ${previousMondayString}`)
+          .single());
+
+        if (error) {
+          console.error('[Assistant Stream] Error fetching previous weekly assistant:', error);
+        } else if (vectorStore?.assistant_id) {
+          console.log('[Assistant Stream] Using previous weekly assistant:', vectorStore.assistant_id);
+          assistantId = vectorStore.assistant_id;
+        }
+      } else {
         console.log('[Assistant Stream] Using weekly assistant:', vectorStore.assistant_id);
         assistantId = vectorStore.assistant_id;
       }

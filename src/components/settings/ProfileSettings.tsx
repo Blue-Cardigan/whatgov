@@ -7,8 +7,6 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from "@/components/ui/badge";
-import { TOPICS } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, Loader2, User, MapPin, Cake, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/utils";
@@ -44,9 +42,6 @@ export function ProfileSettings() {
     if (!profile || !originalProfile) return;
     
     const hasProfileChanges = Object.entries(profile).some(([key, value]) => {
-      if (key === 'selected_topics') {
-        return JSON.stringify(value) !== JSON.stringify(originalProfile[key as keyof UserProfile]);
-      }
       return value !== originalProfile[key as keyof UserProfile];
     });
 
@@ -65,7 +60,6 @@ export function ProfileSettings() {
             mp: profile.mp,
             gender: profile.gender,
             age: profile.age,
-            selected_topics: profile.selected_topics,
             newsletter: profile.newsletter,
           });
         } catch (error) {
@@ -87,7 +81,6 @@ export function ProfileSettings() {
           mp: profile.mp,
           gender: profile.gender,
           age: profile.age,
-          selected_topics: profile.selected_topics,
           newsletter: profile.newsletter,
         });
 
@@ -228,7 +221,6 @@ export function ProfileSettings() {
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="personal">Personal Info</TabsTrigger>
         <TabsTrigger value="constituency">Constituency</TabsTrigger>
-        <TabsTrigger value="interests">Interests</TabsTrigger>
         <TabsTrigger value="settings">Settings</TabsTrigger>
       </TabsList>
 
@@ -419,51 +411,6 @@ export function ProfileSettings() {
                     </div>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="interests" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Topics of Interest</CardTitle>
-              <CardDescription>
-                Select the political topics that interest you most. This helps us personalize your experience.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {TOPICS.map((topic) => {
-                  const isSelected = profile.selected_topics.includes(topic.id);
-                  const Icon = topic.icon;
-                  
-                  return (
-                    <Badge
-                      key={topic.id}
-                      variant={isSelected ? "default" : "outline"}
-                      className={cn(
-                        "cursor-pointer py-3 px-4",
-                        isSelected ? "bg-primary hover:bg-primary/90" : "hover:bg-muted",
-                        "flex items-center justify-between"
-                      )}
-                      onClick={() => {
-                        setProfile({
-                          ...profile,
-                          selected_topics: isSelected
-                            ? profile.selected_topics.filter(t => t !== topic.id)
-                            : [...profile.selected_topics, topic.id]
-                        });
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span>{topic.label}</span>
-                      </div>
-                      {isSelected && <CheckCircle2 className="h-4 w-4 shrink-0" />}
-                    </Badge>
-                  );
-                })}
               </div>
             </CardContent>
           </Card>

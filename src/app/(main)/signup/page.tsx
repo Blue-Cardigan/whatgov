@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { cn, UK_POSTCODE_REGEX } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Loader2 } from "lucide-react";
-import { TOPICS } from "@/lib/utils";
 import Steps from "./steps";
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
@@ -31,7 +30,6 @@ export default function SignUp() {
     postcode: "",
     gender: "",
     age: "",
-    selectedTopics: [] as string[],
     newsletter: false
   });
   const [mpDetails, setMpDetails] = useState<{ constituency: string | null; mp: string | null } | null>(null);
@@ -62,9 +60,6 @@ export default function SignUp() {
     setError("");
 
     try {
-      const topicLabels = formData.selectedTopics.map(
-        id => TOPICS.find(t => t.id === id)?.label ?? ""
-      );
 
       const response = await signUp(formData.email, formData.password, {
         name: formData.name || "",
@@ -73,7 +68,6 @@ export default function SignUp() {
         postcode: formData.postcode || "",
         constituency: mpDetails?.constituency || "",
         mp: mpDetails?.mp || "",
-        selected_topics: topicLabels,
         newsletter: formData.newsletter,
       });
 
@@ -130,9 +124,7 @@ export default function SignUp() {
         break;
 
       case 5:
-        if (formData.selectedTopics.length === 0) {
-          isValid = false;
-        }
+        isValid = true;
         break;
     }
 
@@ -150,12 +142,6 @@ export default function SignUp() {
     if (formData.password.length < 8) {
       setError("Invalid password");
       setStep(3);
-      return false;
-    }
-
-    if (formData.selectedTopics.length === 0) {
-      setError("No topics selected");
-      setStep(5);
       return false;
     }
 

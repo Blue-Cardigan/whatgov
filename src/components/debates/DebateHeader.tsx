@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
-import { locationColors, getDebateType } from '@/lib/utils';
+import { locationColors } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import createClient from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -62,7 +62,7 @@ export function DebateHeader({
     return null;
   }
 
-  const debateType = getDebateType(debate.type);
+  const debateType = debate.type;
   const formattedDate = format(new Date(debate.date), 'EEE, d MMM yyyy');
   
   const Content = () => (
@@ -96,7 +96,7 @@ export function DebateHeader({
               variant="secondary"
               className="text-xs font-normal w-fit"
             >
-              {debateType.label}
+              {debateType}
             </Badge>
           )}
         </div>

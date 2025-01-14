@@ -14,30 +14,22 @@ interface UpgradePopoverProps {
 }
 
 export function UpgradePopover({ children, feature }: UpgradePopoverProps) {
-  const { isEngagedCitizen } = useAuth();
+  const { isProfessional } = useAuth();
 
   const getContent = () => {
     if (feature === 'ai-search') {
-      return isEngagedCitizen ? {
+      return {
         title: "Upgrade to Pro",
-        description: "Get unlimited AI searches and custom assistants",
+        description: "Get unlimited AI searches and subscribe to custom searches",
         buttonText: "Upgrade to Pro"
-      } : {
-        title: "Upgrade Your Account",
-        description: "Upgrade to an Engaged Citizen subscription to get 5 AI searches per week",
-        buttonText: "Upgrade"
+      }
+    } else {
+      return {
+        title: "Upgrade to Pro",
+        description: "See features of Pro",
+        buttonText: "See Features"
       };
     }
-
-    return isEngagedCitizen ? {
-      title: "Upgrade to Pro",
-      description: "Create unlimited custom assistants",
-      buttonText: "Upgrade to Pro"
-    } : {
-      title: "Upgrade Your Account",
-      description: "Upgrade to an Engaged Citizen subscription to create a custom assistant",
-      buttonText: "Upgrade"
-    };
   };
 
   const content = getContent();
@@ -56,7 +48,7 @@ export function UpgradePopover({ children, feature }: UpgradePopoverProps) {
             </p>
           </div>
           <Button asChild>
-            <Link href={isEngagedCitizen ? "/pro" : "/verify"}>
+            <Link href={isProfessional ? "/pro" : "/verify"}>
               {content.buttonText}
             </Link>
           </Button>

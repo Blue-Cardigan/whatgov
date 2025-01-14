@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Share2, ExternalLink, Search, Clock, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect } from 'react';
-import { getDebateType, locationColors, partyColours } from '@/lib/utils';
+import { locationColors, partyColours } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { UpgradeDialog } from "@/components/upgrade/UpgradeDialog";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -408,7 +408,7 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
 
 // Reuse the MetaInformation component with slight modifications
 function MetaInformation({ item }: { item: DebateItem }) {
-  const debateType = useMemo(() => getDebateType(item.type), [item.type]);
+  const debateType = item.type;
   
   const formattedDate = useMemo(() => {
     const date = new Date(item.date);
@@ -429,7 +429,7 @@ function MetaInformation({ item }: { item: DebateItem }) {
             variant="secondary"
             className="text-xs font-normal"
           >
-            {debateType.label}
+            {debateType}
           </Badge>
         )}
       </div>

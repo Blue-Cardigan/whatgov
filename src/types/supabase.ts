@@ -22,15 +22,13 @@ export interface UserProfile {
   constituency: string;
   mp: string;
   mp_id?: number;
-  selected_topics: string[];
   email: string;
   email_verified?: boolean;
   newsletter?: boolean;
   ai_searches_count?: number;
-  ai_and_ai_hansard_searches_last_reset?: string;
+  ai_searches_last_reset?: string;
   votes_count?: number;
   votes_last_reset?: string;
-  hansard_ai_searches_count?: number;
   rss_feeds?: Array<{
     url: string;
     title: string;

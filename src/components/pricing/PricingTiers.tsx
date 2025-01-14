@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Building2, Briefcase, AlertCircle } from "lucide-react";
+import { Check, Building2, Briefcase, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -28,48 +28,27 @@ const tiers = [
     price: "Free",
     icon: Building2,
     features: [
-      "Vote on unlimited debates",
-      "Access your constituency's voting record",
-      "Filter your feed by Your MP and by votes in Parliament",
-      "See MPs battle it out in the comments",
-      "Access your MP's profile",
-      "See upcoming questions being asked to Parliament",
-      "Basic debate search and filtering",
+      "View the entire parliamentary schedule, and save what's relevant",
+      "Limited AI search access",
+      "Advanced Hansard search",
+      "Save your searches to view them later",
+      "Add unlimited RSS feeds",
+      "Coming Soon: Search across MPs' profiles and contributions"
     ],
     color: "text-blue-500",
     bgColor: "bg-blue-50 dark:bg-blue-500/10",
     popular: false,
   },
   {
-    name: "Engaged Citizen",
-    description: "For people who want deeper insights",
-    price: "£2.49",
-    icon: Crown,
-    features: [
-      "Filter your feed by House, day, session type, and topics covered",
-      "Access our whole database of summaries and key points through search",
-      "See key points made by MPs (as well as the comments section)",
-      "Track your MP's topic history",
-      "Advanced analytics on your constituency's votes",
-    ],
-    color: "text-purple-500",
-    bgColor: "bg-purple-50 dark:bg-purple-500/10",
-    popular: true,
-  },
-  {
     name: "Professional",
     description: "Advanced research and analysis tools for policy professionals",
-    price: "Coming Soon",
+    price: "£12.99",
     icon: Briefcase,
     features: [
-      "Everything in Engaged Citizen, plus:",
-      "Subscribe to searches",
-      "Track all MPs, not just your own",
-      "Extra information about MPs and their offices",
-      "Fast, detailed research & reports with the AI assistant",
-      "Track bills and their progress",
-      "Add RSS feeds to the app",
-      "Access constituency-wide trends",
+      "Everything in Citizen, plus:",
+      "Unlimited access to AI Search for instant briefings on any topic",
+      "Track upcoming parliamentary events",
+      "Subscribe to searches to get personalised briefings on topics",
     ],
     color: "text-emerald-500",
     bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
@@ -79,7 +58,7 @@ const tiers = [
 
 // Create a separate component for the search params logic
 function PricingContent() {
-  const { user, refreshSubscription, isEngagedCitizen } = useAuth();
+  const { user, refreshSubscription, isProfessional } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasHandledSuccess = useRef(false);
@@ -199,13 +178,13 @@ function PricingContent() {
     }
 
     // Engaged Citizen tier
-    if (isEngagedCitizen) {
+    if (isProfessional) {
       return {
         variant: "outline" as const,
         onClick: () => router.push('/settings'),
         text: "Manage Subscription"
       };
-    }
+      }
 
     return {
       variant: "default" as const,
@@ -227,7 +206,7 @@ function PricingContent() {
               className={cn(
                 "relative flex flex-col",
                 tier.popular && "border-primary shadow-lg scale-105",
-                isEngagedCitizen && tier.name === "Engaged Citizen" && "border-green-500"
+                isProfessional && tier.name === "Professional" && "border-green-500"
               )}
             >
               {tier.popular && (
@@ -238,7 +217,7 @@ function PricingContent() {
                   Most Popular
                 </Badge>
               )}
-              {isEngagedCitizen && tier.name === "Engaged Citizen" && (
+              {isProfessional && tier.name === "Professional" && (
                 <Badge 
                   className="absolute -top-2 right-4"
                   variant="success"

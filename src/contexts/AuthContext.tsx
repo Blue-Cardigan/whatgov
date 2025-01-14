@@ -49,7 +49,6 @@ interface AuthContextValue extends AuthState {
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   getAuthHeader: () => Promise<string>;
   isProfessional: boolean;
-  isEngagedCitizen: boolean;
   refreshSubscription: () => Promise<void>;
 }
 
@@ -264,7 +263,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           postcode: userData.postcode || '',
           constituency: userData.constituency || '',
           mp: userData.mp || '',
-          selected_topics: userData.selected_topics || [],
           newsletter: userData.newsletter || false
         });
 
@@ -314,8 +312,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       getAuthHeader,
       isProfessional: hasActiveSubscription && 
         state.subscription?.plan === 'PROFESSIONAL',
-      isEngagedCitizen: hasActiveSubscription && 
-        ['ENGAGED_CITIZEN', 'PROFESSIONAL'].includes(state.subscription?.plan || ''),
       refreshSubscription: async () => {
         if (state.user?.id) {
           await fetchSubscription(state.user.id);

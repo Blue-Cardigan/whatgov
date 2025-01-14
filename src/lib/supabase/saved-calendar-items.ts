@@ -36,122 +36,140 @@ export async function saveCalendarItem(session: TimeSlot, questionId?: number) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  let eventId = '';
-  let eventDate: string | null = null;
-  let eventData: Partial<TimeSlot> = {};
+  try {
+    // Fetch the user's subscription to determine their tier
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (session.type === 'oral-questions') {
-    const questionDate = session.questions?.[0]?.answeringWhen;
-    if (!questionDate) throw new Error('Invalid question data');
+    if (subscriptionError) throw subscriptionError;
 
-    // If saving individual question, use question-specific ID
-    if (questionId) {
-      eventId = `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}-q${questionId}`;
-      // Filter to only include the specific question
-      const question = session.questions?.find(q => q.id === questionId);
-      if (!question) throw new Error('Question not found');
+    const isProfessional = subscriptionData?.plan === 'PROFESSIONAL';
+
+    let eventId = '';
+    let eventDate: string | null = null;
+    let eventData: Partial<TimeSlot> = {};
+
+    if (session.type === 'oral-questions') {
+      const questionDate = session.questions?.[0]?.answeringWhen;
+      if (!questionDate) throw new Error('Invalid question data');
+
+      // If saving individual question, use question-specific ID
+      if (questionId) {
+        eventId = `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}-q${questionId}`;
+        // Filter to only include the specific question
+        const question = session.questions?.find(q => q.id === questionId);
+        if (!question) throw new Error('Question not found');
+        
+        eventData = {
+          type: 'oral-questions',
+          department: session.department,
+          departmentId: session.departmentId,
+          ministerTitle: session.ministerTitle,
+          questions: [{
+            id: question.id,
+            UIN: question.UIN,
+            text: question.text,
+            questionType: question.questionType,
+            AnsweringBodyId: question.AnsweringBodyId,
+            answeringWhen: question.answeringWhen,
+            askingMembers: question.askingMembers
+          }]
+        };
+      } else {
+        // Saving whole session - only store first 3 questions
+        console.log('Saving whole session', session);
+        eventId = `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}`;
+        eventData = {
+          type: 'oral-questions',
+          department: session.department,
+          departmentId: session.departmentId,
+          ministerTitle: session.ministerTitle,
+          questions: session.questions?.slice(0, 3).map(q => ({
+            id: q.id,
+            UIN: q.UIN,
+            text: q.text,
+            questionType: q.questionType,
+            AnsweringBodyId: q.AnsweringBodyId,
+            answeringWhen: q.answeringWhen,
+            askingMembers: q.askingMembers
+          }))
+        };
+      }
+      eventDate = format(new Date(questionDate), 'yyyy-MM-dd');
+    } else if (session.type === 'event' && session.event) {
+      // Normalize the event type to a consistent format
+      const eventType = session.event.type?.toLowerCase().trim()
+        .replace('debate', '')
+        .replace(/\s+/g, '-')
+        .trim();
       
+      eventId = `${eventType}-${session.event.id}`;
+      // This will create IDs like "westminster-hall-50140"
+      
+      eventDate = session.event.startTime ? 
+        format(new Date(session.event.startTime), 'yyyy-MM-dd') : null;
       eventData = {
-        type: 'oral-questions',
-        department: session.department,
-        departmentId: session.departmentId,
-        ministerTitle: session.ministerTitle,
-        questions: [{
-          id: question.id,
-          UIN: question.UIN,
-          text: question.text,
-          questionType: question.questionType,
-          AnsweringBodyId: question.AnsweringBodyId,
-          answeringWhen: question.answeringWhen,
-          askingMembers: question.askingMembers
-        }]
-      };
-    } else {
-      // Saving whole session - only store first 3 questions
-      console.log('Saving whole session', session);
-      eventId = `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}`;
-      eventData = {
-        type: 'oral-questions',
-        department: session.department,
-        departmentId: session.departmentId,
-        ministerTitle: session.ministerTitle,
-        questions: session.questions?.slice(0, 3).map(q => ({
-          id: q.id,
-          UIN: q.UIN,
-          text: q.text,
-          questionType: q.questionType,
-          AnsweringBodyId: q.AnsweringBodyId,
-          answeringWhen: q.answeringWhen,
-          askingMembers: q.askingMembers
-        }))
-      };
-    }
-    eventDate = format(new Date(questionDate), 'yyyy-MM-dd');
-  } else if (session.type === 'event' && session.event) {
-    // Normalize the event type to a consistent format
-    const eventType = session.event.type?.toLowerCase().trim()
-      .replace('debate', '')
-      .replace(/\s+/g, '-')
-      .trim();
-    
-    eventId = `${eventType}-${session.event.id}`;
-    // This will create IDs like "westminster-hall-50140"
-    
-    eventDate = session.event.startTime ? 
-      format(new Date(session.event.startTime), 'yyyy-MM-dd') : null;
-    eventData = {
-      type: 'event',
-      event: {
-        id: session.event.id,
-        title: session.event.title,
-        description: session.event.description,
-        startTime: session.event.startTime,
-        category: session.event.category,
-        type: session.event.type
-      }
-    };
-  } else if (session.type === 'edm' && session.edm?.id) {
-    eventId = `edm-${session.edm.id}`;
-    eventDate = session.edm.dateTabled ? 
-      format(new Date(session.edm.dateTabled), 'yyyy-MM-dd') : null;
-    eventData = {
-      type: 'edm',
-      edm: {
-        id: session.edm.id,
-        title: session.edm.title,
-        text: session.edm.text,
-        dateTabled: session.edm.dateTabled,
-        primarySponsor: {
-          name: session.edm.primarySponsor.name,
-          party: session.edm.primarySponsor.party
+        type: 'event',
+        event: {
+          id: session.event.id,
+          title: session.event.title,
+          description: session.event.description,
+          startTime: session.event.startTime,
+          category: session.event.category,
+          type: session.event.type
         }
-      }
-    };
-  }
-
-  // Remove any undefined or null values
-  eventData = JSON.parse(JSON.stringify(eventData));
-
-  const { data, error } = await supabase
-    .from('saved_calendar_items')
-    .insert({
-      user_id: user.id,
-      event_id: eventId,
-      event_data: eventData,
-      date: eventDate,
-      created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (error) {
-    if (error.code === '23505') { // Unique violation
-      throw new Error('Event already saved');
+      };
+    } else if (session.type === 'edm' && session.edm?.id) {
+      eventId = `edm-${session.edm.id}`;
+      eventDate = session.edm.dateTabled ? 
+        format(new Date(session.edm.dateTabled), 'yyyy-MM-dd') : null;
+      eventData = {
+        type: 'edm',
+        edm: {
+          id: session.edm.id,
+          title: session.edm.title,
+          text: session.edm.text,
+          dateTabled: session.edm.dateTabled,
+          primarySponsor: {
+            name: session.edm.primarySponsor.name,
+            party: session.edm.primarySponsor.party
+          }
+        }
+      };
     }
+
+    // Remove any undefined or null values
+    eventData = JSON.parse(JSON.stringify(eventData));
+
+    const { data, error } = await supabase
+      .from('saved_calendar_items')
+      .insert({
+        user_id: user.id,
+        event_id: eventId,
+        event_data: eventData,
+        date: eventDate,
+        created_at: new Date().toISOString(),
+        is_active: isProfessional // Set is_active based on subscription status
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') { // Unique violation
+        throw new Error('Event already saved');
+      }
+      throw error;
+    }
+
+    return data;
+
+  } catch (error) {
+    console.error('Error saving calendar item:', error);
     throw error;
   }
-
-  return data;
 }
 
 export async function deleteCalendarItem(eventId: string) {

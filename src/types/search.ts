@@ -79,7 +79,7 @@ export interface SavedSearch {
   user_id: string;
   query: string;
   response: string;
-  citations: Citation[];
+  citations: string[];
   created_at: string;
   search_type: 'ai' | 'hansard' | 'mp' | 'question';
   is_unread: boolean;

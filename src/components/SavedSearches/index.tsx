@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useSupabase } from '@/components/providers/SupabaseProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import type { SavedSearch } from '@/types/search';
 import type{ TimeSlot } from '@/types/calendar';
@@ -22,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Brain, Calendar } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { RSSFeed } from './RSSFeed';
+import Link from 'next/link';
 
 
 interface SavedCalendarItem {
@@ -42,7 +42,7 @@ export function SavedSearches() {
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [calendarItems, setCalendarItems] = useState<SavedCalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, isProfessional } = useAuth();
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -113,7 +113,7 @@ export function SavedSearches() {
             )
           );
         })
-        .catch((error: any) => {
+        .catch((error: Error) => {
           console.error('Failed to mark calendar items as read:', error);
         });
     }
@@ -246,11 +246,13 @@ export function SavedSearches() {
   };
 
   const renderSearchCard = (search: SavedSearch, relatedSearches: SavedSearch[]) => {
+
     if (search.search_type === 'ai') {
       return (
         <AISearchCard
           key={search.id}
           search={search}
+          relatedSearches={relatedSearches}
           onDelete={() => deleteSavedSearch(search.id, user!.id)}
           user={user}
         />
@@ -294,6 +296,22 @@ export function SavedSearches() {
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8">
       <div className="flex flex-col gap-8">
+        {/* Upgrade Notice for Free Users */}
+        {!isProfessional && (
+          <div className="bg-muted rounded-lg p-4 text-sm text-muted-foreground">
+            <p>
+              You&apos;re using a free account. {' '}
+              <Link 
+                href="/account/upgrade" 
+                className="font-medium text-primary hover:underline"
+              >
+                Upgrade to Professional
+              </Link>
+              {' '}to enable scheduled searches and notifications for your saved items.
+            </p>
+          </div>
+        )}
+
         {/* Header Section */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

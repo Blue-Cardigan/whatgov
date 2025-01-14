@@ -7,17 +7,17 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useAssistant() {
   const { getAuthHeader } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const { hasReachedResearchSearchLimit, recordResearchSearch } = useEngagement();
+  const { hasReachedAISearchLimit, recordAISearch } = useEngagement();
   const { toast } = useToast();
 
-  const performFileSearch = useCallback(async (
+  const performAISearch = useCallback(async (
     query: string, 
     openaiAssistantId: string | null,
     onStreamingUpdate?: (text: string, citations: Citation[], isFinal: boolean) => void,
     onComplete?: () => void,
     useRecentFiles: boolean = false
   ) => {
-    if (hasReachedResearchSearchLimit()) {
+    if (hasReachedAISearchLimit()) {
       toast({
         title: "Search limit reached",
         description: "Please upgrade your account to continue using AI search",
@@ -29,7 +29,7 @@ export function useAssistant() {
     setIsLoading(true);
 
     try {
-      await recordResearchSearch();
+      await recordAISearch();
       const authHeader = await getAuthHeader();
 
       console.log('[Assistant] Starting search with query:', query);
@@ -129,10 +129,10 @@ export function useAssistant() {
     } finally {
       setIsLoading(false);
     }
-  }, [hasReachedResearchSearchLimit, recordResearchSearch, toast, getAuthHeader]);
+  }, [hasReachedAISearchLimit, recordAISearch, toast, getAuthHeader]);
 
   return {
     isLoading,
-    performFileSearch
+    performAISearch
   };
 } 

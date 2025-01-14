@@ -15,6 +15,22 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useState } from 'react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useAuth } from '@/contexts/AuthContext';
+import { updateSearchSchedule } from '@/lib/supabase/saved-searches';
 
 interface HansardSearchCardProps {
   search: SavedSearch & { 
@@ -46,11 +62,23 @@ interface HansardResponse {
   date: string;
 }
 
+const WEEKDAYS = [
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' }
+] as const;
+
 export function HansardSearchCard({ search, relatedSearches, onDelete, user, compact }: HansardSearchCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { toast } = useToast();
-
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [repeatEnabled, setRepeatEnabled] = useState(search.saved_search_schedules?.some(s => s.is_active) || false);
+  const [repeatDay, setRepeatDay] = useState<string>(search.saved_search_schedules?.[0]?.repeat_on?.dayOfWeek?.toString() || '1');
+  const { isProfessional } = useAuth();
+  
   const allSearches = [search, ...relatedSearches].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
@@ -71,6 +99,42 @@ export function HansardSearchCard({ search, relatedSearches, onDelete, user, com
       });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleScheduleChange = async () => {
+    if (!user || !isProfessional) {
+      toast({
+        title: "Professional account required",
+        description: "Please upgrade to a professional account to enable scheduled searches.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await updateSearchSchedule(search.id, user.id, {
+        is_active: repeatEnabled,
+        repeat_on: repeatEnabled ? {
+          frequency: 'weekly',
+          dayOfWeek: parseInt(repeatDay)
+        } : null
+      });
+
+      setIsPopoverOpen(false);
+      toast({
+        title: "Schedule updated",
+        description: repeatEnabled 
+          ? `Search will repeat every ${WEEKDAYS.find(d => d.value === repeatDay)?.label}`
+          : "Search schedule has been disabled",
+      });
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      toast({
+        title: "Update failed",
+        description: "There was an error updating the search schedule",
+        variant: "destructive"
+      });
     }
   };
 
@@ -112,18 +176,78 @@ export function HansardSearchCard({ search, relatedSearches, onDelete, user, com
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {currentSearch.saved_search_schedules?.some(s => s.is_active) && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <BellRing className="h-4 w-4 text-primary" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Scheduled updates active
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+              <TooltipProvider>
+                <Tooltip>
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <BellRing className="h-4 w-4 text-primary cursor-pointer" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h4 className="font-medium">Modify Schedule</h4>
+                        </div>
+                        
+                        <div className="flex items-center justify-between space-x-2">
+                          <Label htmlFor="repeat-search" className="flex flex-col space-y-1">
+                            <span>Repeat Search Weekly</span>
+                            <span className="font-normal text-xs text-muted-foreground">
+                              Automatically repeat this search every week
+                            </span>
+                          </Label>
+                          <Switch
+                            id="repeat-search"
+                            checked={repeatEnabled}
+                            onCheckedChange={setRepeatEnabled}
+                          />
+                        </div>
+
+                        {repeatEnabled && (
+                          <div className="space-y-2">
+                            <Label htmlFor="repeat-day" className="text-sm">
+                              Repeat on
+                            </Label>
+                            <Select
+                              value={repeatDay}
+                              onValueChange={setRepeatDay}
+                            >
+                              <SelectTrigger id="repeat-day" className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {WEEKDAYS.map((day) => (
+                                  <SelectItem key={day.value} value={day.value}>
+                                    {day.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end space-x-2 pt-2 border-t">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setIsPopoverOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleScheduleChange}
+                          >
+                            Save Changes
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <TooltipContent>
+                    Modify Schedule
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
