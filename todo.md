@@ -37,6 +37,7 @@ MVP:
 [-] Fix mountainous lint issues
 [/] Update engagement controls
 [-] Update whatgov and whatgov-backend to point to main then push
+[ ] "This week in parliament" landing page
 [ ] Discount Link
 [ ] Email people in the database
 

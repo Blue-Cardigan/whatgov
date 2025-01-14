@@ -249,10 +249,28 @@ export function SessionPopover({ session, size = 'normal', style }: SessionPopov
   const getEventColor = () => {
     if (session.type === 'event') {
       switch (session.event?.category) {
-        case 'Private Meeting': return 'bg-blue-600/90 text-white border-blue-300 hover:bg-blue-500';
-        case 'Ministerial statement': return 'bg-purple-600/90 text-white border-purple-300 hover:bg-purple-500';
-        case 'Westminster Hall debate': return 'bg-green-600/90 text-white border-green-300 hover:bg-green-500';
-        case 'Backbench Business': return 'bg-orange-600/90 text-white border-orange-300 hover:bg-orange-500';
+        case 'Oral evidence': return 'bg-lime-200 text-white border-lime-200 hover:bg-lime-200';
+        case 'Debate': return 'bg-green-200 text-white border-green-200 hover:bg-green-200';
+        case 'Short debate': return 'bg-green-200 text-white border-green-200 hover:bg-green-200';
+        case 'Statement': return 'bg-cyan-200 text-white border-cyan-200 hover:bg-cyan-200';
+        case 'Ministerial Statement': return 'bg-cyan-200 text-white border-cyan-200 hover:bg-cyan-200';
+        case 'Westminster Hall debate': return 'bg-yellow-200 text-white border-yellow-200 hover:bg-yellow-200';
+        case 'Backbench Business': return 'bg-amber-200 text-white border-amber-200 hover:bg-amber-200';
+        case 'Introduction(s)': return 'bg-purple-200 text-white border-purple-200 hover:bg-purple-200';
+        case 'Orders and Regulations': return 'bg-orange-200 text-white border-orange-200 hover:bg-orange-200';
+        case 'Estimated rising time': return 'bg-orange-200 text-white border-orange-200 hover:bg-orange-200';
+        case 'Private Members\' Bills': return 'bg-pink-200 text-white border-pink-200 hover:bg-pink-200';
+        case 'Legislation': return 'bg-teal-200 text-white border-teal-200 hover:bg-teal-200';
+        case 'Bills': return 'bg-indigo-200 text-white border-indigo-200 hover:bg-indigo-200';
+        case 'EDMs': return 'bg-gray-200 text-white border-gray-200 hover:bg-gray-200';
+        case 'Oral Questions': return 'bg-blue-200 text-white border-blue-200 hover:bg-blue-200';
+        case 'Prime Minister': return 'bg-blue-200 text-white border-blue-200 hover:bg-blue-200';
+        case 'Urgent question': return 'bg-cyan-200 text-white border-cyan-200 hover:bg-cyan-200';
+        case 'Urgent Question Repeat': return 'bg-cyan-200 text-white border-cyan-200 hover:bg-cyan-200';
+        case 'Adjournment': return 'bg-red-200 text-white border-red-200 hover:bg-red-200';
+        case 'Ten Minute Rule Motion': return 'bg-purple-200 text-white border-purple-200 hover:bg-purple-200';
+        case 'Motions': return 'bg-purple-200 text-white border-purple-200 hover:bg-purple-200';
+        case 'Backbench Business': return 'bg-amber-200 text-white border-amber-200 hover:bg-amber-200';
         default: return 'bg-primary/90 text-white hover:bg-primary/80 border-primary-300';
       }
     }

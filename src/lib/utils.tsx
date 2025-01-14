@@ -10,6 +10,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// src/components/UpcomingDebates/eventColors.ts
+export const eventTypeColors: Record<string, string> = {
+  'Oral Questions': 'bg-blue-200',
+  'Main Chamber': 'bg-green-200',
+  'Westminster Hall': 'bg-yellow-200',
+  'Private Meeting': 'bg-red-200',
+  'Introduction(s)': 'bg-purple-200',
+  'Orders and Regulations': 'bg-orange-200',
+  'Private Members\' Bills': 'bg-pink-200',
+  'Legislation': 'bg-teal-200',
+  'Bills': 'bg-indigo-200',
+  'EDMs': 'bg-gray-200',
+  'Oral evidence': 'bg-lime-200',
+  'Ministerial Statement': 'bg-cyan-200',
+  'Backbench Business': 'bg-amber-200',
+};
+
 // Helper function to get last 7 weekdays
 export function getLastSevenDays(): string[] {
   const days: string[] = [];

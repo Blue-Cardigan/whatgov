@@ -3,7 +3,7 @@
 import { useState, useMemo, createContext } from "react";
 import { format, addWeeks, startOfWeek, addDays, differenceInWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Search } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { WeekView } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
 import { getSavedCalendarItems } from "@/lib/supabase/saved-calendar-items";
@@ -53,10 +53,18 @@ function UpcomingDebatesContent() {
     queryFn: async () => {
       const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
       const weekDiff = differenceInWeeks(weekStart, currentWeekStart);
-      const data = await CalendarApi.getWeeklyEvents(weekDiff);
-      return CalendarApi.processScheduleData(data);
+
+      // Only fetch if the week is current or future
+      if (weekDiff >= 0) {
+        const data = await CalendarApi.getWeeklyEvents(weekDiff);
+        return CalendarApi.processScheduleData(data);
+      }
+      return [];
     }
   });
+
+  // Determine if the current week is the same as the current date's week
+  const isCurrentWeek = differenceInWeeks(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 })) === 0;
 
   // The savedItems query depends on schedule being loaded
   useQuery({
@@ -88,7 +96,6 @@ function UpcomingDebatesContent() {
                 });
               });
           });
-          console.log(allIds);
         }
       });
       
@@ -102,7 +109,9 @@ function UpcomingDebatesContent() {
 
   // Handle navigation
   const handlePrevious = () => {
-    setCurrentDate(prev => addWeeks(prev, -1));
+    if (!isCurrentWeek) {
+      setCurrentDate(prev => addWeeks(prev, -1));
+    }
   };
 
   const handleNext = () => {
@@ -203,7 +212,7 @@ function UpcomingDebatesContent() {
               variant="ghost"
               size="icon"
               onClick={handlePrevious}
-              disabled={isFetching}
+              disabled={isFetching || isCurrentWeek}
               className="rounded-full h-10 w-10"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -229,13 +238,6 @@ function UpcomingDebatesContent() {
                 <Bookmark className="h-4 w-4" />
                 Save events to receive a briefing the next morning
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full h-10 w-10"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
             </div>
             
             <CalendarFilters 

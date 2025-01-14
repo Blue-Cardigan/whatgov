@@ -5,6 +5,7 @@ import type { DaySchedule, TimeSlot } from '@/types/calendar';
 import { CalendarApi } from '@/lib/calendar-api';
 import { UntimedItems } from "./UntimedItems";
 import { SessionPopover } from "./SessionPopover";
+import { eventTypeColors } from '@/lib/utils'; // Import the event colors
 
 export function WeekView({ currentDate, schedule }: { 
   currentDate: Date; 
@@ -94,12 +95,15 @@ export function WeekView({ currentDate, schedule }: {
         {Array.from({ length: 5 }, (_, i) => {
           const day = new Date(weekStart);
           day.setDate(weekStart.getDate() + i);
+          const isPast = day < new Date() && !isToday(day);
+
           return (
             <div 
               key={i} 
               className={cn(
                 "py-2 px-4 text-center border-r last:border-r-0",
-                isToday(day) && "bg-blue-50/50"
+                isToday(day) && "bg-blue-50/50",
+                isPast && "text-gray-400" // Gray out past days
               )}
             >
               <div className="font-medium">
@@ -107,7 +111,8 @@ export function WeekView({ currentDate, schedule }: {
               </div>
               <div className={cn(
                 "inline-flex items-center justify-center w-8 h-8 rounded-full",
-                isToday(day) && "bg-blue-600 text-white"
+                isToday(day) && "bg-blue-600 text-white",
+                isPast && "bg-gray-200" // Gray out past days
               )}>
                 {format(day, 'd')}
               </div>
@@ -138,6 +143,7 @@ export function WeekView({ currentDate, schedule }: {
           {Array.from({ length: 5 }, (_, dayIndex) => {
             const currentDay = new Date(weekStart);
             currentDay.setDate(weekStart.getDate() + dayIndex);
+            const isPast = currentDay < new Date() && !isToday(currentDay);
             const daySchedule = schedule.find(day => 
               format(day.date, 'yyyy-MM-dd') === format(currentDay, 'yyyy-MM-dd')
             );
@@ -160,7 +166,8 @@ export function WeekView({ currentDate, schedule }: {
                 key={dayIndex} 
                 className={cn(
                   "relative border-l flex flex-col",
-                  isToday(currentDay) && "bg-primary/5"
+                  isToday(currentDay) && "bg-primary/5",
+                  isPast && "pointer-events-none opacity-50" // Disable past events
                 )}
                 style={{ minHeight: '720px' }}
               >
@@ -207,6 +214,10 @@ export function WeekView({ currentDate, schedule }: {
                       const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
                       const duration = (endTime.getHours() * 60 + endTime.getMinutes()) - startMinutes;
 
+                      // Determine the color for the event type
+                      const eventType = session.type === 'event' ? session.event?.category : session.type;
+                      const eventColor = eventTypeColors[eventType || ''] || 'bg-gray-100';
+
                       return (
                         <SessionPopover 
                           key={`${groupIndex}-${sessionIndex}`}
@@ -219,6 +230,7 @@ export function WeekView({ currentDate, schedule }: {
                             left: `${4 + (sessionIndex * groupWidth)}%`,
                             width: `${groupWidth - 2}%`,
                             zIndex: group.length > 1 ? 10 + sessionIndex : 1,
+                            backgroundColor: eventColor, // Apply the color
                           }}
                         />
                       );
