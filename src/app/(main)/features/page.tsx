@@ -6,9 +6,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Target,
-  Calendar,
   Clock,
-  BarChart2,
   Search,
   Users,
   Database,
