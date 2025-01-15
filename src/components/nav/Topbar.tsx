@@ -132,7 +132,7 @@ export function Topbar({ className }: TopbarProps) {
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button asChild>
-                <Link href="/register">Sign up</Link>
+                <Link href="/signup">Sign up</Link>
               </Button>
             </div>
           )}

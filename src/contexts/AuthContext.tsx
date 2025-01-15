@@ -21,14 +21,8 @@ interface AuthState {
 }
 
 interface UserSignUpData {
-  name?: string;
-  postcode?: string;
-  constituency?: string;
-  mp?: string;
-  gender?: string;
-  age?: string;
-  selected_topics?: string[];
-  newsletter?: boolean;
+  organization?: string;
+  role?: string;
 }
 
 interface SignUpResponse {
@@ -253,17 +247,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const signUp = async (email: string, password: string, userData: UserSignUpData): Promise<SignUpResponse> => {
+    const signUp = async (
+      email: string, 
+      password: string, 
+      userData: UserSignUpData
+    ): Promise<SignUpResponse> => {
       try {
         const response = await signUpWithEmail(email, password, {
-          email,
-          name: userData.name || '',
-          gender: userData.gender || '',
-          age: userData.age || '',
-          postcode: userData.postcode || '',
-          constituency: userData.constituency || '',
-          mp: userData.mp || '',
-          newsletter: userData.newsletter || false
+          organization: userData.organization || '',
+          role: userData.role || ''
         });
 
         if (response.error) {

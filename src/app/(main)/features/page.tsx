@@ -251,7 +251,6 @@ function ComparisonTable() {
             <TableRow>
               <TableHead className="w-[200px]">Feature</TableHead>
               <TableHead className="text-center">Citizen</TableHead>
-              <TableHead className="text-center">Engaged Citizen</TableHead>
               <TableHead className="text-center">Professional</TableHead>
               <TableHead className="text-center">Enterprise</TableHead>
             </TableRow>
@@ -261,7 +260,6 @@ function ComparisonTable() {
               <TableRow key={feature.name}>
                 <TableCell className="font-medium">{feature.name}</TableCell>
                 <TableCell className="text-center">{renderCheck(feature.citizen)}</TableCell>
-                <TableCell className="text-center">{renderCheck(feature.engaged)}</TableCell>
                 <TableCell className="text-center">{renderCheck(feature.professional)}</TableCell>
                 <TableCell className="text-center">{renderCheck(feature.enterprise)}</TableCell>
               </TableRow>

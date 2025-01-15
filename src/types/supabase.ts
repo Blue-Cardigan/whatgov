@@ -16,19 +16,12 @@ export type AuthResponse = {
 
 export interface UserProfile {
   name: string;
-  gender: string;
-  age: string;
-  postcode: string;
-  constituency: string;
-  mp: string;
-  mp_id?: number;
   email: string;
   email_verified?: boolean;
-  newsletter?: boolean;
+  organization?: string;
+  role?: string;
   ai_searches_count?: number;
   ai_searches_last_reset?: string;
-  votes_count?: number;
-  votes_last_reset?: string;
   rss_feeds?: Array<{
     url: string;
     title: string;
@@ -335,3 +328,12 @@ export interface SavedCalendarItem {
   created_at: string;
   is_unread: boolean;
 }
+
+export type UserSignUpData = {
+  email: string;
+  password: string;
+  profile?: {
+    organization?: string;
+    role?: string;
+  };
+};

@@ -7,54 +7,43 @@ import { User } from '@supabase/supabase-js'
 export const signUpWithEmail = async (
   email: string, 
   password: string,
-  profile: UserProfile
+  profile: { organization?: string; role?: string }
 ): Promise<AuthResponse> => {
-  const serviceClient = createClient();
+  const supabase = createClient();
 
   try {
-    // First check if user exists and is verified
-    const { data: existingUser, error: checkError } = await serviceClient
-      .from('user_profiles')
-      .select('email_verified')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      throw checkError;
-    }
-
-    // If user exists and is verified, return special status
-    if (existingUser?.email_verified) {
-      return {
-        user: null,
-        session: null,
-        error: 'An account with this email already exists',
-        status: 'redirect_to_login'
-      };
-    }
-
-    // Proceed with signup
-    const { data, error } = await serviceClient.rpc(
-      'create_user_with_profile',
-      {
-        user_email: email,
-        user_password: password,
-        user_name: profile.name || '',
-        user_gender: profile.gender || '',
-        user_postcode: profile.postcode || '',
-        user_constituency: profile.constituency || '',
-        user_mp: profile.mp || '',
-        user_mp_id: profile.mp_id || null,
-        user_rss_feeds: profile.rss_feeds || [],
-        user_newsletter: profile.newsletter ?? true
+    // First attempt to sign up the user
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          organization: profile.organization,
+          role: profile.role
+        }
       }
-    );
+    });
 
-    if (error) throw error;
-    if (!data?.success) throw new Error(data?.error || 'User creation failed');
+    if (signUpError) throw signUpError;
 
-    const encodedToken = encodeURIComponent(data.confirmation_token);
-    const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify?token=${encodedToken}`;
+    // If signup successful, create the user profile using RPC
+    if (authData.user) {
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'create_user_with_profile',
+        {
+          user_id: authData.user.id,
+          user_email: email,
+          user_organization: profile.organization || '',
+          user_role: profile.role || ''
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      if (!rpcData.success) throw new Error(rpcData.error || 'Failed to create profile');
+    }
+
+    // Send verification email
+    const confirmationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/accounts/verify`;
     
     const emailResponse = await fetch('/api/auth/send-verification', {
       method: 'POST',
@@ -71,15 +60,12 @@ export const signUpWithEmail = async (
       throw new Error('Failed to send verification email');
     }
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('verification_email', email);
-    }
-
     return {
-      user: { id: data.user_id, email } as User,
-      session: null,
+      user: authData.user,
+      session: authData.session,
       status: 'verify_email'
     };
+
   } catch (error) {
     console.error('Signup error:', error);
     return {

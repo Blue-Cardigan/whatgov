@@ -11,7 +11,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import Steps from "./steps";
 import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 3;
 
 export default function SignUp() {
   const router = useRouter();
@@ -23,14 +23,11 @@ export default function SignUp() {
     postcode: false
   });
   const [formData, setFormData] = useState({
-    name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    postcode: "",
-    gender: "",
-    age: "",
-    newsletter: false
+    organization: "",
+    role: "",
   });
   const [mpDetails, setMpDetails] = useState<{ constituency: string | null; mp: string | null } | null>(null);
   const [postcodeError, setPostcodeError] = useState("");
@@ -60,15 +57,9 @@ export default function SignUp() {
     setError("");
 
     try {
-
       const response = await signUp(formData.email, formData.password, {
-        name: formData.name || "",
-        gender: formData.gender || "",
-        age: formData.age || "",
-        postcode: formData.postcode || "",
-        constituency: mpDetails?.constituency || "",
-        mp: mpDetails?.mp || "",
-        newsletter: formData.newsletter,
+        organization: formData.organization,
+        role: formData.role
       });
 
       if (response.error) {
@@ -80,7 +71,7 @@ export default function SignUp() {
         router.push('/accounts/verify');
       } else if (response.user?.id) {
         router.push('/');
-        }
+      }
     } catch (err) {
       console.error('Signup error:', err);
       setError(
@@ -100,30 +91,24 @@ export default function SignUp() {
     
     switch (step) {
       case 1:
-        if (formData.name.trim().length < 2) {
-          isValid = false;
-        }
-        break;
-
-      case 2:
         if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
           isValid = false;
         }
         break;
 
-      case 3:
+      case 2:
         if (formData.password.length < 8 || formData.password !== formData.confirmPassword) {
           isValid = false;
         }
         break;
 
-      case 4:
-        if (formData.postcode && !UK_POSTCODE_REGEX.test(formData.postcode)) {
+      case 3:
+        if (formData.role.trim().length < 2) {
           isValid = false;
         }
         break;
 
-      case 5:
+      case 4:
         isValid = true;
         break;
     }
@@ -189,12 +174,6 @@ export default function SignUp() {
                     step={step}
                     formData={formData}
                     setFormData={setFormData}
-                    postcodeError={postcodeError}
-                    setPostcodeError={setPostcodeError}
-                    mpDetails={mpDetails}
-                    setMpDetails={setMpDetails}
-                    isLookingUpPostcode={isLookingUpPostcode}
-                    setIsLookingUpPostcode={setIsLookingUpPostcode}
                   />
                 </AnimatePresence>
               </div>
