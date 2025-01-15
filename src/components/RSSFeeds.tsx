@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Image from 'next/image';
-import { format } from 'date-fns';
 import { getNextParliamentImage } from '@/lib/utils/parliamentImages';
 
 interface RSSFeedsProps {

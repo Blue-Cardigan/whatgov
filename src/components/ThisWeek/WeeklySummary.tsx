@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from 'date-fns';
 import createClient from '@/lib/supabase/client';
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +17,10 @@ import { FormattedMarkdown } from '@/lib/utils';
 type DebateRow = Database['public']['Tables']['debates_new']['Row'];
 
 interface WeeklyHighlight {
-  date: string;
   type: string;
   title: string;
   remarks: string;
+  source: string;
 }
 
 interface WeeklySummary {
@@ -36,23 +36,33 @@ interface WeeklySummaryProps {
   usedDebateIds: string[];
 }
 
-function parseAnalysisData(analysisString: string) {
+interface AnalysisStatistic {
+  value: string;
+  context: string;
+}
+
+interface ParsedAnalysis {
+  main_content?: string;
+  outcome: string;
+  statistics?: AnalysisStatistic[];
+}
+
+function parseAnalysisData(analysisString: string): ParsedAnalysis {
   try {
     const parsed = JSON.parse(analysisString);
     return {
       main_content: parsed.main_content,
       outcome: parsed.outcome,
-      statistics: parsed.statistics?.map((stat: any) => ({
+      statistics: parsed.statistics?.map((stat: { value: string; context: string }) => ({
         value: stat.value,
         context: stat.context
-      })),
+      })).slice(0,3),
     };
   } catch (e) {
     console.error('Failed to parse analysis data:', e);
     return {
       outcome: analysisString,
       statistics: [],
-      dates: []
     };
   }
 }
@@ -61,9 +71,8 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
   const [debateData, setDebateData] = useState<DebateRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const dateMatch = highlight.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/);
-  const debateId = dateMatch ? dateMatch[1] : null;
-  const dateStr = highlight.date.split(' ')[0];
+  const debateId = highlight.source;
+  const dateStr = debateData?.date || new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     async function fetchDebateData() {
@@ -122,7 +131,7 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
     return `https://hansard.parliament.uk/House/${dateStr}/debates/${debateId}/${formattedTitle}`;
   };
 
-  const renderAnalysisData = (analysis: any) => {
+  const renderAnalysisData = (analysis: ParsedAnalysis) => {
     if (!analysis) return null;
 
     return (
@@ -135,21 +144,28 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
         </div>
 
         {/* Key Statistics */}
-        {analysis.statistics?.length > 0 && (
+        {analysis.statistics && analysis.statistics.length > 0 && (
           <div className={cn(
             "grid gap-4 auto-rows-fr",
             {
-              'grid-cols-1': analysis.statistics.length === 1,
-              'grid-cols-2': analysis.statistics.length === 2,
-              'grid-cols-1 md:grid-cols-3': analysis.statistics.length >= 3
+              'grid-cols-1': analysis.statistics?.length === 1,
+              'grid-cols-2': analysis.statistics?.length === 2,
+              'grid-cols-1 md:grid-cols-3': analysis.statistics?.length >= 3
             }
           )}>
-            {analysis.statistics.map((stat: any, index: number) => (
+            {analysis.statistics.map((stat: AnalysisStatistic, index: number) => (
               <div 
                 key={index} 
-                className="group p-4 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors flex flex-col h-[100px] relative overflow-hidden"
+                className="group p-2 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors flex flex-col h-[100px] relative overflow-hidden"
               >
-                <div className="text-l font-bold text-primary break-words line-clamp-2 text-center my-auto">
+                <div className={cn(
+                  "font-bold text-primary break-words text-center my-auto",
+                  // Dynamic text sizing based on content length
+                  stat.value.length <= 10 ? "text-2xl" : 
+                  stat.value.length <= 20 ? "text-xl" :
+                  stat.value.length <= 40 ? "text-md" :
+                  "text-xs"
+                )}>
                   {stat.value}
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 text-xs text-muted-foreground break-words hyphens-auto absolute top-0 left-0 right-0 bg-muted/95 p-1 rounded-lg z-10 min-h-full transition-all duration-200">
@@ -164,7 +180,7 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
         {analysis.outcome && (
           <div className="mt-4 p-4 bg-muted/5 rounded-lg border">
             <h4 className="font-medium mb-2">Outcome</h4>
-            <div className="text-sm text-muted-foreground break-words hyphens-auto">
+            <div className="text-sm text-muted-foreground break-words hyphens-auto line-clamp-3">
               <FormattedMarkdown content={analysis.outcome} />
             </div>
           </div>
@@ -248,30 +264,26 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
 export function WeeklySummary({ summary, usedDebateIds }: WeeklySummaryProps) {
   if (!summary) return null;
 
-  // Find one unused highlight for the featured debate
   const featuredHighlight = summary.highlights.find(highlight => {
-    const dateMatch = highlight.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/);
-    const debateId = dateMatch ? dateMatch[1] : null;
+    const debateId = highlight.source;
     return debateId && !usedDebateIds.includes(debateId);
   });
 
   return (
-    <Card className="col-span-2">
-      {/* <CardHeader>
-        <CardTitle className="font-serif text-lg">
-          Week of {format(new Date(summary.week_start), 'd MMMM yyyy')}
-        </CardTitle>
-      </CardHeader> */}
-      <CardContent className="space-y-6 mt-2 font-serif">
+    <Card className="col-span-2 h-full flex flex-col max-h-full">
+      <CardContent className="space-y-6 mt-4 font-serif flex-grow overflow-y-auto">
         {/* Overview */}
         <div className="prose dark:prose-invert max-w-none">
-          <p>{summary.remarks}</p>
+          <p className="text-sm sm:text-base lg:text-md leading-relaxed">{summary.remarks}</p>
         </div>
 
         {/* Featured Debate */}
         {featuredHighlight && (
           <FeaturedDebate highlight={featuredHighlight} />
         )}
+
+        {/* Add a spacer div that will expand to fill available space */}
+        <div className="flex-grow" />
       </CardContent>
     </Card>
   );

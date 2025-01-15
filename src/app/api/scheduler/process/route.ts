@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   try {
     // Get search type from request body
     const body = await request.json().catch(() => ({}));
-    const searchType = body.searchType as 'ai' | 'hansard' | 'calendar' | 'weekly' | undefined;
+    const searchType = body.searchType as 'ai' | 'hansard' | 'calendar' | 'frontpage' | undefined;
 
     // Create service role client to bypass RLS
     const supabase = createClient(
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     );
 
     // Before processing AI searches, generate weekly summary
-    if (!searchType || searchType === 'weekly') {
+    if (!searchType || searchType === 'frontpage') {
       console.log('[Scheduler] Generating weekly summary...');
       
       // Get current week's Monday
@@ -167,6 +167,11 @@ export async function POST(request: Request) {
         }
 
         // Store the weekly summary
+        const currentHour = new Date().getHours();
+        const timeOfDay = currentHour < 12.30 ? 'am' : 'pm';
+        const weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'][new Date().getDay()];
+        const weekdayTime = `${weekday}_${timeOfDay}`;
+        
         const { error: summaryError } = await supabase
           .from('frontpage_weekly')
           .upsert({
@@ -176,7 +181,9 @@ export async function POST(request: Request) {
             highlights: response.highlights,
             citations: citations,
             is_published: true,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            weekday: weekdayTime
           });
 
         if (summaryError) {

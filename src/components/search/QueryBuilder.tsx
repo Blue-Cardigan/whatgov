@@ -8,11 +8,11 @@ import {
   LightbulbIcon, 
   BookOpenIcon, 
   UserIcon,
+  Building2,
 } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useEngagement } from '@/hooks/useEngagement';
-import { SearchParams } from '@/types/search';
 import { Card } from "@/components/ui/card";
 
 const searchTypes = [
@@ -48,9 +48,6 @@ const searchTypes = [
   }
 ] as const;
 
-// Add type for search types
-type SearchType = typeof searchTypes[number]['id'];
-
 type AdvancedSearchParams = {
   text?: string;
   debate?: string;
@@ -59,19 +56,22 @@ type AdvancedSearchParams = {
 
 interface QueryBuilderProps {
   searchParams: {
-    searchTerm?: string;
-    startDate?: string;
-    endDate?: string;
-    house?: 'Commons' | 'Lords';
+    searchTerm: string;
+    house?: 'commons' | 'lords' | null;
   };
-  onSearch: (params: SearchParams) => void;
-  searchType: SearchType;
-  onSearchTypeChange: (type: SearchType) => void;
-  useRecentFiles?: boolean;
-  onToggleRecentFiles?: (value: boolean) => void;
+  onSearch: (params: {
+    searchTerm: string;
+    house?: 'commons' | 'lords' | null;
+  }) => void;
+  searchType: 'ai' | 'hansard' | 'mp';
+  onSearchTypeChange: (type: 'ai' | 'hansard' | 'mp') => void;
+  useRecentFiles: boolean;
+  onToggleRecentFiles: (value: boolean) => void;
   advancedSearch?: AdvancedSearchParams;
   onAdvancedSearchChange?: (params: AdvancedSearchParams) => void;
 }
+
+type HouseType = 'commons' | 'lords' | 'both' | null;
 
 export function QueryBuilder({ 
   searchParams, 
@@ -86,8 +86,9 @@ export function QueryBuilder({
   const router = useRouter();
   const { getRemainingAISearches, hasReachedAISearchLimit } = useEngagement();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
+  const [selectedHouse, setSelectedHouse] = useState<HouseType>(searchParams.house || null);
   
-  const [localParams, setLocalParams] = useState({
+  const [localParams] = useState({
     house: searchParams.house
   });
 
@@ -123,178 +124,210 @@ export function QueryBuilder({
     if (query.trim()) {
       const params = {
         searchTerm: query.trim(),
-        ...localParams
+        ...localParams,
+        house: selectedHouse
       };
-      onSearch(params);
+      onSearch(params as { searchTerm: string; house?: 'commons' | 'lords' | null | undefined; });
     }
   };
 
-  const handleHouseChange = (house: 'Commons' | 'Lords') => {
-    setLocalParams(prev => {
-      if (prev.house === house) {
-        return {
-          ...prev,
-          house: undefined
-        };
-      }
-      
-      if (prev.house && prev.house !== house) {
-        return {
-          ...prev,
-          house: undefined
-        };
-      }
-      
-      return {
-        ...prev,
-        house: house
-      };
-    });
+  const handleHouseSelection = (house: 'commons' | 'lords') => {
+    if (selectedHouse === 'both') {
+      // If both are selected, clicking either deselects it
+      setSelectedHouse(house === 'commons' ? 'lords' : 'commons');
+    } else if (selectedHouse === house) {
+      // If clicking the selected house, deselect it
+      setSelectedHouse(null);
+    } else if (selectedHouse === null) {
+      // If none selected, select the clicked house
+      setSelectedHouse(house);
+    } else {
+      // If the other house is selected, select both
+      setSelectedHouse('both');
+    }
   };
+
+  const isHouseSelected = (house: 'commons' | 'lords') => {
+    return selectedHouse === house || selectedHouse === 'both';
+  };
+
+  // Get remaining searches count
+  const remainingSearches = getRemainingAISearches();
 
   return (
     <Card className="p-6 border-2">
-      <div className="space-y-6">
-        {/* Search Types */}
-        <div className="grid grid-cols-3 gap-4">
-          {searchTypes.map((type) => (
-            <Button
-              key={type.id}
-              variant={searchType === type.id ? "default" : "outline"}
-              onClick={() => onSearchTypeChange(type.id)}
-              className={cn(
-                "flex flex-col h-auto py-6 px-4 space-y-3",
-                searchType === type.id 
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" 
-                  : "hover:bg-muted border-2",
-                "transition-all duration-200"
-              )}
-            >
-              <div className="flex items-center gap-2.5">
-                {type.icon}
-                <span className="font-semibold tracking-tight"> {type.label}</span>
-              </div>
-            </Button>
-          ))}
-        </div>
+      {/* Search Types */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        {searchTypes.map((type) => (
+          <Button
+            key={type.id}
+            variant={searchType === type.id ? "default" : "outline"}
+            onClick={() => onSearchTypeChange(type.id)}
+            className={cn(
+              "flex flex-col h-auto py-6 px-4 space-y-3",
+              searchType === type.id 
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" 
+                : "hover:bg-muted border-2",
+              "transition-all duration-200"
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              {type.icon}
+              <span className="font-semibold tracking-tight"> {type.label}</span>
+            </div>
+          </Button>
+        ))}
+      </div>
 
-        {/* Search Input and Filters */}
-        <div className="space-y-4">
+      <div className="space-y-8">
+        {/* Main Search Input */}
+        <div className="space-y-2">
           <div className="flex gap-3">
             <div className="relative flex-1">
-              {!showAdvanced && (
-                <Input
-                  placeholder={
-                    searchTypes.find(t => t.id === searchType)?.placeholder ||
-                    "Search parliamentary debates..."
+              <Input
+                placeholder={
+                  searchTypes.find(t => t.id === searchType)?.placeholder ||
+                  "Search parliamentary debates..."
+                }
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 h-12 text-lg border-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSubmit();
                   }
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-14 text-lg border-2 transition-colors duration-200 focus-visible:ring-2"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSubmit();
-                    }
-                  }}
-                />
-              )}
+                }}
+              />
               <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
             <Button 
               onClick={handleSubmit}
-              className="h-14 px-8 text-base font-medium shadow-sm hover:shadow-md transition-all duration-200"
+              className="h-12 px-8"
               size="lg"
             >
               Search
             </Button>
           </div>
-
-          {/* Remaining Searches Indicator */}
+          
+          {/* Add remaining searches indicator for AI search type */}
           {searchType === 'ai' && (
-            <p className="text-sm text-muted-foreground font-medium">
-              {`You have ${getRemainingAISearches()} free searches remaining today.`}
+            <p className="text-sm text-muted-foreground">
+              {remainingSearches === Infinity ? (
+                "Unlimited AI searches available"
+              ) : (
+                `${remainingSearches} AI ${remainingSearches === 1 ? 'search' : 'searches'} remaining today`
+              )}
             </p>
           )}
+        </div>
 
-          {/* Advanced Search Toggle for Hansard */}
-          {searchType === 'hansard' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
+        {/* Hansard-specific Controls */}
+        {searchType === 'hansard' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* House Selection */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Select House</Label>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleHouseSelection('commons')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 h-12 px-6",
+                    isHouseSelected('commons') && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    !selectedHouse && "border-dashed"
+                  )}
+                >
+                  <Building2 className="h-5 w-5" />
+                  Commons
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleHouseSelection('lords')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 h-12 px-6",
+                    isHouseSelected('lords') && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    !selectedHouse && "border-dashed"
+                  )}
+                >
+                  <Building2 className="h-5 w-5" />
+                  Lords
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {selectedHouse === null && "Select house(s) to search"}
+                {selectedHouse === 'both' && "Searching both Houses"}
+                {selectedHouse === 'commons' && "Searching House of Commons"}
+                {selectedHouse === 'lords' && "Searching House of Lords"}
+              </p>
+            </div>
+
+            {/* Advanced Search Toggle */}
+            <div className="space-y-3 pl-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="advanced-search" className="text-base font-semibold">Advanced Search</Label>
                 <Switch
                   id="advanced-search"
                   checked={showAdvanced}
                   onCheckedChange={setShowAdvanced}
                   className="data-[state=checked]:bg-primary"
                 />
-                <Label htmlFor="advanced-search" className="font-medium">Advanced Search</Label>
               </div>
-
-              {showAdvanced && (
-                <div className="space-y-4 p-6 border-2 rounded-lg bg-muted/5">
-                  <div className="space-y-2">
-                    <Label htmlFor="debate-search" className="font-medium">Search Debate Titles</Label>
-                    <Input
-                      id="debate-search"
-                      placeholder="Enter debate title..."
-                      value={advancedParams.debate || ''}
-                      onChange={(e) => handleAdvancedParamChange('debate', e.target.value)}
-                      className="border-2"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="text-search" className="font-medium">Search Debate Text</Label>
-                    <Input
-                      id="text-search"
-                      placeholder="Enter text to search within debates..."
-                      value={advancedParams.text || ''}
-                      onChange={(e) => handleAdvancedParamChange('text', e.target.value)}
-                      className="border-2"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="speaker-search" className="font-medium">Search by Speaker</Label>
-                    <Input
-                      id="speaker-search"
-                      placeholder="Enter speaker name..."
-                      value={advancedParams.spokenBy || ''}
-                      onChange={(e) => handleAdvancedParamChange('spokenBy', e.target.value)}
-                      className="border-2"
-                    />
-                  </div>
-                </div>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Enable advanced search options to narrow your search by debate title and speaker.
+              </p>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Add scope indicator for Hansard search */}
-          {searchType === 'hansard' && (
-            <p className="text-sm text-muted-foreground font-medium">
-              Showing most recent results
-            </p>
-          )}
-
-          {/* AI Recent Files Toggle */}
-          {searchType === 'ai' && (
-            <div className="flex items-center space-x-2.5 pt-2">
-              <Switch
-                id="recent-files"
-                checked={useRecentFiles}
-                onCheckedChange={onToggleRecentFiles}
-                className="data-[state=checked]:bg-primary"
-              />
-              <Label 
-                htmlFor="recent-files" 
-                className="text-sm text-muted-foreground font-medium"
-              >
-                {useRecentFiles 
-                  ? "Searching debates from this week" 
-                  : "Searching all debates during the current government"}
-              </Label>
+        {/* Advanced Search Fields */}
+        {searchType === 'hansard' && showAdvanced && (
+          <div className="space-y-6 p-6 border-2 rounded-lg bg-muted/5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="debate-search" className="font-medium">Debate Title</Label>
+                <Input
+                  id="debate-search"
+                  placeholder="Enter debate title..."
+                  value={advancedParams.debate || ''}
+                  onChange={(e) => handleAdvancedParamChange('debate', e.target.value)}
+                  className="border-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="speaker-search" className="font-medium">Speaker</Label>
+                <Input
+                  id="speaker-search"
+                  placeholder="Enter speaker name..."
+                  value={advancedParams.spokenBy || ''}
+                  onChange={(e) => handleAdvancedParamChange('spokenBy', e.target.value)}
+                  className="border-2"
+                />
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* AI Recent Files Toggle */}
+        {searchType === 'ai' && (
+          <div className="flex items-center space-x-3 pt-2">
+            <Switch
+              id="recent-files"
+              checked={useRecentFiles}
+              onCheckedChange={onToggleRecentFiles}
+              className="data-[state=checked]:bg-primary"
+            />
+            <Label 
+              htmlFor="recent-files" 
+              className="text-sm text-muted-foreground"
+            >
+              {useRecentFiles 
+                ? "Searching debates from this week" 
+                : "Searching all debates during the current government"}
+            </Label>
+          </div>
+        )}
       </div>
     </Card>
   );

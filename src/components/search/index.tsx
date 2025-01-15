@@ -338,9 +338,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         <QueryBuilder
           searchParams={{
             searchTerm: searchState.searchParams.searchTerm || '',
-            house: searchState.searchParams.house
+            house: searchState.searchParams.house as 'commons' | 'lords' | null | undefined
           }}
-          onSearch={performSearch}
+          onSearch={performSearch as (params: { searchTerm: string; house?: 'commons' | 'lords' | null | undefined; }) => void}
           searchType={activeSearchType}
           onSearchTypeChange={handleSearchTypeChange}
           useRecentFiles={useRecentFiles}

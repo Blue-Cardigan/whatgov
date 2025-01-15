@@ -1,6 +1,38 @@
 import { NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
 
+interface BillItem {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  stage: string;
+  showDate?: boolean;
+  'a10:updated'?: string;
+  $?: {
+    stage: string;
+  };
+  category: string | string[];
+}
+
+interface RSSResponse {
+  rss: {
+    channel: {
+      item: BillItem[];
+    };
+  };
+}
+
+interface ProcessedBill {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  stage: string;
+  category: string;
+  showDate?: boolean;
+}
+
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
@@ -12,9 +44,9 @@ export async function GET() {
   try {
     const response = await fetch('https://bills.parliament.uk/rss/allbills.rss');
     const xml = await response.text();
-    const result = parser.parse(xml);
+    const result = parser.parse(xml) as RSSResponse;
     
-    const bills = result.rss.channel.item.map((item: any) => {
+    const bills = result.rss.channel.item.map((item: BillItem): ProcessedBill => {
       const categories = Array.isArray(item.category) ? item.category : [item.category];
       const displayCategory = categories[0] === 'Government Bill' ? categories[1] : categories[0];
       
@@ -23,18 +55,16 @@ export async function GET() {
         link: item.link,
         pubDate: item['a10:updated'] || item.pubDate,
         description: item.description,
-        stage: item.$.stage || 'Unknown stage',
+        stage: item.$?.stage || '',
         category: displayCategory || 'Other'
       };
     });
 
-    // Sort by date and add a flag for items with the same date
-    const sortedBills = bills.sort((a: any, b: any) => 
+    const sortedBills = bills.sort((a, b) => 
       new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
     );
 
-    // Add a flag for items that share the same date as the previous item
-    sortedBills.forEach((bill: any, index: number) => {
+    sortedBills.forEach((bill, index) => {
       if (index > 0) {
         const prevDate = new Date(sortedBills[index - 1].pubDate).toDateString();
         const currentDate = new Date(bill.pubDate).toDateString();

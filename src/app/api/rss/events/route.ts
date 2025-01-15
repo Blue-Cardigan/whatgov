@@ -7,14 +7,30 @@ const parser = new XMLParser({
   textNodeName: "_text",
 });
 
+interface EventEntry {
+  title: {
+    _text: string;
+  };
+  content: {
+    _text: string;
+  };
+  id: string;
+  updated: string;
+}
+
+interface EventFeedResponse {
+  feed: {
+    entry: EventEntry[];
+  };
+}
+
 export async function GET() {
   try {
     const response = await fetch('http://data.parliamentlive.tv/api/event/feed');
     const xml = await response.text();
-    const result = parser.parse(xml);
+    const result = parser.parse(xml) as EventFeedResponse;
     
-    const events = result.feed.entry.map((entry: any) => {
-      // Extract link from content HTML
+    const events = result.feed.entry.map((entry: EventEntry) => {
       const linkMatch = entry.content._text.match(/href='([^']+)'/);
       
       return {

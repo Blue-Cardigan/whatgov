@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { endOfWeek, format, startOfWeek } from 'date-fns';
+import { useEffect, useState } from 'react';
 import createClient from '@/lib/supabase/client';
 import { RSSFeeds } from './RSSFeeds';
 import { WeeklyContentSkeleton } from './WeeklyContentSkeleton';
@@ -11,30 +10,15 @@ import { WeeklySummary } from './WeeklySummary';
 import { DebateHeader } from '@/components/debates/DebateHeader';
 import { Badge } from '@/components/ui/badge';
 
-interface Debate {
-  ext_id: string;
-  title: string;
-  type: string;
-  house: string;
-  date: string;
-  analysis: {
-    main_points: string;
-  };
-}
-
-interface DebatesByType {
-  [key: string]: Debate[];
-}
-
 interface WeeklySummary {
   week_start: string;
   week_end: string;
   remarks: string;
   highlights: {
-    date: string;
     type: string;
     title: string;
     remarks: string;
+    source: string;
   }[];
   citations: string[] | null;
 }
@@ -43,68 +27,60 @@ function matchHighlightsWithCitations(
   highlights: WeeklySummary['highlights'],
   citations: string[] | null
 ): WeeklySummary['highlights'] {
-  if (!citations) return [];
+  if (!citations || !highlights) return [];
 
-  return highlights.filter((highlight, index) => {
-    // First try to get debate ID from the date field
-    const dateMatch = highlight.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/);
-    const debateId = dateMatch ? dateMatch[1] : null;
+  // If arrays are same length, use simple mapping
+  if (highlights.length === citations.length) {
+    return highlights.map((highlight, index) => ({
+      ...highlight,
+      // Clean the remarks by removing any existing citation
+      remarks: highlight.remarks.replace(/【[^】]*】/g, '').trim(),
+      source: citations[index].replace('.txt', '').replace('debate-', '')
+    }));
+  }
 
-    if (debateId) {
-      // If we have a debate ID in the date field, check if it matches any citation
-      return citations.includes(debateId);
-    } else {
-      // If no debate ID in date field, use the citation at the same index as fallback
-      return citations[index] !== undefined;
-    }
-  }).map((highlight, index) => {
-    // If highlight doesn't have a debate ID in its date, inject it from citations
-    const dateMatch = highlight.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/);
-    if (!dateMatch && citations[index]) {
-      // Replace the date field with properly formatted debate ID
+  // If lengths differ, extract citations from remarks
+  return highlights.map(highlight => {
+    // First try to extract citation from the remarks
+    const remarkMatch = highlight.remarks.match(/【[^】]*debate-([A-F0-9-]+)\.txt】/);
+    console.log(remarkMatch?.[1]);
+    
+    if (remarkMatch) {
+      // If we found a citation in remarks, use it and clean the remarks
       return {
         ...highlight,
-        date: `2025-01-13 12:00:00+00:00 【4:${index + 1}†debate-${citations[index]}.txt】`
+        remarks: highlight.remarks.replace(/【[^】]*】/g, '').trim(),
+        // Return only the id
+        source: remarkMatch[1]
       };
     }
+
+    // If no citation in remarks but we have citations array, try to match
+    if (citations?.length) {
+      // Find a matching citation that hasn't been used yet
+      const availableCitation = citations.find(citation => 
+        !highlights.some(h => 
+          h.remarks.includes(citation) || h.source?.includes(citation)
+        )
+      );
+
+      if (availableCitation) {
+        return {
+          ...highlight,
+          remarks: highlight.remarks.trim(),
+          source: availableCitation
+        };
+      }
+    }
+
+    // If no citation found, return highlight as is
     return highlight;
   });
 }
 
 export function ThisWeek() {
   const [isLoading, setIsLoading] = useState(true);
-  const [debatesByType, setDebatesByType] = useState<DebatesByType>({});
-  const [savedDebates, setSavedDebates] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
-
-  const displayedTypes = useMemo(() => {
-    if (!debatesByType) return [];
-    
-    const types = Object.entries(debatesByType)
-      .map(([type, debates]) => ({ type, debates }))
-      .filter(({ debates }) => debates.length > 0);
-
-    // Prioritize PMQs
-    const pmqsIndex = types.findIndex(({ type }) => type === "Prime Minister's Questions");
-    if (pmqsIndex !== -1) {
-      const pmqs = types.splice(pmqsIndex, 1)[0];
-      types.unshift(pmqs);
-    }
-
-    // Combine General Debate and Debated Motion
-    const debateIndex = types.findIndex(({ type }) => type === 'General Debate');
-    const motionIndex = types.findIndex(({ type }) => type === 'Debated Motion');
-    if (debateIndex !== -1 || motionIndex !== -1) {
-      const combinedDebates = [];
-      if (debateIndex !== -1) combinedDebates.push(...types.splice(debateIndex, 1)[0].debates);
-      if (motionIndex !== -1) combinedDebates.push(...types.splice(motionIndex, 1)[0].debates);
-      if (combinedDebates.length > 0) {
-        types.push({ type: 'Top Debates', debates: combinedDebates });
-      }
-    }
-
-    return types.slice(0, 4);
-  }, [debatesByType]);
 
   useEffect(() => {
     async function fetchData() {
@@ -130,31 +106,8 @@ export function ThisWeek() {
             weeklySummary.citations
           )
         };
+        console.log(processedSummary);
         setSummary(processedSummary);
-      }
-
-      // Fetch debates for the current week
-      const currentDate = new Date();
-      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-
-      const { data: debates } = await supabase
-        .from('debates_new')
-        .select('ext_id, title, type, house, date, analysis')
-        .gte('date', weekStart.toISOString())
-        .lte('date', weekEnd.toISOString())
-        .order('date', { ascending: false });
-
-      if (debates) {
-        const grouped = debates.reduce((acc: DebatesByType, debate) => {
-          if (!acc[debate.type]) {
-            acc[debate.type] = [];
-          }
-          acc[debate.type].push(debate);
-          return acc;
-        }, {});
-
-        setDebatesByType(grouped);
       }
 
       setIsLoading(false);
@@ -164,18 +117,24 @@ export function ThisWeek() {
   }, []);
 
   // Modified component to handle image placement
-  const HighlightCard = ({ highlight, index }: { highlight: WeeklySummary['highlights'][0], index: number }) => {
+  const HighlightCard = ({ highlight, index, showImage }: { 
+    highlight: WeeklySummary['highlights'][0], 
+    index: number,
+    showImage: boolean  // New prop to control image display
+  }) => {
     const [imageUrl, setImageUrl] = useState<string>('');
-    const dateMatch = highlight?.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/);
-    const debateId = dateMatch ? dateMatch[1] : null;
+    const debateId = highlight?.source;
     
     useEffect(() => {
       let mounted = true;
       
       const loadImage = async () => {
-        const url = await getNextParliamentImage();
-        if (mounted) {
-          setImageUrl(url);
+        // Only load image if showImage is true
+        if (showImage) {
+          const url = await getNextParliamentImage();
+          if (mounted) {
+            setImageUrl(url);
+          }
         }
       };
       
@@ -184,17 +143,17 @@ export function ThisWeek() {
       return () => {
         mounted = false;
       };
-    }, []);
+    }, [showImage]);
 
     if (!highlight) {
       return <div className="w-full h-[200px] bg-muted rounded-lg animate-pulse" />;
     }
 
-    // Determine if image should be above or below based on index
-    const showImageAbove = index === 1 || index === 2;
+    // Randomly decide if image should be above or below
+    const showImageAbove = Math.random() > 0.5;
 
     const ImageComponent = () => (
-      imageUrl ? (
+      showImage && imageUrl ? (
         <div className="relative h-[200px] w-full overflow-hidden rounded-lg">
           <Image
             src={imageUrl}
@@ -203,9 +162,7 @@ export function ThisWeek() {
             className="object-cover"
           />
         </div>
-      ) : (
-        <div className="w-full h-[200px] bg-muted rounded-lg animate-pulse" />
-      )
+      ) : null
     );
 
     return (
@@ -258,6 +215,7 @@ export function ThisWeek() {
               key={index}
               highlight={summary?.highlights[index] as WeeklySummary['highlights'][0]}
               index={index}
+              showImage={index === 0} // Only show image for first card
             />
           ))}
         </div>
@@ -269,8 +227,8 @@ export function ThisWeek() {
               summary={summary} 
               usedDebateIds={summary.highlights
                 .slice(0, 4)
-                .map(h => h.date.match(/【\d+:\d+†debate-([A-F0-9-]+)\.txt】/)?.[1])
-                .filter(Boolean) as string[]}
+                .map(h => h.source)
+                .filter(Boolean)}
             />
           )}
         </div>
@@ -282,6 +240,7 @@ export function ThisWeek() {
               key={index}
               highlight={summary?.highlights[index] as WeeklySummary['highlights'][0]}
               index={index}
+              showImage={index === 2} // Only show image for first card in right column
             />
           ))}
         </div>
