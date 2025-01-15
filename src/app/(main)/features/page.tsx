@@ -52,10 +52,8 @@ const plans = [
     description: "For all citizens - because democracy should be accessible",
     features: [
       { icon: <Target />, title: "Follow What Matters", items: [
-          "See the whole parliamentary schedule",
-          "Save events and searches",
-          "PDF export of your searches",
-          "Add your RSS feeds to the app",
+        "Browse parliament, made accessible by us",
+        "Save and export your search results",
           "Advanced Hansard search",
           "Try the AI research assistant with Hansard-wide analysis capabilities",
       ]}
@@ -66,13 +64,12 @@ const plans = [
     name: "Professional",
     price: "£12.99/month",
     description: "Advanced research and analysis tools for policy professionals",
-    comingSoon: false,
     features: [
       { icon: <Search />, title: "Research Power", items: [
         "Everything in Free, plus:",
         "Unlimited AI briefings on any topic",
-        "Subscribe to upcoming events to never miss out",
-        "Subscribe to Hansard searches",
+        "Subscribe to upcoming events and searches to never miss out",
+        "Add your own RSS feeds",
       ]}
     ],
     cta: { text: "Coming Soon", href: "#" }
@@ -110,7 +107,7 @@ export default function FeaturesPage() {
         <div className="text-center space-y-4">
           <h1 className="text-5xl font-bold">See Parliament Your Way</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Understand Parliament&apos;s work in a way that makes sense for you. 
+            Understand Parliament&apos;s work quickly and easily. 
             Choose the access level that fits your needs.
           </p>
         </div>
@@ -210,15 +207,15 @@ function PlanCard({ name, price, description, features, cta, comingSoon }: PlanP
 
 function ComparisonTable() {
   const features = [
-    { name: "Daily Digest", citizen: true, engaged: true, professional: "Coming Soon", enterprise: true },
-    { name: "Debate Summaries", citizen: "Fun", engaged: "Fun", professional: "Coming Soon", enterprise: "Custom" },
-    { name: "MP Tracking", citizen: "Basic", engaged: "Detailed", professional: "Coming Soon", enterprise: "Custom" },
-    { name: "Search Capabilities", citizen: "Basic", engaged: "Advanced", professional: "Coming Soon", enterprise: "Enterprise" },
-    { name: "Alerts & Notifications", citizen: false, engaged: true, professional: "Coming Soon", enterprise: true },
-    { name: "Data Export", citizen: false, engaged: false, professional: "Coming Soon", enterprise: "Custom" },
-    { name: "API Access", citizen: false, engaged: false, professional: "Coming Soon", enterprise: "Full" },
-    { name: "Team Features", citizen: false, engaged: false, professional: "Coming Soon", enterprise: true },
-    { name: "Support", citizen: "Community", engaged: "Email", professional: "Coming Soon", enterprise: "Dedicated" },
+    { name: "Daily Digest", citizen: true, professional: true, enterprise: true },
+    { name: "Debate Summaries", citizen: "Fun", professional: true, enterprise: "Custom" },
+    { name: "MP Tracking", citizen: "Coming soon", professional: "Coming soon", enterprise: "Custom" },
+    { name: "Search Capabilities", citizen: "Basic", professional: true, enterprise: "Enterprise" },
+    { name: "Alerts & Notifications", citizen: false, professional: true, enterprise: true },
+    { name: "Data Export", citizen: false, professional: true, enterprise: "Custom" },
+    { name: "API Access", citizen: false, professional: false, enterprise: "Full" },
+    { name: "Team Features", citizen: false, professional: false, enterprise: true },
+    { name: "Support", citizen: "Community", professional: false, enterprise: "Dedicated" },
   ];
 
   const renderCheck = (value: boolean | string) => {

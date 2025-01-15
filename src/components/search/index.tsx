@@ -327,20 +327,49 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   };
 
   return (
-    <div className="space-y-8 mt-8">
-      <QueryBuilder
-        searchParams={{
-          searchTerm: searchState.searchParams.searchTerm || '',
-          house: searchState.searchParams.house
-        }}
-        onSearch={performSearch}
-        searchType={activeSearchType}
-        onSearchTypeChange={handleSearchTypeChange}
-        useRecentFiles={useRecentFiles}
-        onToggleRecentFiles={setUseRecentFiles}
-      />
+    <div className="max-w-[1600px] mx-auto px-4">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold mb-2 logo-font">PARLIAMENTARY SEARCH</h1>
+        <div className="h-px bg-primary w-full mb-3" />
+      </div>
 
-      {renderResults()}
+      {/* Search Controls */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
+        <QueryBuilder
+          searchParams={{
+            searchTerm: searchState.searchParams.searchTerm || '',
+            house: searchState.searchParams.house
+          }}
+          onSearch={performSearch}
+          searchType={activeSearchType}
+          onSearchTypeChange={handleSearchTypeChange}
+          useRecentFiles={useRecentFiles}
+          onToggleRecentFiles={setUseRecentFiles}
+        />
+
+        {/* Right Column - Tips Card */}
+        <div className="hidden lg:block">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Search Tips</h2>
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                Use the AI Assistant to ask natural questions about parliamentary activity.
+              </p>
+              <p>
+                Search Hansard directly to find specific debates, statements, and written answers.
+              </p>
+              <p>
+                Look up MPs to see their recent contributions and voting records.
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Full Width Results */}
+      <div className="w-full">
+        {renderResults()}
+      </div>
     </div>
   );
 }

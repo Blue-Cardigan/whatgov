@@ -71,13 +71,6 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
     };
   }, [type]);
 
-  const getDateString = (item: BillFeed | EventFeed) => {
-    if ('pubDate' in item) {
-      return format(new Date(item.pubDate), 'EEE, d MMM');
-    }
-    return format(new Date(item.startDate), 'EEE, d MMM');
-  };
-
   if (isLoading) {
     return <RSSFeedsSkeleton />;
   }

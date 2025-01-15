@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from 'date-fns';
-import { DebateHeader } from '@/components/debates/DebateHeader';
-import { Skeleton } from "@/components/ui/skeleton";
 import createClient from '@/lib/supabase/client';
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Share2, ExternalLink } from 'lucide-react';
@@ -12,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { locationColors } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { AnalysisData } from '@/components/debates/AnalysisData';
 import { toast } from '@/hooks/use-toast';
 import type { Database } from '@/types/supabase';
 import { FormattedMarkdown } from '@/lib/utils';
@@ -23,13 +20,13 @@ interface WeeklyHighlight {
   date: string;
   type: string;
   title: string;
-  summary: string;
+  remarks: string;
 }
 
 interface WeeklySummary {
   week_start: string;   
   week_end: string;
-  summary: string;
+  remarks: string;
   highlights: WeeklyHighlight[];
   citations: string[] | null;
 }
@@ -103,7 +100,7 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
     try {
       await navigator.share({
         title: highlight.title,
-        text: highlight.summary,
+        text: highlight.remarks,
         url: `/debate/${debateId}`,
       });
     } catch {
@@ -133,13 +130,20 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
         {/* Summary from highlight */}
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <div className="text-muted-foreground leading-relaxed break-words hyphens-auto">
-            <FormattedMarkdown content={highlight.summary} />
+            <FormattedMarkdown content={highlight.remarks} />
           </div>
         </div>
 
         {/* Key Statistics */}
         {analysis.statistics?.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-fr">
+          <div className={cn(
+            "grid gap-4 auto-rows-fr",
+            {
+              'grid-cols-1': analysis.statistics.length === 1,
+              'grid-cols-2': analysis.statistics.length === 2,
+              'grid-cols-1 md:grid-cols-3': analysis.statistics.length >= 3
+            }
+          )}>
             {analysis.statistics.map((stat: any, index: number) => (
               <div 
                 key={index} 
@@ -253,15 +257,15 @@ export function WeeklySummary({ summary, usedDebateIds }: WeeklySummaryProps) {
 
   return (
     <Card className="col-span-2">
-      <CardHeader>
+      {/* <CardHeader>
         <CardTitle className="font-serif text-lg">
           Week of {format(new Date(summary.week_start), 'd MMMM yyyy')}
         </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      </CardHeader> */}
+      <CardContent className="space-y-6 mt-2 font-serif">
         {/* Overview */}
         <div className="prose dark:prose-invert max-w-none">
-          <p>{summary.summary}</p>
+          <p>{summary.remarks}</p>
         </div>
 
         {/* Featured Debate */}
@@ -272,24 +276,3 @@ export function WeeklySummary({ summary, usedDebateIds }: WeeklySummaryProps) {
     </Card>
   );
 }
-
-function WeeklySummarySkeleton() {
-  return (
-    <Card className="col-span-2">
-      <CardHeader>
-        <Skeleton className="h-6 w-48" />
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Skeleton className="h-24 w-full" />
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-20 w-full" />
-              {i < 4 && <div className="h-px bg-border mt-4" />}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-} 

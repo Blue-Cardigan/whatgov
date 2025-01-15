@@ -1,15 +1,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card";
-import Link from 'next/link';
 import { endOfWeek, format, startOfWeek } from 'date-fns';
 import createClient from '@/lib/supabase/client';
 import { RSSFeeds } from './RSSFeeds';
 import { WeeklyContentSkeleton } from './WeeklyContentSkeleton';
-import { BookmarkIcon } from 'lucide-react';
-import { saveDebate, deleteDebate, isDebateSaved } from '@/lib/supabase/saved-debates';
-import { toast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { getNextParliamentImage } from '@/lib/utils/parliamentImages';
 import { WeeklySummary } from './WeeklySummary';
@@ -34,12 +29,12 @@ interface DebatesByType {
 interface WeeklySummary {
   week_start: string;
   week_end: string;
-  summary: string;
+  remarks: string;
   highlights: {
     date: string;
     type: string;
     title: string;
-    summary: string;
+    remarks: string;
   }[];
   citations: string[] | null;
 }
@@ -168,61 +163,6 @@ export function ThisWeek() {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    const checkSavedStatus = async () => {
-      const debateIds = displayedTypes.flatMap(({ debates }) => 
-        debates.map(d => d.ext_id)
-      );
-      
-      for (const id of debateIds) {
-        const isSaved = await isDebateSaved(id);
-        if (isSaved) {
-          setSavedDebates(prev => new Set([...prev, id]));
-        }
-      }
-    };
-
-    if (!isLoading && displayedTypes.length > 0) {
-      checkSavedStatus();
-    }
-  }, [displayedTypes, isLoading]);
-
-  const handleSaveToggle = async (debate: Debate) => {
-    try {
-      if (savedDebates.has(debate.ext_id)) {
-        await deleteDebate(debate.ext_id);
-        setSavedDebates(prev => {
-          const next = new Set(prev);
-          next.delete(debate.ext_id);
-          return next;
-        });
-        toast({
-          title: 'Debate removed from saved items',
-          variant: 'destructive',
-        });
-      } else {
-        await saveDebate({
-          ext_id: debate.ext_id,
-          title: debate.title,
-          type: debate.type,
-          house: debate.house,
-          date: debate.date
-        });
-        setSavedDebates(prev => new Set([...prev, debate.ext_id]));
-        toast({
-          title: 'Debate saved successfully',
-          variant: 'default',
-        });
-      }
-    } catch (error) {
-      console.error('Error toggling save:', error);
-      toast({
-        title: 'Failed to save debate',
-        variant: 'destructive',
-      });
-    }
-  };
-
   // Modified component to handle image placement
   const HighlightCard = ({ highlight, index }: { highlight: WeeklySummary['highlights'][0], index: number }) => {
     const [imageUrl, setImageUrl] = useState<string>('');
@@ -276,7 +216,7 @@ export function ThisWeek() {
           <DebateHeader 
             key={index}
             extId={debateId}
-            summaryText={highlight.summary}
+            summaryText={highlight.remarks}
           />
         ) : (
           <div className="w-full border-l-[6px] bg-background rounded-md flex flex-col gap-2 p-4"
@@ -289,7 +229,7 @@ export function ThisWeek() {
                 {highlight.type}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">{highlight.summary}</p>
+            <p className="text-sm text-muted-foreground mt-2">{highlight.remarks}</p>
           </div>
         )}
 

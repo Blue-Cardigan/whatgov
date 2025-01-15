@@ -26,18 +26,17 @@ MVP:
       [/] Added RSS Feeds
 [-] Create endpoint and GH Action to process saved searches
       [/] Endpoint generates response and updates table for assistant
-      [-] Endpoint repeats search and updates, indicating if the top result has changed
+      [/] Endpoint repeats search and updates, indicating if the top result has changed
       [-] Endpoint called by cron job daily
       [/] Display calendar items with responses in main section
-[ ] Create cron job to search and find saved debates
       [-] Endpoint searches hansard for saved events and question sessions, then generates and stores response for each
 [/] Include links to original debates from saved hansard and calendar cards
       [/] Calendar
       [/] Hansard
-[-] Fix mountainous lint issues
+[/] Fix mountainous lint issues
 [/] Update engagement controls
-[-] Update whatgov and whatgov-backend to point to main then push
-[ ] "This week in parliament" landing page
+[/] Update whatgov and whatgov-backend to point to main then push
+[-] "This week in parliament" landing page
 [ ] Discount Link
 [ ] Email people in the database
 

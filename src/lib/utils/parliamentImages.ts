@@ -1,9 +1,7 @@
 const STORAGE_KEY = 'parliament_images';
 const NUM_IMAGES = 8;
-const VALID_IMAGE_IDS = [
-  15, 16, 18, 20, 22, 25, 27, 30, 32, 35,
-  40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99
-];
+const MIN_ID = 15;
+const MAX_ID = 99;
 
 interface CacheData {
   urls: string[];
@@ -13,6 +11,7 @@ interface CacheData {
 class ParliamentImageManager {
   private static instance: ParliamentImageManager;
   private imageUrls: string[] = [];
+  private validUrls: string[] = [];
   private currentIndex: number = 0;
   private preloadedImages: Map<string, HTMLImageElement> = new Map();
   private initPromise: Promise<void> | null = null;
@@ -29,68 +28,139 @@ class ParliamentImageManager {
   private isCacheValid(timestamp: number): boolean {
     const now = new Date();
     const cacheDate = new Date(timestamp);
-    return now.toDateString() === cacheDate.toDateString();
+    const cachedData = localStorage.getItem(STORAGE_KEY);
+    
+    if (cachedData) {
+      const { urls } = JSON.parse(cachedData);
+      // Cache is invalid if we have no valid URLs or if it's from a different day
+      return urls.length > 0 && now.toDateString() === cacheDate.toDateString();
+    }
+    
+    return false;
+  }
+
+  private validateImageUrl(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timeoutId = setTimeout(() => {
+        img.src = '';  // Cancel the image loading
+        resolve(false);
+      }, 5000);  // 5 second timeout
+
+      img.onload = () => {
+        clearTimeout(timeoutId);
+        resolve(true);
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeoutId);
+        resolve(false);
+      };
+
+      img.src = url;
+    });
+  }
+
+  private generateUrl(id: number): string {
+    return `https://parliament.assetbank-server.com/assetbank-parliament/images/assetbox/8d1c697c-b070-4555-8da6-ed8e2c5ffd52/504${id.toString()}_display.jpg`;
   }
 
   public async initialize(): Promise<void> {
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = new Promise(async (resolve) => {
+      // Clear instance properties
+      this.validUrls = [];
+      this.currentIndex = 0;
+      this.preloadedImages.clear();
+
       const cachedData = localStorage.getItem(STORAGE_KEY);
       
       if (cachedData) {
         const { urls, timestamp }: CacheData = JSON.parse(cachedData);
         if (this.isCacheValid(timestamp)) {
-          this.imageUrls = urls;
-          await this.preloadImages();
-          resolve();
-          return;
+          // Verify cached URLs are still valid
+          const validationPromises = urls.map(url => this.validateImageUrl(url));
+          const validResults = await Promise.all(validationPromises);
+          this.validUrls = urls.filter((_, index) => validResults[index]);
+          
+          if (this.validUrls.length > 0) {
+            console.log(`Found ${this.validUrls.length} valid cached images`);
+            resolve();
+            return;
+          }
         }
       }
 
-      // Generate new URLs if cache is invalid or missing
-      const baseUrl = "https://parliament.assetbank-server.com/assetbank-parliament/images/assetbox/8d1c697c-b070-4555-8da6-ed8e2c5ffd52/asset504";
+      // If we get here, either cache was invalid or we had no valid URLs
+      localStorage.removeItem(STORAGE_KEY);
+      console.log('Cache invalid or empty, checking for new images...');
       
-      this.imageUrls = VALID_IMAGE_IDS
-        .sort(() => Math.random() - 0.5)
-        .slice(0, NUM_IMAGES)
-        .map(id => `${baseUrl}${id.toString().padStart(2, '0')}_display.jpg`);
+      // Check all IDs from MIN_ID to MAX_ID
+      const allIds = Array.from(
+        { length: MAX_ID - MIN_ID + 1 }, 
+        (_, i) => i + MIN_ID
+      );
 
-      // Save to cache with timestamp
-      const cacheData: CacheData = {
-        urls: this.imageUrls,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
+      // Validate URLs in chunks
+      const chunkSize = 5;
+      this.validUrls = [];
 
-      await this.preloadImages();
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        const chunk = allIds.slice(i, i + chunkSize);
+        const chunkPromises = chunk.map(async id => {
+          const url = this.generateUrl(id);
+          const isValid = await this.validateImageUrl(url);
+          if (isValid) {
+            console.log(`Found valid image: ${url}`);
+            this.validUrls.push(url);
+          }
+          return isValid;
+        });
+
+        await Promise.all(chunkPromises);
+
+        // If we have enough valid URLs, we can stop checking
+        if (this.validUrls.length >= NUM_IMAGES) {
+          break;
+        }
+      }
+
+      // Randomly select NUM_IMAGES from valid URLs if we have more than needed
+      if (this.validUrls.length > NUM_IMAGES) {
+        this.validUrls = this.validUrls
+          .sort(() => Math.random() - 0.5)
+          .slice(0, NUM_IMAGES);
+      }
+
+      if (this.validUrls.length === 0) {
+        console.error('No valid parliament images found');
+      } else {
+        console.log(`Found ${this.validUrls.length} valid images, saving to cache`);
+        // Save valid URLs to cache
+        const cacheData: CacheData = {
+          urls: this.validUrls,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
+      }
+
       resolve();
     });
 
     return this.initPromise;
   }
 
-  private async preloadImages(): Promise<void> {
-    const preloadPromises = this.imageUrls.map(url => {
-      return new Promise<void>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          this.preloadedImages.set(url, img);
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = url;
-      });
-    });
-
-    await Promise.all(preloadPromises);
-  }
-
   async getNextImage(): Promise<string> {
+    console.log('getNextImage')
     await this.initialize();
     
-    const url = this.imageUrls[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.imageUrls.length;
+    if (this.validUrls.length === 0) {
+      throw new Error('No valid parliament images available');
+    }
+    
+    const url = this.validUrls[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.validUrls.length;
     
     return url;
   }
@@ -98,6 +168,7 @@ class ParliamentImageManager {
   clearCache(): void {
     localStorage.removeItem(STORAGE_KEY);
     this.imageUrls = [];
+    this.validUrls = [];
     this.currentIndex = 0;
     this.preloadedImages.clear();
     this.initPromise = null;
@@ -111,4 +182,4 @@ export const clearParliamentImageCache = () =>
   ParliamentImageManager.getInstance().clearCache();
 
 export const preloadParliamentImages = () => 
-  ParliamentImageManager.getInstance().initialize(); 
+  ParliamentImageManager.getInstance().initialize();

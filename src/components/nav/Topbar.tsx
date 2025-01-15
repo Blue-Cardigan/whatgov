@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Search, Calendar, Settings, 
-  Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare, Bookmark 
+  Menu, User, LogOut, Sparkles, Bookmark 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -106,7 +106,7 @@ export function Topbar({ className }: TopbarProps) {
                 {showUpgradeOption && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/upgrade" className="flex items-center">
+                      <Link href="/features" className="flex items-center">
                         <Sparkles className="mr-2 h-4 w-4" />
                         <span>Upgrade</span>
                       </Link>

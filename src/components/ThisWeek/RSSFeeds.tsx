@@ -143,7 +143,7 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
               <button
                 onClick={() => type === 'bills' && setExpandedItem(expandedItem === item.link ? null : item.link)}
                 className={`w-full text-left transition-all duration-200 ease-in-out
-                  ${expandedItem === item.link ? 'h-[200px] w-[250px]' : 'h-[110px] w-[175px]'}
+                  ${expandedItem === item.link ? 'h-[200px] w-[20vw]' : 'h-[110px] w-[175px]'}
                   p-4 rounded-lg border border-border hover:bg-muted/50
                   ${type === 'bills' ? 'cursor-pointer' : ''}`}
               >

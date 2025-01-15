@@ -154,14 +154,14 @@ export async function POST(request: Request) {
         }
 
         const response = JSON.parse(assistantMessage.content[0].text.value);
-        let citations: string[] = [];
+        const citations: string[] = [];
 
         // Extract citations if any
         if ('annotations' in assistantMessage.content[0].text) {
           for (const annotation of assistantMessage.content[0].text.annotations) {
             if ('file_citation' in annotation) {
               const citedFile = await openai.files.retrieve(annotation.file_citation.file_id);
-              citations.push(citedFile.filename);
+              citations.push(citedFile.filename.replace('.txt', '').replace('debate-', ''));
             }
           }
         }
@@ -172,13 +172,11 @@ export async function POST(request: Request) {
           .upsert({
             week_start: mondayString,
             week_end: new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            summary: response.summary,
+            remarks: response.remarks,
             highlights: response.highlights,
             citations: citations,
             is_published: true,
             updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'week_start'
           });
 
         if (summaryError) {
@@ -731,15 +729,3 @@ function calculateNextRunDate(repeatOn: { frequency: string; dayOfWeek: number }
   
   return nextDate;
 }
-
-// Helper function to wait for run completion
-async function waitForRunCompletion(openai: OpenAI, threadId: string, runId: string) {
-  let run = await openai.beta.threads.runs.retrieve(threadId, runId);
-  
-  while (run.status === 'in_progress' || run.status === 'queued') {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    run = await openai.beta.threads.runs.retrieve(threadId, runId);
-  }
-  
-  return run;
-} 

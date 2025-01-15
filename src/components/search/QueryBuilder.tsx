@@ -13,13 +13,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useEngagement } from '@/hooks/useEngagement';
 import { SearchParams } from '@/types/search';
+import { Card } from "@/components/ui/card";
 
 const searchTypes = [
   { 
     id: 'ai', 
     label: 'AI Assistant', 
     icon: <LightbulbIcon className="h-4 w-4" />,
-    description: "Ask questions about parliamentary activity",
     placeholder: "Ask a question about parliamentary activity...",
     examples: [
       "What arguments were given against the Assisted Dying Bill in the House of Lords?",
@@ -32,7 +32,6 @@ const searchTypes = [
     id: 'hansard', 
     label: 'Hansard', 
     icon: <BookOpenIcon className="h-4 w-4" />,
-    description: "Search the official record directly",
     placeholder: "Search for specific words or phrases...",
     showHouse: true, 
     showDate: true,
@@ -42,7 +41,6 @@ const searchTypes = [
     id: 'mp', 
     label: 'MP Search', 
     icon: <UserIcon className="h-4 w-4" />,
-    description: "Search MP votes and contributions",
     placeholder: "Search for an MP by name...",
     showHouse: false, 
     showDate: false,
@@ -155,193 +153,149 @@ export function QueryBuilder({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Main Search Section */}
-      <div className="space-y-4">
+    <Card className="p-6 border-2">
+      <div className="space-y-6">
         {/* Search Types */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-4">
           {searchTypes.map((type) => (
             <Button
               key={type.id}
               variant={searchType === type.id ? "default" : "outline"}
               onClick={() => onSearchTypeChange(type.id)}
               className={cn(
-                "flex flex-col h-auto py-3 px-4 space-y-1",
-                searchType === type.id && "shadow-sm"
+                "flex flex-col h-auto py-6 px-4 space-y-3",
+                searchType === type.id 
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" 
+                  : "hover:bg-muted border-2",
+                "transition-all duration-200"
               )}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {type.icon}
-                <span>{type.label}</span>
+                <span className="font-semibold tracking-tight"> {type.label}</span>
               </div>
-              <span className="text-xs font-normal text-muted-foreground">
-                {type.description}
-              </span>
             </Button>
           ))}
         </div>
-      </div>
 
-      {/* Search Input and Button Group */}
-      <div className="space-y-3">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            {!showAdvanced && (
-              <Input
-                placeholder={
-                  searchTypes.find(t => t.id === searchType)?.placeholder ||
-                  "Search parliamentary debates..."
-                }
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSubmit();
+        {/* Search Input and Filters */}
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              {!showAdvanced && (
+                <Input
+                  placeholder={
+                    searchTypes.find(t => t.id === searchType)?.placeholder ||
+                    "Search parliamentary debates..."
                   }
-                }}
-              />
-            )}
-          </div>
-          <Button 
-            onClick={handleSubmit}
-            className="shrink-0"
-          >
-            <SearchIcon className="h-4 w-4 mr-2" />
-            Search
-          </Button>
-        </div>
-
-        {/* Remaining Searches Indicator */}
-        {searchType === 'ai' && (
-          <p className="text-sm text-muted-foreground">
-            {`You have ${getRemainingAISearches()} free searches remaining today.`}
-          </p>
-        )}
-
-        {/* Advanced Search Toggle for Hansard */}
-        {searchType === 'hansard' && (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="advanced-search"
-                checked={showAdvanced}
-                onCheckedChange={setShowAdvanced}
-              />
-              <Label htmlFor="advanced-search">Advanced Search</Label>
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 h-14 text-lg border-2 transition-colors duration-200 focus-visible:ring-2"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSubmit();
+                    }
+                  }}
+                />
+              )}
+              <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
+            <Button 
+              onClick={handleSubmit}
+              className="h-14 px-8 text-base font-medium shadow-sm hover:shadow-md transition-all duration-200"
+              size="lg"
+            >
+              Search
+            </Button>
+          </div>
 
-            {showAdvanced && (
-              <div className="space-y-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label htmlFor="debate-search">Search Debate Titles</Label>
-                  <Input
-                    id="debate-search"
-                    placeholder="Enter debate title..."
-                    value={advancedParams.debate || ''}
-                    onChange={(e) => handleAdvancedParamChange('debate', e.target.value)}
-                  />
-                </div>
+          {/* Remaining Searches Indicator */}
+          {searchType === 'ai' && (
+            <p className="text-sm text-muted-foreground font-medium">
+              {`You have ${getRemainingAISearches()} free searches remaining today.`}
+            </p>
+          )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="text-search">Search Debate Text</Label>
-                  <Input
-                    id="text-search"
-                    placeholder="Enter text to search within debates..."
-                    value={advancedParams.text || ''}
-                    onChange={(e) => handleAdvancedParamChange('text', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="speaker-search">Search by Speaker</Label>
-                  <Input
-                    id="speaker-search"
-                    placeholder="Enter speaker name..."
-                    value={advancedParams.spokenBy || ''}
-                    onChange={(e) => handleAdvancedParamChange('spokenBy', e.target.value)}
-                  />
-                </div>
+          {/* Advanced Search Toggle for Hansard */}
+          {searchType === 'hansard' && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="advanced-search"
+                  checked={showAdvanced}
+                  onCheckedChange={setShowAdvanced}
+                  className="data-[state=checked]:bg-primary"
+                />
+                <Label htmlFor="advanced-search" className="font-medium">Advanced Search</Label>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Add scope indicator for Hansard search */}
-        {searchType === 'hansard' && (
-          <p className="text-sm text-muted-foreground">
-            Showing most recent results
-          </p>
-        )}
+              {showAdvanced && (
+                <div className="space-y-4 p-6 border-2 rounded-lg bg-muted/5">
+                  <div className="space-y-2">
+                    <Label htmlFor="debate-search" className="font-medium">Search Debate Titles</Label>
+                    <Input
+                      id="debate-search"
+                      placeholder="Enter debate title..."
+                      value={advancedParams.debate || ''}
+                      onChange={(e) => handleAdvancedParamChange('debate', e.target.value)}
+                      className="border-2"
+                    />
+                  </div>
 
-        {/* AI Recent Files Toggle */}
-        {searchType === 'ai' && (
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="recent-files"
-              checked={useRecentFiles}
-              onCheckedChange={onToggleRecentFiles}
-            />
-            <Label htmlFor="recent-files" className="text-sm text-muted-foreground">
-              {useRecentFiles 
-                ? "Searching debates from this week" 
-                : "Searching all debates during the current government"}
-            </Label>
-          </div>
-        )}
-      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="text-search" className="font-medium">Search Debate Text</Label>
+                    <Input
+                      id="text-search"
+                      placeholder="Enter text to search within debates..."
+                      value={advancedParams.text || ''}
+                      onChange={(e) => handleAdvancedParamChange('text', e.target.value)}
+                      className="border-2"
+                    />
+                  </div>
 
-      {/* Example queries for AI search */}
-      {searchType === 'ai' && !searchTerm && (
-        <div className="text-sm text-muted-foreground space-y-2">
-          <p>Try asking:</p>
-          <div className="flex flex-wrap gap-2">
-            {searchTypes.find(t => t.id === 'ai')?.examples.map((example, i) => (
-              <Button
-                key={i}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => setSearchTerm(example)}
+                  <div className="space-y-2">
+                    <Label htmlFor="speaker-search" className="font-medium">Search by Speaker</Label>
+                    <Input
+                      id="speaker-search"
+                      placeholder="Enter speaker name..."
+                      value={advancedParams.spokenBy || ''}
+                      onChange={(e) => handleAdvancedParamChange('spokenBy', e.target.value)}
+                      className="border-2"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Add scope indicator for Hansard search */}
+          {searchType === 'hansard' && (
+            <p className="text-sm text-muted-foreground font-medium">
+              Showing most recent results
+            </p>
+          )}
+
+          {/* AI Recent Files Toggle */}
+          {searchType === 'ai' && (
+            <div className="flex items-center space-x-2.5 pt-2">
+              <Switch
+                id="recent-files"
+                checked={useRecentFiles}
+                onCheckedChange={onToggleRecentFiles}
+                className="data-[state=checked]:bg-primary"
+              />
+              <Label 
+                htmlFor="recent-files" 
+                className="text-sm text-muted-foreground font-medium"
               >
-                {example}
-              </Button>
-            ))}
-          </div>
+                {useRecentFiles 
+                  ? "Searching debates from this week" 
+                  : "Searching all debates during the current government"}
+              </Label>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* House Filter - Only for Hansard search */}
-      {searchType === 'hansard' && (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Button
-              variant={localParams.house === 'Commons' || !localParams.house ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleHouseChange('Commons')}
-              className={cn(
-                "flex-1",
-                localParams.house === 'Commons' && "bg-[#006E46] text-white hover:bg-[#005538]",
-                !localParams.house && "bg-[#006E46] text-white hover:bg-[#005538] opacity-90"
-              )}
-            >
-              Commons
-            </Button>
-            <Button
-              variant={localParams.house === 'Lords' || !localParams.house ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleHouseChange('Lords')}
-              className={cn(
-                "flex-1",
-                localParams.house === 'Lords' && "bg-[#9C1A39] text-white hover:bg-[#8B1733]",
-                !localParams.house && "bg-[#9C1A39] text-white hover:bg-[#8B1733] opacity-90"
-              )}
-            >
-              Lords
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </Card>
   );
 } 
