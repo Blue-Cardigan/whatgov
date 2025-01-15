@@ -5,7 +5,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getNextParliamentImage } from '@/lib/utils/parliamentImages';
-import { ChevronDownIcon } from 'lucide-react';
 
 interface RSSFeedsProps {
   type: 'bills' | 'events';
@@ -35,7 +34,6 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
   const [events, setEvents] = useState<EventFeed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [featuredImageUrl, setFeaturedImageUrl] = useState<string>('');
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
