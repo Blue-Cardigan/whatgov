@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { cn, UK_POSTCODE_REGEX } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Loader2 } from "lucide-react";
 import Steps from "./steps";
@@ -29,9 +29,6 @@ export default function SignUp() {
     organization: "",
     role: "",
   });
-  const [mpDetails, setMpDetails] = useState<{ constituency: string | null; mp: string | null } | null>(null);
-  const [postcodeError, setPostcodeError] = useState("");
-  const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {

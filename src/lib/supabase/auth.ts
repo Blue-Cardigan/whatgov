@@ -1,8 +1,7 @@
 'use client'
 
 import createClient from './client'
-import type { AuthResponse, UserProfile } from '@/types/supabase'
-import { User } from '@supabase/supabase-js'
+import type { AuthResponse } from '@/types/supabase'
 
 export const signUpWithEmail = async (
   email: string, 

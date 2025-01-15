@@ -1,15 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatPostcode, insertPostcodeSpace, UK_POSTCODE_REGEX } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { ChartBarIcon } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { lookupPostcode } from "@/lib/supabase/mpsearch";
 
 type FormData = {
   email: string;

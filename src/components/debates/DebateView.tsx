@@ -19,7 +19,6 @@ import { ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
 import { exportDebateToPDF } from './debate-export';
 import { toast } from "@/hooks/use-toast";
 import { FormattedMarkdown } from "@/lib/utils";
-import { VisualElement } from 'framer-motion';
 
 interface DebateViewProps {
   debate: DebateItem;
@@ -140,10 +139,22 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
     return contentChunks.findIndex((chunk: string) => chunk.startsWith('##') || chunk.startsWith('**'));
   }, [contentChunks]);
 
+  interface StatisticData {
+    value: string;
+    context: string;
+  }
+
+  interface SpeakerData {
+    name: string;
+    role: string;
+    party?: string;
+    contributions: Array<{ content: string }>;
+  }
+
   interface VisualElement {
     type: 'statistic' | 'speaker';
     position: number;
-    data: any; // You can make this more specific based on your data structure
+    data: StatisticData | SpeakerData;
     side: 'left' | 'right';
     width: string;
   }
@@ -151,10 +162,10 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
   // Adjust visual elements positioning
   const { mainVisualElements, remainingStats, speakerCards } = useMemo(() => {
     const elements: VisualElement[] = [];
-    const remainingStatistics = [];
+    const remainingStatistics: StatisticData[] = [];
     const totalChunks = contentChunks.length;
     
-    // Add only first 2 statistics in main content, but only on the right side
+    // Add only first 2 statistics in main content
     if (parsedAnalysis.statistics?.length) {
       const mainContentStats = parsedAnalysis.statistics.slice(0, 2);
       
@@ -162,18 +173,25 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
         const minPosition = Math.max(firstSubheadingIndex, 1);
         const position = Math.floor(minPosition + (i + 1) * (totalChunks - minPosition) / 3);
         
-        // Only add to main content if it's right-aligned
+        // Convert stat to proper format if it's a string or object
+        const statisticData: StatisticData = typeof stat === 'string' 
+          ? { value: stat, context: '' }
+          : stat;
+        
         elements.push({
           type: 'statistic',
           position,
-          data: stat,
-          side: 'right', // Force right alignment for main content
+          data: statisticData,
+          side: 'right',
           width: 'w-1/3'
         });
       });
 
-      // Store remaining statistics plus any that would have been left-aligned
-      remainingStatistics.push(...parsedAnalysis.statistics.slice(2));
+      // Store remaining statistics
+      const remainingStatsData = parsedAnalysis.statistics.slice(2).map((stat: string) => 
+        typeof stat === 'string' ? { value: stat, context: '' } : stat
+      );
+      remainingStatistics.push(...remainingStatsData);
     }
 
     return {
@@ -205,18 +223,18 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
                     <div className="group p-6 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors relative h-[140px]">
                       <div className={cn(
                         "font-bold text-primary break-words text-center absolute inset-0 flex items-center justify-center p-6 transition-opacity duration-200 group-hover:opacity-0",
-                        typeof element.data.value === 'string' && (
-                          element.data.value.length <= 10 ? "text-3xl" : 
-                          element.data.value.length <= 20 ? "text-2xl" :
-                          element.data.value.length <= 40 ? "text-xl" :
+                        element.type === 'statistic' && typeof (element.data as StatisticData).value === 'string' && (
+                          (element.data as StatisticData).value.length <= 10 ? "text-3xl" : 
+                          (element.data as StatisticData).value.length <= 20 ? "text-2xl" :
+                          (element.data as StatisticData).value.length <= 40 ? "text-xl" :
                           "text-lg"
                         )
                       )}>
-                        {element.data.value}
+                        {(element.data as StatisticData).value}
                       </div>
                       <div className="opacity-0 group-hover:opacity-100 absolute inset-0 bg-muted/95 rounded-lg transition-opacity duration-200 p-4 flex items-center justify-center">
                         <div className="text-sm text-muted-foreground">
-                          <FormattedMarkdown content={element.data.context} />
+                          <FormattedMarkdown content={(element.data as StatisticData).context} />
                         </div>
                       </div>
                     </div>
@@ -226,29 +244,29 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
                     <div className="rounded-lg border bg-gradient-to-br from-muted/50 to-transparent p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="flex flex-col">
-                          <span className="font-semibold">{element.data.name}</span>
-                          <span className="text-xs text-muted-foreground">{element.data.role}</span>
+                          <span className="font-semibold">{(element.data as SpeakerData).name}</span>
+                          <span className="text-xs text-muted-foreground">{(element.data as SpeakerData).role}</span>
                         </div>
-                        {element.data.party && (
+                        {(element.data as SpeakerData).party && (
                           <span 
                             className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap ml-auto"
-                            style={{ backgroundColor: partyColours[element.data.party]?.color || '#808080' }}
+                            style={{ backgroundColor: partyColours[(element.data as SpeakerData).party as keyof typeof partyColours]?.color || '#808080' }}
                           >
-                            {element.data.party}
+                            {(element.data as SpeakerData).party}
                           </span>
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        <FormattedMarkdown content={element.data.contributions[0].content} />
+                        <FormattedMarkdown content={(element.data as SpeakerData).contributions[0].content} />
                       </div>
                     </div>
                   )}
                 </div>
               ))}
               
-              <p className="text-muted-foreground leading-relaxed text-base">
+              <div className="text-muted-foreground leading-relaxed text-base">
                 <FormattedMarkdown content={paragraph} />
-              </p>
+              </div>
               
               {elementsAtPosition.length > 0 && (
                 <div className="clear-both" />
