@@ -141,15 +141,10 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
           {(type === 'bills' ? bills : events).slice(1).map((item, index) => (
             <div 
               key={index} 
-              className={`group transition-all duration-200 ease-in-out
-                ${expandedItem === item.link ? 'min-w-[300px]' : 'min-w-[150px] max-w-[300px]'}`}
+              className="group min-w-[150px]"
             >
-              <button
-                onClick={() => type === 'bills' && setExpandedItem(expandedItem === item.link ? null : item.link)}
-                className={`w-full text-left transition-all duration-200 ease-in-out
-                  ${expandedItem === item.link ? 'h-[200px] w-full' : 'h-[110px] w-[175px]'}
-                  p-4 rounded-lg border border-border hover:bg-muted/50
-                  ${type === 'bills' ? 'cursor-pointer' : ''}`}
+              <div
+                className="relative w-[175px] group-hover:w-[300px] h-[110px] group-hover:h-[200px] p-4 rounded-lg border border-border hover:bg-muted/50 transition-all duration-200 ease-in-out"
               >
                 <div className="flex flex-col h-full">
                   <h3 className="font-medium group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
@@ -168,17 +163,12 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
                         <span className="text-xs px-2 py-1 bg-muted rounded-full">
                           {(item as BillFeed).category}
                         </span>
-                        <ChevronDownIcon 
-                          className={`w-4 h-4 transition-transform duration-200
-                            ${expandedItem === item.link ? 'rotate-180' : ''}`}
-                        />
                       </div>
                       
-                      {expandedItem === item.link && (
-                        <p className="mt-4 text-sm text-muted-foreground overflow-y-auto">
-                          {(item as BillFeed).description}
-                        </p>
-                      )}
+                      {/* Hover description overlay */}
+                      <div className="opacity-0 group-hover:opacity-100 text-sm text-muted-foreground break-words hyphens-auto absolute top-0 left-0 right-0 bottom-0 bg-muted/95 p-4 rounded-lg z-10 overflow-y-auto transition-all duration-200">
+                        {(item as BillFeed).description}
+                      </div>
                     </>
                   ) : (
                     <div className="flex items-center gap-2 mt-auto">
@@ -194,7 +184,7 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
                     </div>
                   )}
                 </div>
-              </button>
+              </div>
             </div>
           ))}
         </div>
