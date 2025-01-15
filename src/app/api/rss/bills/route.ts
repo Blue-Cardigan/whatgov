@@ -48,7 +48,11 @@ export async function GET() {
     
     const bills = result.rss.channel.item.map((item: BillItem): ProcessedBill => {
       const categories = Array.isArray(item.category) ? item.category : [item.category];
-      const displayCategory = categories[0] === 'Government Bill' ? categories[1] : categories[0];
+      let displayCategory = categories[0] === 'Government Bill' ? categories[1] : categories[0];
+      
+      displayCategory = displayCategory
+        .replace(/Starting in the House of\s*/i, '')
+        .replace(/Private Members' Bill \((Lords|Commons)\)/i, '$1 (Members)')
       
       return {
         title: item.title,

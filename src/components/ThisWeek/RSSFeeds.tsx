@@ -139,11 +139,15 @@ export function RSSFeeds({ type }: RSSFeedsProps) {
       <div className="overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/10 hover:scrollbar-thumb-primary/20">
         <div className="flex gap-4 pb-4" style={{ minWidth: 'min-content' }}>
           {(type === 'bills' ? bills : events).slice(1).map((item, index) => (
-            <div key={index} className="group min-w-[150px] max-w-[300px]">
+            <div 
+              key={index} 
+              className={`group transition-all duration-200 ease-in-out
+                ${expandedItem === item.link ? 'min-w-[300px]' : 'min-w-[150px] max-w-[300px]'}`}
+            >
               <button
                 onClick={() => type === 'bills' && setExpandedItem(expandedItem === item.link ? null : item.link)}
                 className={`w-full text-left transition-all duration-200 ease-in-out
-                  ${expandedItem === item.link ? 'h-[200px] w-[20vw]' : 'h-[110px] w-[175px]'}
+                  ${expandedItem === item.link ? 'h-[200px] w-full' : 'h-[110px] w-[175px]'}
                   p-4 rounded-lg border border-border hover:bg-muted/50
                   ${type === 'bills' ? 'cursor-pointer' : ''}`}
               >
