@@ -23,12 +23,10 @@ export default function IntroPage() {
         {/* Main Value Proposition */}
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-semibold">
-            Follow Parliament directly, not just the headlines
+            Track parliamentary issues you care about with ease.
           </h2>
           <p className="text-lg text-muted-foreground">
-            Get beyond media interpretations with direct access to Parliament. WhatGov helps you 
-            understand parliamentary debates in plain language, track issues you care about, and 
-            see how decisions really affect your community.
+            WhatGov indexes hansard to make Parliamentary monitoring easier than every before.
           </p>
         </div>
 

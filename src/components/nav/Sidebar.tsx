@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  Search, Calendar, Settings, 
+  Search, Calendar, Settings, Flame, 
   Menu, User, LogOut, LogIn, UserPlus, Info, Sparkles, MessageSquare, Bookmark 
 } from "lucide-react";
 import {
@@ -219,8 +219,13 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     {
-      title: "Calendar",
+      title: "This Week",
       href: "/",
+      icon: Flame
+    },
+    {
+      title: "Upcoming",
+      href: "/upcoming-debates",
       icon: Calendar
     },
     {

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+const plugin = require('tailwindcss/plugin')
 
 export default {
     darkMode: ["class"],
@@ -180,5 +181,6 @@ export default {
 		className: 'prose',
 		dark: true,
 	}),
+	require('tailwind-scrollbar'),
 ],
 } satisfies Config;

@@ -5,6 +5,7 @@ import { SearchResponse } from '@/types/search';
 import { HANSARD_API_BASE } from '@/lib/search-api';
 import { getPrompt, debateResponseFormat } from './debatePrompts';
 import { Question } from './debatePrompts';
+import { getWeeklySummaryPrompt, weeklySummaryFormat } from './weeklyPrompts';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
   try {
     // Get search type from request body
     const body = await request.json().catch(() => ({}));
-    const searchType = body.searchType as 'ai' | 'hansard' | 'calendar' | undefined;
+    const searchType = body.searchType as 'ai' | 'hansard' | 'calendar' | 'weekly' | undefined;
 
     // Create service role client to bypass RLS
     const supabase = createClient(
@@ -90,6 +91,105 @@ export async function POST(request: Request) {
         }
       }
     );
+
+    // Before processing AI searches, generate weekly summary
+    if (!searchType || searchType === 'weekly') {
+      console.log('[Scheduler] Generating weekly summary...');
+      
+      // Get current week's Monday
+      const currentDate = new Date();
+      const diff = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() === 0 ? -6 : 1);
+      const monday = new Date(currentDate.setDate(diff));
+      const mondayString = monday.toISOString().split('T')[0];
+
+      // Get the weekly assistant ID
+      let assistantId = defaultAssistantID;
+      
+      const { data: vectorStore, error: vectorStoreError } = await supabase
+        .from('vector_stores')
+        .select('assistant_id')
+        .eq('store_name', `Weekly Debates ${mondayString}`)
+        .single();
+
+      if (vectorStoreError) {
+        console.error('[Scheduler] Error fetching weekly assistant:', vectorStoreError);
+      } else if (vectorStore?.assistant_id) {
+        console.log('[Scheduler] Using weekly assistant:', vectorStore.assistant_id);
+        assistantId = vectorStore.assistant_id;
+      }
+
+      try {
+        // Create a thread
+        const thread = await openai.beta.threads.create();
+        console.log(`[Scheduler] Created thread ${thread.id} for weekly summary using assistant ${assistantId}`);
+
+        // Add the message to the thread
+        await openai.beta.threads.messages.create(thread.id, {
+          role: "user",
+          content: getWeeklySummaryPrompt()
+        });
+
+        // Run the assistant
+        const run = await openai.beta.threads.runs.create(thread.id, {
+          assistant_id: assistantId,
+          instructions: "Generate a weekly summary following the format exactly. Ensure all citations are included.",
+          response_format: weeklySummaryFormat
+        });
+
+        // Wait for completion using same approach as AI searches
+        let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        while (runStatus.status !== 'completed') {
+          if (runStatus.status === 'failed' || runStatus.status === 'cancelled') {
+            throw new Error(`Run ${runStatus.status}`);
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        }
+
+        const messages = await openai.beta.threads.messages.list(thread.id);
+        const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
+        
+        if (!assistantMessage?.content[0] || assistantMessage.content[0].type !== 'text') {
+          throw new Error('Invalid assistant response');
+        }
+
+        const response = JSON.parse(assistantMessage.content[0].text.value);
+        let citations: string[] = [];
+
+        // Extract citations if any
+        if ('annotations' in assistantMessage.content[0].text) {
+          for (const annotation of assistantMessage.content[0].text.annotations) {
+            if ('file_citation' in annotation) {
+              const citedFile = await openai.files.retrieve(annotation.file_citation.file_id);
+              citations.push(citedFile.filename);
+            }
+          }
+        }
+
+        // Store the weekly summary
+        const { error: summaryError } = await supabase
+          .from('frontpage_weekly')
+          .upsert({
+            week_start: mondayString,
+            week_end: new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            summary: response.summary,
+            highlights: response.highlights,
+            citations: citations,
+            is_published: true,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'week_start'
+          });
+
+        if (summaryError) {
+          console.error('[Scheduler] Error storing weekly summary:', summaryError);
+        } else {
+          console.log('[Scheduler] Successfully generated and stored weekly summary');
+        }
+      } catch (error) {
+        console.error('[Scheduler] Error generating weekly summary:', error);
+      }
+    }
 
     // If it's a calendar search, process calendar items directly
     if (searchType === 'calendar') {
@@ -630,4 +730,16 @@ function calculateNextRunDate(repeatOn: { frequency: string; dayOfWeek: number }
   }
   
   return nextDate;
+}
+
+// Helper function to wait for run completion
+async function waitForRunCompletion(openai: OpenAI, threadId: string, runId: string) {
+  let run = await openai.beta.threads.runs.retrieve(threadId, runId);
+  
+  while (run.status === 'in_progress' || run.status === 'queued') {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    run = await openai.beta.threads.runs.retrieve(threadId, runId);
+  }
+  
+  return run;
 } 

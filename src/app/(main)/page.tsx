@@ -1,25 +1,18 @@
-import dynamic from 'next/dynamic'
-import { WeekSkeleton } from '@/components/UpcomingDebates/CalendarSkeleton'
-// Lazy load UpcomingDebates component
-const UpcomingDebates = dynamic(
-  () => import('@/components/UpcomingDebates').then(mod => mod.UpcomingDebates),
-  {
-    loading: () => <WeekSkeleton />,
-    ssr: true
-  }
-)
+import { ThisWeek } from '@/components/ThisWeek';
+import { SimpleFooter } from '@/components/layout/SimpleFooter';
 
 export const metadata = {
   title: 'WhatGov | Direct Access to Parliament',
   description: 'Parliament, without the Spin',
 };
 
-export default function DebatesPage() {
+export default function HomePage() {
   return (
-    <main className="h-full flex flex-col p-4 md:p-6">
-      <div className="flex-1">
-        <UpcomingDebates />
-      </div>
-    </main>
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1">
+        <ThisWeek />
+      </main>
+      <SimpleFooter />
+    </div>
   );
 }

@@ -5,11 +5,14 @@ import { locationColors } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import createClient from '@/lib/supabase/client';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface DebateHeaderProps {
   extId: string;
   className?: string;
   asLink?: boolean;
+  summaryText?: string;
+  imageUrl?: string;
 }
 
 type DebateInfo = {
@@ -22,7 +25,9 @@ type DebateInfo = {
 export function DebateHeader({
   extId,
   className,
-  asLink = true
+  asLink = true,
+  summaryText,
+  imageUrl
 }: DebateHeaderProps) {
   const [debate, setDebate] = useState<DebateInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,40 +71,57 @@ export function DebateHeader({
   const formattedDate = format(new Date(debate.date), 'EEE, d MMM yyyy');
   
   const Content = () => (
-    <div 
-      className={cn(
-        "w-full border-l-[6px] bg-background rounded-md",
-        "flex flex-col gap-2 p-4",
-        asLink && "hover:bg-muted/50 transition-colors",
-        className
-      )}
-      style={{ 
-        borderLeftColor: locationColors[debate.house] || '#2b2b2b',
-        borderLeftStyle: 'solid',
-        backgroundImage: `linear-gradient(to right, ${locationColors[debate.house]}15, transparent 10%)`,
-      }}
-    >
-      {/* Title */}
-      <h1 className="text-lg sm:text-xl font-bold text-foreground line-clamp-2">
-        {debate.title}
-      </h1>
-
-      {/* Meta information */}
-      <div className="flex items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
-        <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-4">
-          {/* Date */}
-          <span>{formattedDate}</span>
-
-          {/* Debate Type */}
-          {debateType && (
-            <Badge 
-              variant="secondary"
-              className="text-xs font-normal w-fit"
-            >
-              {debateType}
-            </Badge>
-          )}
+    <div className="space-y-2">
+      {imageUrl && (
+        <div className="relative h-[200px] w-full overflow-hidden rounded-lg mb-4">
+          <Image
+            src={imageUrl}
+            alt={debate?.title || ''}
+            fill
+            className="object-cover"
+          />
         </div>
+      )}
+      <div 
+        className={cn(
+          "w-full border-l-[6px] bg-background rounded-md",
+          "flex flex-col gap-2 p-4",
+          asLink && "hover:bg-muted/50 transition-colors",
+          className
+        )}
+        style={{ 
+          borderLeftColor: locationColors[debate?.house || ''] || '#2b2b2b',
+          borderLeftStyle: 'solid',
+          backgroundImage: `linear-gradient(to right, ${locationColors[debate?.house || '']}15, transparent 10%)`,
+        }}
+      >
+        {/* Title */}
+        <h1 className="text-lg sm:text-xl font-bold text-foreground line-clamp-2">
+          {debate?.title}
+        </h1>
+
+        {/* Meta information */}
+        <div className="flex items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-4">
+            {/* Date */}
+            <span>{formattedDate}</span>
+
+            {/* Debate Type */}
+            {debateType && (
+              <Badge 
+                variant="secondary"
+                className="text-xs font-normal w-fit"
+              >
+                {debateType}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Summary text if provided */}
+        {summaryText && (
+          <p className="text-sm text-muted-foreground mt-2">{summaryText}</p>
+        )}
       </div>
     </div>
   );

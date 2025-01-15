@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Playfair_Display } from 'next/font/google'
 import { SearchProvider } from '@/contexts/SearchContext';
+import { preloadParliamentImages } from '@/lib/utils/parliamentImages';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -14,7 +15,7 @@ const playfair = Playfair_Display({
   display: 'swap',
 })
 
-// Add this near the top of RootLayout
+// Add this near the top of RootLayoModule '"@/lib/utils/parliamentImages"' has no exported member 'preloadParliamentImages'.ts(2305)ut
 const criticalStyles = `
   body { 
     font-family: Arial, Helvetica, sans-serif;
@@ -58,6 +59,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Preload images on client side
+  if (typeof window !== 'undefined') {
+    preloadParliamentImages();
+  }
+
   return (
     <html lang="en" suppressHydrationWarning className={playfair.className}>
       <head>

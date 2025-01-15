@@ -262,7 +262,7 @@ export function SessionPopover({ session, size = 'normal', style }: SessionPopov
         case 'Private Members\' Bills': return 'bg-pink-200 text-white border-pink-200 hover:bg-pink-200';
         case 'Legislation': return 'bg-teal-200 text-white border-teal-200 hover:bg-teal-200';
         case 'Bills': return 'bg-indigo-200 text-white border-indigo-200 hover:bg-indigo-200';
-        case 'EDMs': return 'bg-gray-200 text-white border-gray-200 hover:bg-gray-200';
+        case 'Earyl Day Motions': return 'bg-gray-200 text-white border-gray-200 hover:bg-gray-200';
         case 'Oral Questions': return 'bg-blue-200 text-white border-blue-200 hover:bg-blue-200';
         case 'Prime Minister': return 'bg-blue-200 text-white border-blue-200 hover:bg-blue-200';
         case 'Urgent question': return 'bg-cyan-200 text-white border-cyan-200 hover:bg-cyan-200';

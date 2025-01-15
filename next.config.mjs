@@ -24,6 +24,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'data.parliament.uk',
       },
+      {
+        protocol: 'https',
+        hostname: 'parliament.assetbank-server.com',
+      },
     ],
   },
   webpack: (config, { dev, isServer }) => {
