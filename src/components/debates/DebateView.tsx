@@ -19,6 +19,7 @@ import { ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
 import { exportDebateToPDF } from './debate-export';
 import { toast } from "@/hooks/use-toast";
 import { FormattedMarkdown } from "@/lib/utils";
+import { VisualElement } from 'framer-motion';
 
 interface DebateViewProps {
   debate: DebateItem;
@@ -136,12 +137,20 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
 
   // Find the position of the first subheading
   const firstSubheadingIndex = useMemo(() => {
-    return contentChunks.findIndex(chunk => chunk.startsWith('##') || chunk.startsWith('**'));
+    return contentChunks.findIndex((chunk: string) => chunk.startsWith('##') || chunk.startsWith('**'));
   }, [contentChunks]);
+
+  interface VisualElement {
+    type: 'statistic' | 'speaker';
+    position: number;
+    data: any; // You can make this more specific based on your data structure
+    side: 'left' | 'right';
+    width: string;
+  }
 
   // Adjust visual elements positioning
   const { mainVisualElements, remainingStats, speakerCards } = useMemo(() => {
-    const elements = [];
+    const elements: VisualElement[] = [];
     const remainingStatistics = [];
     const totalChunks = contentChunks.length;
     
@@ -149,7 +158,7 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
     if (parsedAnalysis.statistics?.length) {
       const mainContentStats = parsedAnalysis.statistics.slice(0, 2);
       
-      mainContentStats.forEach((stat, i) => {
+      mainContentStats.forEach((stat: string, i: number) => {
         const minPosition = Math.max(firstSubheadingIndex, 1);
         const position = Math.floor(minPosition + (i + 1) * (totalChunks - minPosition) / 3);
         
@@ -178,7 +187,7 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
     <div className="space-y-8">
       {/* Main Content Section */}
       <div className="relative max-w-3xl mx-auto prose prose-sm dark:prose-invert">
-        {contentChunks.map((paragraph, index) => {
+        {contentChunks.map((paragraph: string, index: number) => {
           const elementsAtPosition = mainVisualElements.filter(el => el.position === index);
           
           return (
