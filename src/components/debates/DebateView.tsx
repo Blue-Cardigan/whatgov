@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { HansardDebateResponse, HansardContribution } from "@/types/hansard";
-import { AnalysisData, ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
+import { ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
 import { exportDebateToPDF } from './debate-export';
 import { toast } from "@/hooks/use-toast";
 import { FormattedMarkdown } from "@/lib/utils";
@@ -85,7 +85,29 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
   const parsedAnalysis = useMemo(() => {
     if (typeof analysis === 'string') {
       try {
-        return JSON.parse(analysis);
+        const parsed = JSON.parse(analysis);
+        
+        if (parsed.main_content) {
+          // Create keywords from the keys, removing 'main_content'
+          const keywords = Object.keys(parsed)
+            .filter(key => key !== 'main_content')
+            .map(key => key.replace(/_/g, ' ')) // Convert snake_case to spaces
+            .join('|');
+          
+          if (keywords) {
+            // Match headers containing any of the keywords (case insensitive)
+            const headerPattern = new RegExp(
+              `\\*\\*[^*]*(?:${keywords})[^*]*:\\*\\*[\\s\\S]*?(?=\\*\\*|$)`, 
+              'gi'
+            );
+            
+            parsed.main_content = parsed.main_content
+              .replace(headerPattern, '')
+              .trim()
+              .replace(/\n{3,}/g, '\n\n');
+          }
+        }
+        return parsed;
       } catch (e) {
         console.error('Failed to parse analysis:', e);
         return { outcome: analysis };
@@ -106,107 +128,147 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
     return speakerPoints;
   }, [speakerPoints]);
   
+  // Split content into chunks for interlacing
+  const contentChunks = useMemo(() => {
+    if (!parsedAnalysis.main_content) return [];
+    return parsedAnalysis.main_content.split('\n\n');
+  }, [parsedAnalysis.main_content]);
+
+  // Find the position of the first subheading
+  const firstSubheadingIndex = useMemo(() => {
+    return contentChunks.findIndex(chunk => chunk.startsWith('##') || chunk.startsWith('**'));
+  }, [contentChunks]);
+
+  // Adjust visual elements positioning
+  const { mainVisualElements, remainingStats, speakerCards } = useMemo(() => {
+    const elements = [];
+    const remainingStatistics = [];
+    const totalChunks = contentChunks.length;
+    
+    // Add only first 2 statistics in main content, but only on the right side
+    if (parsedAnalysis.statistics?.length) {
+      const mainContentStats = parsedAnalysis.statistics.slice(0, 2);
+      
+      mainContentStats.forEach((stat, i) => {
+        const minPosition = Math.max(firstSubheadingIndex, 1);
+        const position = Math.floor(minPosition + (i + 1) * (totalChunks - minPosition) / 3);
+        
+        // Only add to main content if it's right-aligned
+        elements.push({
+          type: 'statistic',
+          position,
+          data: stat,
+          side: 'right', // Force right alignment for main content
+          width: 'w-1/3'
+        });
+      });
+
+      // Store remaining statistics plus any that would have been left-aligned
+      remainingStatistics.push(...parsedAnalysis.statistics.slice(2));
+    }
+
+    return {
+      mainVisualElements: elements.sort((a, b) => a.position - b.position),
+      remainingStats: remainingStatistics,
+      speakerCards: parsedSpeakerPoints || []
+    };
+  }, [parsedAnalysis.statistics, parsedSpeakerPoints, contentChunks.length, firstSubheadingIndex]);
+
   return (
     <div className="space-y-8">
-      {/* Main Analysis Content */}
-      {parsedAnalysis.main_content && (
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <div className="text-muted-foreground leading-relaxed">
-            <FormattedMarkdown content={parsedAnalysis.main_content} />
-          </div>
-        </div>
-      )}
-
-      {/* Statistics Grid */}
-      {parsedAnalysis.statistics && parsedAnalysis.statistics.length > 0 && (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {parsedAnalysis.statistics.map((stat: any, index: number) => (
-            <div 
-              key={index} 
-              className="group p-6 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors flex flex-col h-[140px] relative overflow-hidden"
-            >
-              <div className={cn(
-                "font-bold text-primary break-words text-center my-auto",
-                stat.value.length <= 10 ? "text-3xl" : 
-                stat.value.length <= 20 ? "text-2xl" :
-                stat.value.length <= 40 ? "text-xl" :
-                "text-lg"
-              )}>
-                {stat.value}
-              </div>
-              <div className="opacity-0 group-hover:opacity-100 text-sm text-muted-foreground break-words hyphens-auto absolute top-0 left-0 right-0 bg-muted/95 p-4 rounded-lg z-10 min-h-full transition-all duration-200 flex items-center justify-center">
-                <FormattedMarkdown content={stat.context} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Speaker Points Grid */}
-      {parsedSpeakerPoints && parsedSpeakerPoints.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">Key Contributions</h3>
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {parsedSpeakerPoints.map((speaker, index) => (
-              <div 
-                key={index}
-                className="group relative overflow-hidden rounded-lg border bg-gradient-to-br from-muted/50 to-transparent p-6 transition-all hover:shadow-md"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    {/* Speaker Header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{speaker.name}</span>
-                        <span className="text-xs text-muted-foreground">{speaker.role}</span>
+      {/* Main Content Section */}
+      <div className="relative max-w-3xl mx-auto prose prose-sm dark:prose-invert">
+        {contentChunks.map((paragraph, index) => {
+          const elementsAtPosition = mainVisualElements.filter(el => el.position === index);
+          
+          return (
+            <div key={index} className="relative mb-8">
+              {elementsAtPosition.map((element, i) => (
+                <div
+                  key={`element-${i}`}
+                  className={cn(
+                    "mb-6 relative",
+                    element.side === 'left' ? 'float-left mr-8' : 'float-right ml-8',
+                    element.width
+                  )}
+                >
+                  {element.type === 'statistic' && (
+                    <div className="group p-6 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors relative h-[140px]">
+                      <div className={cn(
+                        "font-bold text-primary break-words text-center absolute inset-0 flex items-center justify-center p-6 transition-opacity duration-200 group-hover:opacity-0",
+                        typeof element.data.value === 'string' && (
+                          element.data.value.length <= 10 ? "text-3xl" : 
+                          element.data.value.length <= 20 ? "text-2xl" :
+                          element.data.value.length <= 40 ? "text-xl" :
+                          "text-lg"
+                        )
+                      )}>
+                        {element.data.value}
                       </div>
-                      <div className="flex gap-2 ml-auto">
-                        {speaker.party && (
-                          <span 
-                            className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap"
-                            style={{ backgroundColor: partyColours[speaker.party]?.color || '#808080' }}
-                          >
-                            {speaker.party}
-                          </span>
-                        )}
-                        {speaker.constituency && (
-                          <span className="text-xs text-muted-foreground">
-                            {speaker.constituency}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Contributions */}
-                    <div className="space-y-3">
-                      {speaker.contributions.map((contribution, cIndex) => (
-                        <div key={cIndex} className="space-y-2">
-                          <div className="text-sm text-muted-foreground">
-                            <FormattedMarkdown content={contribution.content} />
-                          </div>
-                          
-                          {/* References */}
-                          {contribution.references && contribution.references.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {contribution.references.map((ref, rIndex) => (
-                                <div 
-                                  key={rIndex} 
-                                  className="text-xs text-muted-foreground/80 pl-4 border-l-2 border-muted"
-                                >
-                                  <span className="font-medium">{ref.text}:</span>{' '}
-                                  <span className="italic">{ref.value}</span>
-                                  {ref.source && (
-                                    <span className="text-muted-foreground/60 ml-1">
-                                      ({ref.source})
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                      <div className="opacity-0 group-hover:opacity-100 absolute inset-0 bg-muted/95 rounded-lg transition-opacity duration-200 p-4 flex items-center justify-center">
+                        <div className="text-sm text-muted-foreground">
+                          <FormattedMarkdown content={element.data.context} />
                         </div>
-                      ))}
+                      </div>
                     </div>
+                  )}
+
+                  {element.type === 'speaker' && (
+                    <div className="rounded-lg border bg-gradient-to-br from-muted/50 to-transparent p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{element.data.name}</span>
+                          <span className="text-xs text-muted-foreground">{element.data.role}</span>
+                        </div>
+                        {element.data.party && (
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap ml-auto"
+                            style={{ backgroundColor: partyColours[element.data.party]?.color || '#808080' }}
+                          >
+                            {element.data.party}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <FormattedMarkdown content={element.data.contributions[0].content} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <p className="text-muted-foreground leading-relaxed text-base">
+                <FormattedMarkdown content={paragraph} />
+              </p>
+              
+              {elementsAtPosition.length > 0 && (
+                <div className="clear-both" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Statistics Grid - Full width with larger cards */}
+      {remainingStats.length > 0 && (
+        <div className="mt-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {remainingStats.map((stat, i) => (
+              <div key={i} className="group p-8 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors relative h-[160px]">
+                <div className={cn(
+                  "font-bold text-primary break-words text-center absolute inset-0 flex items-center justify-center p-6 transition-opacity duration-200 group-hover:opacity-0",
+                  typeof stat.value === 'string' && (
+                    stat.value.length <= 10 ? "text-3xl" : 
+                    stat.value.length <= 20 ? "text-2xl" :
+                    stat.value.length <= 40 ? "text-xl" :
+                    "text-lg"
+                  )
+                )}>
+                  {stat.value}
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 absolute inset-0 bg-muted/95 rounded-lg transition-opacity duration-200 p-4 flex items-center justify-center">
+                  <div className="text-sm text-muted-foreground">
+                    <FormattedMarkdown content={stat.context} />
                   </div>
                 </div>
               </div>
@@ -215,12 +277,42 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
         </div>
       )}
 
-      {/* Outcome Section */}
+      {/* Outcome Section - Centered with max width */}
       {parsedAnalysis.outcome && (
-        <div className="mt-8 p-6 bg-muted/5 rounded-lg border">
-          <h4 className="font-semibold mb-3">Outcome</h4>
-          <div className="text-muted-foreground break-words hyphens-auto">
+        <div className="max-w-3xl mx-auto mt-12 p-8 bg-muted/5 rounded-lg border clear-both">
+          <h4 className="font-semibold text-lg mb-4">Outcome</h4>
+          <div className="text-muted-foreground break-words hyphens-auto leading-relaxed text-base">
             <FormattedMarkdown content={parsedAnalysis.outcome} />
+          </div>
+        </div>
+      )}
+
+      {/* Speaker Points Grid - Full width with improved cards */}
+      {speakerCards.length > 0 && (
+        <div className="mt-12">
+          <h4 className="font-semibold text-lg mb-6 max-w-3xl mx-auto">Key Contributions</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {speakerCards.map((point, i) => (
+              <div key={i} className="rounded-lg border bg-gradient-to-br from-muted/50 to-transparent p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{point.name}</span>
+                    <span className="text-xs text-muted-foreground">{point.role}</span>
+                  </div>
+                  {point.party && (
+                    <span 
+                      className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap ml-auto"
+                      style={{ backgroundColor: partyColours[point.party]?.color || '#808080' }}
+                    >
+                      {point.party}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <FormattedMarkdown content={point.contributions[0].content} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -499,8 +591,8 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
           </div>
         </CardHeader>
 
-        {/* Analysis and Speaker Points */}
-        <CardContent>
+        {/* Analysis and Speaker Points - Updated padding */}
+        <CardContent className="px-4 sm:px-6 md:px-8 py-8">
           <AnalysisWithSpeakerPoints 
             analysis={debate.analysis}
             speakerPoints={debate.speaker_points as unknown as SpeakerPoint[]}
