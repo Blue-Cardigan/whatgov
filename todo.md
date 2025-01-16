@@ -40,14 +40,17 @@ First Launch:
 
 #Next
 
-[ ] Discount Link
-      [ ] Check Stripe payments work
+[/] Discount Link
+      [/] Check Stripe payments work
 
 UI
 [ ] Update logo font
+[ ] More compact citations
+      [ ] Fix dodgy markdown replacement
 [ ] Fix Calendar scroll
 [ ] Debate Types listed in home/top bar
 [ ] Responsive design of homepage and calendar
+
 [ ] Wall debate downloads
 [ ] Email people in the database
 [ ] Post on SM

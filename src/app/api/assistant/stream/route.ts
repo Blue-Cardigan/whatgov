@@ -9,9 +9,20 @@ export const runtime = 'edge';
 
 export async function POST(request: Request) {
   try {
-    const { query, useRecentFiles } = await request.json();
+    const { query, useRecentFiles, threadId } = await request.json();
     console.log('[Assistant Stream] Starting with query:', query);
     console.log('[Assistant Stream] Using recent files:', useRecentFiles);
+
+    let thread;
+    if (threadId) {
+      // Resume existing thread
+      thread = { id: threadId };
+      console.log('[Assistant Stream] Resuming thread:', threadId);
+    } else {
+      // Create new thread
+      thread = await openai.beta.threads.create();
+      console.log('[Assistant Stream] Created thread:', thread.id);
+    }
 
     // Get the weekly assistant ID if useRecentFiles is true
     let assistantId = process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
@@ -60,13 +71,17 @@ export async function POST(request: Request) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        controller.enqueue(encoder.encode(
+          JSON.stringify({ 
+            type: 'threadId', 
+            content: thread.id 
+          }) + '\n'
+        ));
+        
         // Send initial keepalive
         controller.enqueue(encoder.encode(': keepalive\n\n'));
         
         try {
-          const thread = await openai.beta.threads.create();
-          console.log('[Assistant Stream] Created thread:', thread.id);
-
           await openai.beta.threads.messages.create(thread.id, {
             role: "user",
             content: query // Using original query without modification

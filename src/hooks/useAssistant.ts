@@ -9,127 +9,159 @@ export function useAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const { hasReachedAISearchLimit, recordAISearch } = useEngagement();
   const { toast } = useToast();
-
-  const performAISearch = useCallback(async (
-    query: string, 
-    openaiAssistantId: string | null,
-    onStreamingUpdate?: (text: string, citations: Citation[], isFinal: boolean) => void,
-    onComplete?: () => void,
-    useRecentFiles: boolean = false
-  ) => {
-    if (hasReachedAISearchLimit()) {
-      toast({
-        title: "Search limit reached",
-        description: "Please upgrade your account to continue using AI search",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await recordAISearch();
-      const authHeader = await getAuthHeader();
-
-      console.log('[Assistant] Starting search with query:', query);
-      console.log('[Assistant] Using recent files:', useRecentFiles);
-
-      const response = await fetch('/api/assistant/stream', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authHeader}`
-        },
-        body: JSON.stringify({ 
-          query, 
-          assistantId: openaiAssistantId,
-          useRecentFiles
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Stream request failed');
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  
+  const performAISearch = useCallback(
+    async (
+      query: string,
+      openaiAssistantId: string | null,
+      onStreamingUpdate?: (text: string, citations: Citation[], isFinal: boolean) => void,
+      onComplete?: () => void,
+      useRecentFiles: boolean = false
+    ) => {
+      if (hasReachedAISearchLimit()) {
+        toast({
+          title: "Search limit reached",
+          description: "Please upgrade your account to continue using AI search",
+          variant: "destructive",
+        });
+        return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
+      setIsLoading(true);
 
-      let hasStartedStreaming = false;
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let currentCitations: Citation[] = [];
+      const makeRequest = async (threadId?: string) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          console.log('[Assistant] Stream complete');
-          onComplete?.();
-          break;
-        }
+        try {
+          const response = await fetch('/api/assistant/stream', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await getAuthHeader()}`
+            },
+            body: JSON.stringify({ 
+              query, 
+              assistantId: openaiAssistantId,
+              useRecentFiles,
+              threadId
+            }),
+            signal: controller.signal
+          });
 
-        if (!hasStartedStreaming) {
-          setIsLoading(false);
-          hasStartedStreaming = true;
-        }
+          clearTimeout(timeoutId);
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Stream request failed');
+          }
 
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const { type, content } = JSON.parse(line);              
-              switch (type) {
-                case 'text':
-                  onStreamingUpdate?.(
-                    content.content || content,
-                    currentCitations,
-                    false
-                  );
-                  break;
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error('No reader available');
 
-                case 'finalText':
-                  onStreamingUpdate?.(
-                    content.text,
-                    currentCitations,
-                    true
-                  );
-                  break;
+          let hasStartedStreaming = false;
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let currentCitations: Citation[] = [];
 
-                case 'citations':
-                  currentCitations = content.content || content;
-                  onStreamingUpdate?.(
-                    buffer,
-                    currentCitations,
-                    false
-                  );
-                  break;
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log('[Assistant] Stream complete');
+              onComplete?.();
+              break;
+            }
+
+            if (!hasStartedStreaming) {
+              setIsLoading(false);
+              hasStartedStreaming = true;
+              await recordAISearch();
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.trim()) {
+                if (line.startsWith(':')) continue;
+                
+                try {
+                  const { type, content } = JSON.parse(line);              
+                  switch (type) {
+                    case 'threadId':
+                      setCurrentThreadId(content);
+                      break;
+                    case 'text':
+                      onStreamingUpdate?.(
+                        content.content || content,
+                        currentCitations,
+                        false
+                      );
+                      break;
+
+                    case 'finalText':
+                      onStreamingUpdate?.(
+                        content.text,
+                        currentCitations,
+                        true
+                      );
+                      break;
+
+                    case 'citations':
+                      currentCitations = content.content || content;
+                      onStreamingUpdate?.(
+                        buffer,
+                        currentCitations,
+                        false
+                      );
+                      break;
+                  }
+                } catch (e) {
+                  console.error('[Assistant] Error processing stream chunk:', e);
+                }
               }
-            } catch (e) {
-              console.error('[Assistant] Error processing stream chunk:', e);
             }
           }
-        }
-      }
 
-    } catch (error) {
-      console.error('[Assistant] Search error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-      onStreamingUpdate?.(errorMessage, [], false);
-      
-      toast({
-        title: "Search failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [hasReachedAISearchLimit, recordAISearch, toast, getAuthHeader]);
+        } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError' && currentThreadId) {
+            console.log('Request timed out, attempting to resume...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return makeRequest(currentThreadId);
+          }
+          throw error;
+        }
+      };
+
+      try {
+        await makeRequest();
+      } catch (error) {
+        console.error('[Assistant] Search error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+        onStreamingUpdate?.(errorMessage, [], false);
+        
+        toast({
+          title: "Search failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setCurrentThreadId(null);
+        setIsLoading(false);
+      }
+    },
+    [
+      getAuthHeader,
+      hasReachedAISearchLimit,
+      toast,
+      currentThreadId,
+      setIsLoading,
+      recordAISearch
+    ]
+  );
 
   return {
     isLoading,
