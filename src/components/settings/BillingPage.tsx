@@ -111,10 +111,10 @@ export default function BillingPage({ className }: BillingPageProps) {
   const renderPlanFeatures = (planType: PlanType) => {
     const features = {
       PROFESSIONAL: [
-        'All Engaged Citizen features',
-        'Unlimited Assistant usage',
-        'Subscribe to any search',
-        'Save and export debates',
+        'All Free features',
+        'Unlimited AI Search access',
+        'Track upcoming parliamentary events',
+        'Subscribe to searches for personalized briefings',
       ],
     };
 
@@ -245,29 +245,12 @@ export default function BillingPage({ className }: BillingPageProps) {
                 <CardHeader>
                   <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>
-                    {key === 'PROFESSIONAL' ? (
-                      <span className="text-yellow-500 font-semibold">
-                        Coming Soon
-                      </span>
-                    ) : (
-                      `£${plan.price}/month`
-                    )}
+                    £{plan.price}/month
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 text-sm">
                     {renderPlanFeatures(key as PlanType)}
-                    {key === 'PROFESSIONAL' && (
-                      <li>
-                        <Button 
-                          asChild
-                          className="w-full sm:w-auto mt-4" 
-                          variant="outline"
-                        >
-                          <a href="/features">Find out more</a>
-                        </Button>
-                      </li>
-                    )}
                   </ul>
                 </CardContent>
               </Card>

@@ -106,7 +106,7 @@ export function Topbar({ className }: TopbarProps) {
                 {showUpgradeOption && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/features" className="flex items-center">
+                      <Link href="/pricing" className="flex items-center">
                         <Sparkles className="mr-2 h-4 w-4" />
                         <span>Upgrade</span>
                       </Link>
