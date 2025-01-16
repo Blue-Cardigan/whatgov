@@ -13,10 +13,11 @@ export const WeeklySummarySchema = z.object({
 export const weeklySummaryFormat = zodResponseFormat(WeeklySummarySchema, "weekly_summary");
 
 export function getWeeklySummaryPrompt() {
-  return `As an expert in UK Parliament and seasoned newspaper editor, provide pithy remarks on "this week so far" in UK Parliament. Focus on the most impactful and newsworthy items from the dates provided, with a focus on outcomes, specific Ministers, and key bills.
+  return `As an expert in UK Parliament and a seasoned columnist, provide pithy remarks on "the week so far" in UK Parliament, using the data available on events so far this week. 
+  Cover the most impactful and newsworthy items from the dates provided, with a focus on outcomes, specific Ministers, and key bills.
 
 Requirements:
-1. Provide pithy and cynical remarks on the week's key events so far (max 3 sentences)
+1. Provide pithy remarks on the week's key events so far (max 3 sentences)
 2. List 5 highlights, with each item getting no more than 2 sentences
 3. Focus on outcomes and significant developments
 4. For each highlight, cite the relevant debate or event IDs

@@ -36,15 +36,28 @@ MVP:
 [/] Fix mountainous lint issues
 [/] Update engagement controls
 [/] Update whatgov and whatgov-backend to point to main then push
-[-] "This week in parliament" landing page
+[/] "This week in parliament" landing page
+
+Nexxt
 [ ] Discount Link
+      [ ] Check Stripe payments work
+[ ] Update logo font
+[ ] Fix Calendar scroll
+[ ] Debate Types listed in home/top bar
+[ ] Responsive design of homepage and calendar
+[ ] Wall debate downloads
 [ ] Email people in the database
+[ ] Post on SM
 
 
 Next:
 [ ] Update prompts based on feedback
-[ ] Generate daily and weekly highlights of relevant debates
-[ ] Better structure for questions
+      [ ] Implement prompt test script
+[ ] Address processing failure rate
+      [ ] Implement retry
+      [ ] Update prompt
+[/] Generate daily and weekly highlights of relevant debates
+[-] Better structure for questions processing
 [ ] MP data in search results
       [ ] Recent points
       [ ] Votes 
@@ -55,9 +68,7 @@ Next:
 [ ] Add keyword search within an MP's contributions
 
 Professionals
-[ ] Send personal welcome email
 [/] Member profile search 
-[ ] Make member profile search EC exclusive
 [/] Make search page wider (on desktop)
 [/] Assistant to ask questions
 [/] Save searches to dashboard

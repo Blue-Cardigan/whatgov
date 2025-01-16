@@ -88,7 +88,6 @@ const plans = [
       { icon: <Database />, title: "Enterprise Support", items: [
         "Bulk data export",
         "Priority support",
-        "Service level agreement"
       ]}
     ],
     cta: { text: "Contact Us", href: "mailto:enterprise@whatgov.co.uk" }

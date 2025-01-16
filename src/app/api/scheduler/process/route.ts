@@ -169,7 +169,7 @@ export async function POST(request: Request) {
         // Store the weekly summary
         const currentHour = new Date().getHours();
         const timeOfDay = currentHour < 12.30 ? 'am' : 'pm';
-        const weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'][new Date().getDay()];
+        const weekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
         const weekdayTime = `${weekday}_${timeOfDay}`;
         
         const { error: summaryError } = await supabase

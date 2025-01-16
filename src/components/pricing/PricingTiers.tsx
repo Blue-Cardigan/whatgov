@@ -52,8 +52,25 @@ const tiers = [
     ],
     color: "text-emerald-500",
     bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
-    popular: false,
+    popular: true,
   },
+  {
+    name: "Enterprise",
+    description: "Custom solutions for organisations",
+    price: "Custom",
+    icon: AlertCircle,
+    features: [
+      "Everything in Professional, plus:",
+      "User Management",
+      "Collaboration workspaces",
+      "Control over prompts",
+      "Bulk data export",
+      "Priority support"
+    ],
+    color: "text-orange-500",
+    bgColor: "bg-orange-50 dark:bg-orange-500/10",
+    popular: false,
+  }
 ];
 
 // Create a separate component for the search params logic
@@ -169,15 +186,7 @@ function PricingContent() {
       };
     }
 
-    if (tierName === "Professional") {
-      return {
-        variant: "outline" as const,
-        disabled: true,
-        text: "Coming Soon"
-      };
-    }
-
-    // Engaged Citizen tier
+    // Pro tier
     if (isProfessional) {
       return {
         variant: "outline" as const,
@@ -185,6 +194,15 @@ function PricingContent() {
         text: "Manage Subscription"
       };
       }
+
+    // Add Enterprise case
+    if (tierName === "Enterprise") {
+      return {
+        variant: "default" as const,
+        onClick: () => {}, // Will be overridden by Dialog
+        text: "Contact Sales"
+      };
+    }
 
     return {
       variant: "default" as const,
@@ -260,73 +278,33 @@ function PricingContent() {
               </CardContent>
 
               <CardFooter className="pt-4">
-                <Button 
-                  className="w-full" 
-                  variant={buttonConfig.variant}
-                  onClick={buttonConfig.onClick}
-                  disabled={buttonConfig.disabled}
-                >
-                  {buttonConfig.text}
-                </Button>
+                {tier.name === "Enterprise" ? (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full">Contact Sales</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Enterprise Inquiry</DialogTitle>
+                        <DialogDescription>
+                          Please email enterprise@whatgov.co.uk for custom pricing and features.
+                        </DialogDescription>
+                      </DialogHeader>
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Button 
+                    className="w-full" 
+                    variant={buttonConfig.variant}
+                    onClick={buttonConfig.onClick}
+                  >
+                    {buttonConfig.text}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           );
         })}
-
-        {/* Enterprise Tier */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-orange-50 dark:bg-orange-500/10 text-orange-500">
-                  <AlertCircle className="h-6 w-6" />
-                </div>
-                <div>
-                  <CardTitle>Enterprise</CardTitle>
-                  <CardDescription>Custom solutions for organisations</CardDescription>
-                </div>
-              </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>Contact Sales</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Enterprise Inquiry</DialogTitle>
-                    <DialogDescription>
-                      Please email enterprise@whatgov.co.uk for custom pricing and features.
-                    </DialogDescription>
-                  </DialogHeader>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                "Everything in Professional, plus:",
-                "Custom cards for your website",
-                "Constituency-level analysis",
-                "Custom feature development",
-                "Advanced API access",
-                "Usage analytics",
-                "Custom report generation",
-                "Bulk data export",
-                "Priority support",
-              ].map((feature, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-primary" />
-                  <span className="text-sm">{feature}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* FAQ Section */}
-      <div className="mt-16">
-        {/* Add FAQ component here */}
       </div>
     </div>
   );

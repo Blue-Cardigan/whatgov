@@ -212,7 +212,9 @@ export function QueryBuilder({
           {/* Add remaining searches indicator for AI search type */}
           {searchType === 'ai' && (
             <p className="text-sm text-muted-foreground">
-              {remainingSearches === Infinity ? (
+              {remainingSearches === 0 ? (
+                <><a href="/signup">Create an account</a> to try the assistant</>
+              ) : remainingSearches === Infinity ? (
                 "Unlimited AI searches available"
               ) : (
                 `${remainingSearches} AI ${remainingSearches === 1 ? 'search' : 'searches'} remaining today`
