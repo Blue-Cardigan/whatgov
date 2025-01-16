@@ -77,6 +77,11 @@ const handlePageAuth = async (req: NextRequest, res: NextResponse) => {
   return session;
 };
 
+// Add API key validation
+const isValidApiKey = (apiKey: string | null) => {
+  return apiKey === process.env.SCHEDULER_API_KEY;
+};
+
 export async function middleware(req: NextRequest) {
   try {
     const pathname = req.nextUrl.pathname;
@@ -85,11 +90,20 @@ export async function middleware(req: NextRequest) {
     const isFirstVisit = !req.cookies.get('visited');
     if (isFirstVisit) {
       const response = NextResponse.redirect(new URL('/intro', req.url));
-      response.cookies.set('visited', 'true', { path: '/', maxAge: 60 * 60 * 24 * 365 }); // Set cookie for 1 year
+      response.cookies.set('visited', 'true', { path: '/', maxAge: 60 * 60 * 24 * 365 });
       return response;
     }
 
-    // API routes
+    // Special handling for scheduler endpoints
+    if (pathname.startsWith('/api/scheduler/')) {
+      const apiKey = req.headers.get('x-api-key');
+      if (isValidApiKey(apiKey)) {
+        return NextResponse.next();
+      }
+      throw new AuthError('Invalid API key');
+    }
+
+    // Regular API routes
     if (pathname.startsWith('/api/')) {
       const { user, response } = await handleApiAuth(req, NextResponse.next());
 
@@ -135,7 +149,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/(stripe|premium|assistant)/:path*',
+    '/api/(stripe|premium|assistant|scheduler)/:path*',
     '/settings/:path*',
   ],
 } 
