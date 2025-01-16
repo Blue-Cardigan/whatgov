@@ -43,15 +43,6 @@ export async function POST(request: Request) {
       .single();
 
     const plan = subscription?.plan || 'FREE';
-    const limit = plan === 'PROFESSIONAL' ? Infinity : 
-                 plan === 'ENGAGED_CITIZEN' ? 5 : 2;
-
-    if (count && count >= limit) {
-      return NextResponse.json(
-        { error: 'Assistant limit reached for your tier' },
-        { status: 403 }
-      );
-    }
 
     const { name, description, filters, keywords, userId, fileIds, promptType, keepUpdated } = await request.json();
 

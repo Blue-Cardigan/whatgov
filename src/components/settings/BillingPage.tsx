@@ -110,16 +110,11 @@ export default function BillingPage({ className }: BillingPageProps) {
 
   const renderPlanFeatures = (planType: PlanType) => {
     const features = {
-      ENGAGED_CITIZEN: [
-        'Vote on debates',
-        'Basic analytics',
-        'Email notifications',
-      ],
       PROFESSIONAL: [
         'All Engaged Citizen features',
-        'Advanced analytics',
-        'Priority notifications',
-        'Custom reports',
+        'Unlimited Assistant usage',
+        'Subscribe to any search',
+        'Save and export debates',
       ],
     };
 

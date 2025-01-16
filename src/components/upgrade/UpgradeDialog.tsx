@@ -55,7 +55,7 @@ export function UpgradeDialog({
           'Authorization': `Bearer ${token}`,
           'Idempotency-Key': `${user.id}-${Date.now()}`,
         },
-        body: JSON.stringify({ priceId: PLANS["ENGAGED_CITIZEN"].id }),
+        body: JSON.stringify({ priceId: PLANS["PROFESSIONAL"].id }),
       });
 
       if (!response.ok) {

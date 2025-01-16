@@ -206,7 +206,7 @@ function PricingContent() {
 
     return {
       variant: "default" as const,
-      onClick: () => handleSubscribe(PLANS["ENGAGED_CITIZEN"].id),
+      onClick: () => handleSubscribe(PLANS["PROFESSIONAL"].id),
       text: "Subscribe"
     };
   };
