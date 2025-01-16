@@ -86,7 +86,6 @@ export function ThisWeek() {
     async function fetchData() {
       const supabase = createClient();
       
-      // Get current day and time
       const now = new Date();
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const currentDay = days[now.getDay()];
@@ -94,13 +93,13 @@ export function ThisWeek() {
       const timeOfDay = isPM ? 'pm' : 'am';
       const weekday = `${currentDay}_${timeOfDay}`;
 
-      // Try current weekday first
+      // Try current weekday first, ordering by updated_at
       let { data: weeklySummary, error: summaryError } = await supabase
         .from('frontpage_weekly')
         .select('*')
         .eq('is_published', true)
         .eq('weekday', weekday)
-        .order('week_start', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(1)
         .single();
 
@@ -115,7 +114,7 @@ export function ThisWeek() {
           .select('*')
           .eq('is_published', true)
           .eq('weekday', prevWeekday)
-          .order('week_start', { ascending: false })
+          .order('updated_at', { ascending: false })
           .limit(1)
           .single());
       }
