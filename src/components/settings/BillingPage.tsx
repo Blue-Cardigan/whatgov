@@ -22,7 +22,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { PLANS, PlanType } from '@/lib/stripe-client';
-import { Check, CreditCard, Loader2 } from 'lucide-react';
+import { CreditCard, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface BillingPageProps {
@@ -107,24 +107,6 @@ export default function BillingPage({ className }: BillingPageProps) {
   }
 
   const currentPlan = subscription?.plan ? PLANS[subscription.plan as PlanType] : null;
-
-  const renderPlanFeatures = (planType: PlanType) => {
-    const features = {
-      PROFESSIONAL: [
-        'All Free features',
-        'Unlimited AI Search access',
-        'Track upcoming parliamentary events',
-        'Subscribe to searches for personalized briefings',
-      ],
-    };
-
-    return features[planType]?.map((feature, index) => (
-      <li key={index} className="flex items-center gap-2">
-        <Check className="h-4 w-4 text-green-500" />
-        {feature}
-      </li>
-    ));
-  };
 
   return (
     <div className={`space-y-6 ${className}`}>
