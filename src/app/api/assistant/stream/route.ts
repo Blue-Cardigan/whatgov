@@ -5,6 +5,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+export const runtime = 'edge';
+
 export async function POST(request: Request) {
   try {
     const { query, useRecentFiles } = await request.json();
@@ -58,6 +60,9 @@ export async function POST(request: Request) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        // Send initial keepalive
+        controller.enqueue(encoder.encode(': keepalive\n\n'));
+        
         try {
           const thread = await openai.beta.threads.create();
           console.log('[Assistant Stream] Created thread:', thread.id);
@@ -74,6 +79,11 @@ export async function POST(request: Request) {
 
           let citations: Array<{ citation_index: number; debate_id: string }> = [];
           let hasCompletedMessage = false;
+
+          // Add periodic keepalive messages during long operations
+          const keepaliveInterval = setInterval(() => {
+            controller.enqueue(encoder.encode(': keepalive\n\n'));
+          }, 5000);
 
           for await (const part of runStream) {
             if (part.event === "thread.message.delta") {
@@ -144,7 +154,9 @@ export async function POST(request: Request) {
             }
           }
           
+          // Clear interval when done
           controller.close();
+          clearInterval(keepaliveInterval);
         } catch (error) {
           console.error("Error in stream:", error);
           controller.error(error);
@@ -157,6 +169,7 @@ export async function POST(request: Request) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'Transfer-Encoding': 'chunked'
       },
     });
 

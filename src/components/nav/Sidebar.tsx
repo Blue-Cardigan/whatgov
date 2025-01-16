@@ -224,8 +224,8 @@ export function Sidebar({ className }: SidebarProps) {
       icon: Flame
     },
     {
-      title: "Upcoming",
-      href: "/upcoming-debates",
+      title: "Calendar",
+      href: "/calendar",
       icon: Calendar
     },
     {

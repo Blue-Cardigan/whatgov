@@ -329,7 +329,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   return (
     <div className="max-w-[1600px] mx-auto px-4">
       <div className="mb-6">
-        <h1 className="text-xl font-bold mb-2 logo-font">PARLIAMENTARY SEARCH</h1>
+        <h1 className="text-xl font-bold mb-2 mt-4 logo-font">PARLIAMENTARY SEARCH</h1>
         <div className="h-px bg-primary w-full mb-3" />
       </div>
 

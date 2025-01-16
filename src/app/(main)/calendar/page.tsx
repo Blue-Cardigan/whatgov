@@ -11,7 +11,7 @@ const UpcomingDebates = dynamic(
 )
 
 export const metadata = {
-  title: 'Upcoming Debates | WhatGov',
+  title: 'Calendar | WhatGov',
   description: 'View upcoming parliamentary debates and events',
 };
 

@@ -44,8 +44,8 @@ export function Topbar({ className }: TopbarProps) {
       icon: Calendar
     },
     {
-      title: "Upcoming",
-      href: "/upcoming-debates",
+      title: "Calendar",
+      href: "/calendar",
       icon: Calendar
     },
     {

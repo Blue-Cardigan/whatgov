@@ -35,7 +35,7 @@ export default function NotFound() {
               {/* Navigation Links */}
               <div className="space-y-3">
                 <h3 className="font-semibold text-sm">Navigation</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground">
                   <li>
                     <Link href="/about" className="hover:text-foreground transition-colors">
                       About
@@ -47,8 +47,13 @@ export default function NotFound() {
                     </Link>
                   </li>
                   <li>
+                    <Link href="/calendar" className="hover:text-foreground transition-colors">
+                      Calendar
+                    </Link>
+                  </li>
+                  <li>
                     <Link href="/saved" className="hover:text-foreground transition-colors">
-                      Saved Searches
+                      Saved
                     </Link>
                   </li>
                 </ul>

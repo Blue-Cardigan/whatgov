@@ -221,7 +221,7 @@ export default function BillingPage({ className }: BillingPageProps) {
       </Card>
 
       {/* Available Plans Card */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Available Plans</CardTitle>
           <CardDescription>Choose the plan that works best for you</CardDescription>
@@ -257,7 +257,7 @@ export default function BillingPage({ className }: BillingPageProps) {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
