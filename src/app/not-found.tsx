@@ -22,7 +22,7 @@ export default function NotFound() {
         <Button asChild className="px-6">
           <Link href="/" className="inline-flex items-center">
             <ScrollText className="mr-2 h-4 w-4" />
-            Return to Feed
+            Return to Homepage
           </Link>
         </Button>
       </div>
@@ -47,8 +47,8 @@ export default function NotFound() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/my-parliament" className="hover:text-foreground transition-colors">
-                      My Parliament
+                    <Link href="/saved" className="hover:text-foreground transition-colors">
+                      Saved Searches
                     </Link>
                   </li>
                 </ul>

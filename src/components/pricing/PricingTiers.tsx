@@ -177,7 +177,7 @@ function PricingContent() {
         variant: "outline" as const,
         onClick: () => {
           if (user) {
-            router.push('/myparliament');
+            router.push('/search');
           } else {
             router.push('/signup');
           }
