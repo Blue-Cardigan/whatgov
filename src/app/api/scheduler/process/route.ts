@@ -71,7 +71,10 @@ export async function POST(request: Request) {
     console.warn('[Scheduler] Unauthorized access attempt');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*', // Add CORS headers if needed
+      },
     });
   }
 
