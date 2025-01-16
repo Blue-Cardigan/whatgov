@@ -86,19 +86,43 @@ export function ThisWeek() {
     async function fetchData() {
       const supabase = createClient();
       
-      // Fetch weekly summary
-      const { data: weeklySummary, error: summaryError } = await supabase
+      // Get current day and time
+      const now = new Date();
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const currentDay = days[now.getDay()];
+      const isPM = now.getHours() >= 12.35;
+      const timeOfDay = isPM ? 'pm' : 'am';
+      const weekday = `${currentDay}_${timeOfDay}`;
+
+      // Try current weekday first
+      let { data: weeklySummary, error: summaryError } = await supabase
         .from('frontpage_weekly')
         .select('*')
         .eq('is_published', true)
+        .eq('weekday', weekday)
         .order('week_start', { ascending: false })
         .limit(1)
         .single();
 
+      // If no data found, try the previous time slot
+      if (!weeklySummary) {
+        const prevTimeOfDay = isPM ? 'am' : 'pm';
+        const prevDay = isPM ? currentDay : days[(now.getDay() - 1 + 7) % 7];
+        const prevWeekday = `${prevDay}_${prevTimeOfDay}`;
+
+        ({ data: weeklySummary, error: summaryError } = await supabase
+          .from('frontpage_weekly')
+          .select('*')
+          .eq('is_published', true)
+          .eq('weekday', prevWeekday)
+          .order('week_start', { ascending: false })
+          .limit(1)
+          .single());
+      }
+
       if (summaryError) {
         console.error('Error fetching weekly summary:', summaryError);
-      } else {
-        // Process highlights before setting the summary
+      } else if (weeklySummary) {
         const processedSummary = {
           ...weeklySummary,
           highlights: matchHighlightsWithCitations(
@@ -106,7 +130,6 @@ export function ThisWeek() {
             weeklySummary.citations
           )
         };
-        console.log(processedSummary);
         setSummary(processedSummary);
       }
 

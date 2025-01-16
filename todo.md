@@ -1,4 +1,4 @@
-MVP:
+First Launch:
 [/] Remove voting and feed functionality
 [-] Update the assistant vector store daily. 
       [/] Add a summary/analysis at the start of each
@@ -38,9 +38,12 @@ MVP:
 [/] Update whatgov and whatgov-backend to point to main then push
 [/] "This week in parliament" landing page
 
-Nexxt
+#Next
+
 [ ] Discount Link
       [ ] Check Stripe payments work
+
+UI
 [ ] Update logo font
 [ ] Fix Calendar scroll
 [ ] Debate Types listed in home/top bar
@@ -49,8 +52,6 @@ Nexxt
 [ ] Email people in the database
 [ ] Post on SM
 
-
-Next:
 [ ] Update prompts based on feedback
       [ ] Implement prompt test script
 [ ] Address processing failure rate
