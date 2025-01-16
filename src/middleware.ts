@@ -79,12 +79,15 @@ const handlePageAuth = async (req: NextRequest, res: NextResponse) => {
 
 // Add API key validation
 const isValidApiKey = (apiKey: string | null) => {
+  console.log('Checking API key:', apiKey);
+  console.log('Expected API key:', process.env.SCHEDULER_API_KEY);
   return apiKey === process.env.SCHEDULER_API_KEY;
 };
 
 export async function middleware(req: NextRequest) {
   try {
     const pathname = req.nextUrl.pathname;
+    console.log('Middleware processing path:', pathname);
 
     // Check for first-time visitor
     const isFirstVisit = !req.cookies.get('visited');
@@ -96,10 +99,15 @@ export async function middleware(req: NextRequest) {
 
     // Special handling for scheduler endpoints
     if (pathname.startsWith('/api/scheduler/')) {
+      console.log('Processing scheduler endpoint');
       const apiKey = req.headers.get('x-api-key');
+      console.log('Received API key:', apiKey);
+      
       if (isValidApiKey(apiKey)) {
+        console.log('API key is valid');
         return NextResponse.next();
       }
+      console.log('API key is invalid');
       throw new AuthError('Invalid API key');
     }
 
@@ -149,7 +157,12 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/(stripe|premium|assistant|scheduler)/:path*',
+    // Be more specific about which routes need auth
+    '/api/stripe/:path*',
+    '/api/premium/:path*',
+    '/api/assistant/:path*',
+    // Exclude scheduler from auth
+    '/((?!api/scheduler)api/:path*)',
     '/settings/:path*',
   ],
 } 
