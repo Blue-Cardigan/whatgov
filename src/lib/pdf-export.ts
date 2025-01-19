@@ -1,14 +1,15 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import { format } from 'date-fns';
-import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
+import { TDocumentDefinitions, Content, Style, Alignment } from 'pdfmake/interfaces';
 import { COLORS, SYMBOLS, PAGE_WIDTH } from './pdf-utilities';
+import { parseAndFormatContent } from './pdf-markdown';
 
 interface ExportOptions {
   title: string;
   content: string;
   date: Date;
   citations?: string[];
-  searchType: 'ai' | 'hansard' | 'calendar';
+  searchType: 'ai' | 'hansard' | 'calendar' | 'mp';
   latestContribution?: {
     memberName: string;
     house: string;
@@ -22,106 +23,40 @@ interface ExportOptions {
   returnContent?: boolean;
 }
 
-const processMarkdownLine = (line: string): Content => {
-  // Replace citation markers with standard brackets
-  const processedLine = line.replace(/【(\d+)】/g, '[$1]');
+interface PdfStyles {
+  outcomeText: Style;
+  bulletPoint: Style;
+  statValue: Style;
+  quote: Style;
+}
 
-  // Common margin definition that matches pdfmake's type requirements
-  const standardMargin: [number, number, number, number] = [0, 2, 0, 2];
-  const headerMargin: [number, number, number, number] = [0, 10, 0, 5];
-  const subheaderMargin: [number, number, number, number] = [0, 8, 0, 4];
-  const listItemMargin: [number, number, number, number] = [10, 2, 0, 2];
-  const subListItemMargin: [number, number, number, number] = [20, 1, 0, 1];
-
-  // Handle numbered lists with bold text
-  const numberedListMatch = processedLine.match(/^(\d+\.\s+)(.*)/);
-  if (numberedListMatch) {
-    const [, number, content] = numberedListMatch;
-    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return { text: part.slice(2, -2), bold: true };
-      }
-      return { text: part };
-    });
-    return {
-      text: [
-        { text: number, style: 'listNumber' },
-        ...parts
-      ],
-      style: 'bodyText',
-      margin: standardMargin
-    };
+const additionalStyles: PdfStyles = {
+  outcomeText: {
+    fontSize: 11,
+    alignment: 'justify' as Alignment,
+    lineHeight: 1.4,
+    color: COLORS.primary,
+    italics: true
+  },
+  quote: {
+    fontSize: 11,
+    lineHeight: 1.4,
+    color: COLORS.muted,
+    italics: true,
+    margin: [20, 10, 20, 10],
+    alignment: 'left' as Alignment
+  },
+  bulletPoint: {
+    fontSize: 11,
+    color: COLORS.muted,
+    alignment: 'left' as Alignment
+  },
+  statValue: {
+    fontSize: 16,
+    bold: true,
+    color: COLORS.primary,
+    alignment: 'left' as Alignment
   }
-
-  // Handle headers
-  if (processedLine.startsWith('# ')) {
-    return { 
-      text: processedLine.substring(2), 
-      style: 'header', 
-      margin: headerMargin 
-    };
-  }
-  if (processedLine.startsWith('## ')) {
-    return { 
-      text: processedLine.substring(3), 
-      style: 'subheader', 
-      margin: subheaderMargin 
-    };
-  }
-
-  // Handle bullet lists
-  if (processedLine.startsWith('- ')) {
-    const content = processedLine.substring(2);
-    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return { text: part.slice(2, -2), bold: true };
-      }
-      return { text: part };
-    });
-    return { 
-      text: parts, 
-      style: 'listItem', 
-      margin: listItemMargin 
-    };
-  }
-
-  // Handle sub-bullet lists
-  if (processedLine.startsWith('  • ')) {
-    const content = processedLine.substring(4);
-    const parts = content.split(/(\*\*.*?\*\*)/g).map(part => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return { text: part.slice(2, -2), bold: true };
-      }
-      return { text: part };
-    });
-    return { 
-      text: parts, 
-      style: 'subListItem', 
-      margin: subListItemMargin 
-    };
-  }
-
-  // Handle regular text with bold formatting
-  if (processedLine.match(/\*\*.*?\*\*/)) {
-    const parts = processedLine.split(/(\*\*.*?\*\*)/g).map(part => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return { text: part.slice(2, -2), bold: true };
-      }
-      return { text: part };
-    });
-    return { 
-      text: parts, 
-      style: 'bodyText', 
-      margin: standardMargin 
-    };
-  }
-
-  // Regular text
-  return { 
-    text: processedLine, 
-    style: 'bodyText', 
-    margin: standardMargin 
-  };
 };
 
 export async function exportToPDF({ 
@@ -133,7 +68,6 @@ export async function exportToPDF({
   latestContribution,
   doc,
   markdown,
-  returnContent
 }: ExportOptions) {
 
   const getContentStack = (): Content[] => {
@@ -157,6 +91,7 @@ export async function exportToPDF({
               { text: `${SYMBOLS.type} `, fontSize: 12, color: COLORS.muted },
               { text: searchType === 'ai' ? 'AI Research' : 
                       searchType === 'hansard' ? 'Hansard Search' : 
+                      searchType === 'mp' ? 'MP Profile' :
                       'Calendar Event', 
                 style: 'metadata' 
               }
@@ -171,12 +106,7 @@ export async function exportToPDF({
     // Content section based on type
     if (searchType === 'ai') {
       if (markdown) {
-        // Process markdown content using the new processor
-        const processedContent = content
-          .split('\n')
-          .map(processMarkdownLine)
-          .filter(Boolean);
-
+        const processedContent = parseAndFormatContent(content);
         stack.push(...processedContent);
       } else {
         stack.push({
@@ -198,8 +128,8 @@ export async function exportToPDF({
             text: [
               { text: `${index + 1}. `, style: 'citationNumber' },
               { 
-                text: `https://whatgov.uk/debate/${citation}`,
-                link: `https://whatgov.uk/debate/${citation}`,
+                text: `https://whatgov.co.uk/debate/${citation}`,
+                link: `https://whatgov.co.uk/debate/${citation}`,
                 style: 'citationLink'
               }
             ],
@@ -437,11 +367,6 @@ export async function exportToPDF({
         color: COLORS.primary,
         decoration: 'underline'
       },
-      statValue: {
-        fontSize: 24,
-        bold: true,
-        color: COLORS.primary
-      },
       statLabel: {
         fontSize: 10,
         color: COLORS.muted
@@ -472,17 +397,15 @@ export async function exportToPDF({
         lineHeight: 1.3,
         color: COLORS.muted,
         italics: true
-      }
+      },
+      ...additionalStyles
     },
     defaultStyle: {
       font: 'Roboto'
     }
   };
 
-  if (returnContent) {
-    // Return just the content stack for bulk exports
-    return getContentStack();
-  } else if (doc) {
+if (doc) {
     // For multi-item exports, return the content stack
     return docDefinition.content;
   } else {

@@ -234,6 +234,7 @@ interface KeyStatistic {
 export interface ParsedAnalysisData {
   main_content?: string;
   outcome?: string;
+  statistics?: KeyStatistic[];
   policy_terms?: string[];
   dates?: string[] | KeyDate[];
   data?: AnalysisDataPoint[];

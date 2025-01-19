@@ -14,7 +14,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useEngagement } from '@/hooks/useEngagement';
 import { Card } from "@/components/ui/card";
-import { eventTypeColors } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   Popover,
@@ -22,7 +21,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
 
 const searchTypes = [
   { 
@@ -58,33 +56,30 @@ const searchTypes = [
 ] as const;
 
 
-interface AdvancedSearchParams {
-  text?: string;
-  debate?: string;
-  spokenBy?: string;
-  type?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-}
-
 interface QueryBuilderProps {
   searchParams: {
     searchTerm: string;
-    house?: 'commons' | 'lords' | null;
+    house?: 'Commons' | 'Lords' | null;
+    dateFrom?: string;
+    dateTo?: string;
+    member?: string;
+    party?: string;
   };
   onSearch: (params: {
     searchTerm: string;
-    house?: 'commons' | 'lords' | null;
+    house?: 'Commons' | 'Lords' | null;
+    dateFrom?: string;
+    dateTo?: string;
+    member?: string;
+    party?: string;
   }) => void;
   searchType: 'ai' | 'hansard' | 'mp';
   onSearchTypeChange: (type: 'ai' | 'hansard' | 'mp') => void;
   useRecentFiles: boolean;
   onToggleRecentFiles: (value: boolean) => void;
-  advancedSearch?: AdvancedSearchParams;
-  onAdvancedSearchChange?: (params: AdvancedSearchParams) => void;
 }
 
-type HouseType = 'commons' | 'lords' | 'both' | null;
+type HouseType = 'Commons' | 'Lords' | 'Both' | null;
 
 export function QueryBuilder({ 
   searchParams, 
@@ -93,15 +88,14 @@ export function QueryBuilder({
   onSearchTypeChange,
   useRecentFiles,
   onToggleRecentFiles,
-  advancedSearch = {},
-  onAdvancedSearchChange = () => {}
 }: QueryBuilderProps) {
   const router = useRouter();
   const { getRemainingAISearches, hasReachedAISearchLimit } = useEngagement();
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
   const [selectedHouse, setSelectedHouse] = useState<HouseType>(searchParams.house || null);
+  const [memberFilter, setMemberFilter] = useState(searchParams.member || '');
+  const [partyFilter, setPartyFilter] = useState(searchParams.party || '');
   
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -110,30 +104,44 @@ export function QueryBuilder({
     to: undefined
   });
 
-  // Add advanced search state
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [advancedParams, setAdvancedParams] = useState<AdvancedSearchParams>(advancedSearch);
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range);
+  };
+
+  const setLastSevenDays = () => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    handleDateRangeChange({
+      from: sevenDaysAgo,
+      to: today
+    });
+  };
+
 
   const handleSubmit = () => {
     if (hasReachedAISearchLimit()) {
       router.push('/pricing');
       return;
     }
-
+  
     if (searchTerm.trim()) {
       const params = {
         searchTerm: searchTerm.trim(),
-        house: selectedHouse,
-        ...advancedParams // Include all advanced search params
+        house: selectedHouse === 'Both' ? undefined : selectedHouse,
+        dateFrom: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+        dateTo: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+        member: memberFilter.trim() || undefined,
+        party: partyFilter.trim() || undefined
       };
-      onSearch(params as { searchTerm: string; house?: 'commons' | 'lords' | null; });
+      onSearch(params);
     }
   };
 
-  const handleHouseSelection = (house: 'commons' | 'lords') => {
-    if (selectedHouse === 'both') {
+  const handleHouseSelection = (house: 'Commons' | 'Lords') => {
+    if (selectedHouse === 'Both') {
       // If both are selected, clicking either deselects it
-      setSelectedHouse(house === 'commons' ? 'lords' : 'commons');
+      setSelectedHouse(house === 'Commons' ? 'Lords' : 'Commons');
     } else if (selectedHouse === house) {
       // If clicking the selected house, deselect it
       setSelectedHouse(null);
@@ -142,49 +150,12 @@ export function QueryBuilder({
       setSelectedHouse(house);
     } else {
       // If the other house is selected, select both
-      setSelectedHouse('both');
+      setSelectedHouse('Both');
     }
   };
 
-  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
-    setDateRange(range);
-    const newParams = {
-      ...advancedParams,
-      dateFrom: range.from,
-      dateTo: range.to
-    };
-    setAdvancedParams(newParams);
-    onAdvancedSearchChange(newParams);
-  };
-
-  // Update advanced params when filters change
-  const handleTypeSelection = (type: string) => {
-    setSelectedTypes(prev => {
-      const newTypes = prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [type];
-      
-      // Update advanced search params
-      const newParams = {
-        ...advancedParams,
-        type: newTypes.length === 1 ? newTypes[0] : undefined
-      };
-      setAdvancedParams(newParams);
-      onAdvancedSearchChange(newParams);
-      
-      return newTypes;
-    });
-  };
-
-
-  const isHouseSelected = (house: 'commons' | 'lords') => {
-    return selectedHouse === house || selectedHouse === 'both';
-  };
-
-  const handleAdvancedParamChange = (key: keyof AdvancedSearchParams, value: string) => {
-    const newParams = { ...advancedParams, [key]: value };
-    setAdvancedParams(newParams);
-    onAdvancedSearchChange(newParams);
+  const isHouseSelected = (house: 'Commons' | 'Lords') => {
+    return selectedHouse === house || selectedHouse === 'Both';
   };
 
   // Get remaining searches count
@@ -265,14 +236,14 @@ export function QueryBuilder({
             {/* House Selection */}
             <div className="space-y-3">
               <Label className="text-base font-semibold">Select House</Label>
-              <div className="flex gap-3">
+              <div className="flex">
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => handleHouseSelection('commons')}
+                  onClick={() => handleHouseSelection('Commons')}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 h-12 px-6",
-                    isHouseSelected('commons') && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    isHouseSelected('Commons') && "bg-primary text-primary-foreground hover:bg-primary/90",
                     !selectedHouse && "border-dashed"
                   )}
                 >
@@ -282,10 +253,10 @@ export function QueryBuilder({
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => handleHouseSelection('lords')}
+                  onClick={() => handleHouseSelection('Lords')}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 h-12 px-6",
-                    isHouseSelected('lords') && "bg-primary text-primary-foreground hover:bg-primary/90",
+                    isHouseSelected('Lords') && "bg-primary text-primary-foreground hover:bg-primary/90",
                     !selectedHouse && "border-dashed"
                   )}
                 >
@@ -295,66 +266,22 @@ export function QueryBuilder({
               </div>
               <p className="text-sm text-muted-foreground">
                 {selectedHouse === null && "Select house(s) to search"}
-                {selectedHouse === 'both' && "Searching both Houses"}
-                {selectedHouse === 'commons' && "Searching House of Commons"}
-                {selectedHouse === 'lords' && "Searching House of Lords"}
+                {selectedHouse === 'Both' && "Searching both Houses"}
+                {selectedHouse === 'Commons' && "Searching House of Commons"}
+                {selectedHouse === 'Lords' && "Searching House of Lords"}
               </p>
             </div>
 
-            {/* Advanced Search Toggle */}
-            <div className="space-y-3 pl-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="advanced-search" className="text-base font-semibold">Advanced Search</Label>
-                <Switch
-                  id="advanced-search"
-                  checked={showAdvanced}
-                  onCheckedChange={setShowAdvanced}
-                  className="data-[state=checked]:bg-primary"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Enable advanced search options to narrow your search.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Advanced Search Fields */}
-        {searchType === 'hansard' && showAdvanced && (
-        <div className="space-y-6 p-6 border-2 rounded-lg bg-muted/5">
-          <div className="grid grid-cols-1 gap-6">
-
-            {/* New Advanced Search Fields */}
-            <div className="space-y-4">
-              {/* Type Selection */}
+            {/* Date Range Selection */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Date Range</Label>
               <div className="space-y-2">
-                <Label className="font-medium">Debate Type</Label>
-                <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto">
-                  {Object.keys(eventTypeColors).map((type) => (
-                    <Badge
-                      key={type}
-                      variant={selectedTypes.includes(type) ? "default" : "outline"}
-                      className={cn(
-                        "cursor-pointer hover:opacity-80 transition-all",
-                        selectedTypes.includes(type) ? "bg-primary" : "hover:bg-muted"
-                      )}
-                      onClick={() => handleTypeSelection(type)}
-                    >
-                      {type}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date Range */}
-              <div className="space-y-2">
-                <Label className="font-medium">Date Range</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal h-12",
                         !dateRange.from && "text-muted-foreground"
                       )}
                     >
@@ -387,22 +314,60 @@ export function QueryBuilder({
                         to: range?.to
                       })}
                       numberOfMonths={2}
+                      fromDate={new Date('2024-07-04')}
+                      toDate={new Date()}
                     />
                   </PopoverContent>
                 </Popover>
-                {(dateRange.from || dateRange.to) && (
+                <div className="flex gap-2">
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm"
-                    onClick={() => handleDateRangeChange({ from: undefined, to: undefined })}
-                    className="text-sm text-muted-foreground"
+                    onClick={setLastSevenDays}
+                    className="text-sm"
                   >
-                    Clear dates
+                    Last 7 days
                   </Button>
-                )}
-              </div>
+                  {(dateRange.from || dateRange.to) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDateRangeChange({ from: undefined, to: undefined })}
+                      className="text-sm text-muted-foreground"
+                    >
+                      Clear dates
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Member and Party Filters */}
+            <div className="space-y-3">
+            <Label className="text-base font-semibold">Filter by Member or Department</Label>
+            <Input
+              placeholder="Enter MP name or department name..."
+              value={memberFilter}
+              onChange={(e) => setMemberFilter(e.target.value)}
+              className="h-12"
+            />
+            <p className="text-sm text-muted-foreground">
+              Filter debates involving specific MPs or government departments
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Filter by Party</Label>
+            <Input
+              placeholder="Enter party name (e.g. Conservative, Labour)..."
+              value={partyFilter}
+              onChange={(e) => setPartyFilter(e.target.value)}
+              className="h-12"
+            />
+            <p className="text-sm text-muted-foreground">
+              Filter debates involving members of specific political parties
+            </p>
+          </div>
           </div>
         )}
 

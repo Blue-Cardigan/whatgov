@@ -89,14 +89,14 @@ export async function generateMetadata({ params }: GenerateMetadataProps) {
     title: debate.title || 'Debate',
     openGraph: {
       title: debate.title || 'Debate',
-      description: debate.analysis.split(0, 100) || '',
+      description: debate.analysis.main_content.split(0, 100) || '',
       type: 'article',
       publishedTime: debate.date,
     },
     twitter: {
       card: 'summary_large_image',
       title: debate.title || 'Debate',
-      description: debate.analysis.split(0, 100) || '',
+      description: debate.analysis.main_content.split(0, 100) || '',
     },
   };
 } 

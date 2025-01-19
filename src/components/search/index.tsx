@@ -3,17 +3,12 @@
 import { useState, useCallback } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { HansardAPI } from '@/lib/search-api';
 import { QueryBuilder } from './QueryBuilder';
 import { SearchResults } from './Hansard/SearchResults';
 import { StreamedResponse } from './Assistant/StreamedResponse';
-import { MPProfileCard } from '@/components/search/MPProfile/MPProfileCard';
-import { MPLinks } from '@/components/search/MPProfile/MPLinks';
-import { SubscriptionCTA } from '@/components/ui/subscription-cta';
 import { getMPData } from "@/lib/supabase/mpsearch";
-import type { MPData } from "@/types";
 import { useAssistant } from '@/hooks/useAssistant';
-import type { Citation } from '@/types/search';
+import type { Citation, SearchResponse } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
 import { Button } from '@/components/ui/button';
 import { exportToPDF } from '@/lib/pdf-export';
@@ -26,7 +21,7 @@ import {
 import type { SearchParams } from '@/types/search';
 import { LoadingAnimation } from '@/components/ui/loading-animation';
 import { Card } from "@/components/ui/card";
-import { Clock, Check, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import createClient from '@/lib/supabase/client';
 import { MPSearchResults } from './MPProfile/MPSearchResults';
 
@@ -79,7 +74,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           : JSON.stringify(searchState.results?.Debates, null, 2) || '',
         citations: activeSearchType === 'ai'
           ? searchState.aiSearch.citations.map(c => c.debate_id)
-          : searchState.results?.Debates.map(d => d.debate_id) || [],
+          : searchState.results?.Debates?.map(d => d.debate_id?.toString()).filter((id): id is string => id !== undefined) || undefined,
         date: new Date(),
         searchType: activeSearchType as 'ai' | 'hansard' | 'calendar',
       });
@@ -100,7 +95,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
       switch (activeSearchType) {
         case 'mp':
           const mpResults = await getMPData(searchParams.searchTerm);
-          console.log(mpResults);
           if (mpResults && mpResults.length > 0) {
             dispatch({ 
               type: 'SET_MP_SEARCH', 
@@ -143,8 +137,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           const params: SearchParams = {
             ...searchParams,
             searchTerm: searchParams.searchTerm || '',
-            house: searchParams.house || 'Commons',
-            type: searchParams.type,
+            house: searchParams.house || undefined,
+            party: searchParams.party || undefined,
+            member: searchParams.member || undefined,
             dateFrom: searchParams.dateFrom,
             dateTo: searchParams.dateTo
           };
@@ -155,20 +150,20 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
             .rpc('search_debates', { 
               search_term: params.searchTerm,
               house_filter: params.house || null,
-              type_filter: params.type || null,
+              party_filter: params.party || null,
+              member_filter: params.member || null,
               date_from: params.dateFrom || null,
               date_to: params.dateTo || null
             });
         
           if (dbError) throw dbError;
         
-          const results: typeof SearchResults = {
-            TotalDebates: debates?.length || 0,
+          const results = {
             Debates: debates || [],
-            SearchTerms: [params.searchTerm]
+            TotalDebates: debates?.length || 0
           };
         
-          dispatch({ type: 'SET_RESULTS', payload: results });
+          dispatch({ type: 'SET_RESULTS', payload: results as SearchResponse });
           break;
       }
     } catch (error) {
@@ -177,7 +172,7 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     } finally {
       setLoading(false);
     }
-  }, [activeSearchType, performAISearch, handleStreamingUpdate, handleStreamingComplete, useRecentFiles, dispatch]);
+  }, [activeSearchType, performAISearch, handleStreamingUpdate, handleStreamingComplete, useRecentFiles, dispatch, supabase]);
 
   const handleSearchTypeChange = (type: 'ai' | 'hansard' | 'mp') => {
     setActiveSearchType(type);
@@ -195,32 +190,35 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
     }
 
     const renderActionButtons = () => {
-      if (loading || (!searchState.aiSearch.streamingText && !searchState.results?.Contributions?.length)) {
+      if (loading || (!searchState.aiSearch.streamingText && !searchState.results?.Debates?.length)) {
         return null;
       }
 
       return (
         <div className="flex gap-2 mb-4">
-          <SaveSearchButton
-            searchType={activeSearchType}
-            aiSearch={activeSearchType === 'ai' ? {
-              query: searchState.searchParams.searchTerm || '',
-              streamingText: searchState.aiSearch.streamingText,
-              citations: searchState.aiSearch.citations,
-            } : undefined}
-            hansardSearch={activeSearchType === 'hansard' ? {
-              query: searchState.searchParams.searchTerm || '',
-              response: {
-                TotalDebates: searchState.results?.TotalDebates || 0,
-                Debates: searchState.results?.Debates || [],
-                SearchTerms: searchState.results?.SearchTerms || []
-              },
-              queryState: {
-                searchTerm: searchState.searchParams.searchTerm || '',
-                house: searchState.searchParams.house || 'Commons',
-              }
-            } : undefined}
-          />
+          {(activeSearchType === 'hansard' || activeSearchType === 'ai') && (
+            <SaveSearchButton
+              searchType={activeSearchType}
+              aiSearch={activeSearchType === 'ai' ? {
+                query: searchState.searchParams.searchTerm || '',
+                streamingText: searchState.aiSearch.streamingText,
+                citations: searchState.aiSearch.citations,
+              } : undefined}
+              hansardSearch={activeSearchType === 'hansard' ? {
+                query: searchState.searchParams.searchTerm || '',
+                response: {
+                  Debates: (searchState.results?.Debates.slice(0, 5) || []).map(debate => ({debate_id: debate.ext_id}))
+                },
+                queryState: {
+                  house: searchState.searchParams.house || undefined,
+                  member: searchState.searchParams.member || undefined,
+                  party: searchState.searchParams.party || undefined,
+                }
+              } : undefined}
+            />
+          )}
+
+          {(activeSearchType === 'hansard' || activeSearchType === 'ai') && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -236,8 +234,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
               <TooltipContent>
                 Export to PDF
               </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       );
     };
@@ -261,30 +260,10 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           <div>
             {renderActionButtons()}
             <SearchResults
-              results={searchState.results || {
-                TotalMembers: 0,
-                TotalContributions: 0,
-                TotalWrittenStatements: 0,
-                TotalWrittenAnswers: 0,
-                TotalCorrections: 0,
-                TotalPetitions: 0,
-                TotalDebates: 0,
-                TotalCommittees: 0,
-                TotalDivisions: 0,
-                SearchTerms: [],
-                Members: [],
-                Contributions: [],
-                WrittenStatements: [],
-                WrittenAnswers: [],
-                Corrections: [],
-                Petitions: [],
-                Debates: [],
-                Divisions: [],
-                Committees: []
-              }}
+              results={searchState.results as SearchResponse}
               isLoading={loading}
-              totalResults={searchState.results?.TotalContributions || 0}
               searchParams={searchState.searchParams}
+              totalResults={searchState.results?.Debates?.length || 0}
             />
           </div>
         );
@@ -319,9 +298,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         <QueryBuilder
           searchParams={{
             searchTerm: searchState.searchParams.searchTerm || '',
-            house: searchState.searchParams.house as 'commons' | 'lords' | null | undefined
+            house: searchState.searchParams.house as 'Commons' | 'Lords' | null | undefined
           }}
-          onSearch={performSearch as (params: { searchTerm: string; house?: 'commons' | 'lords' | null | undefined; }) => void}
+          onSearch={performSearch as (params: { searchTerm: string; house?: 'Commons' | 'Lords' | null | undefined; }) => void}
           searchType={activeSearchType}
           onSearchTypeChange={handleSearchTypeChange}
           useRecentFiles={useRecentFiles}

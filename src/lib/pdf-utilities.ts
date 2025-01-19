@@ -3,6 +3,13 @@ import { format } from 'date-fns';
 import type { Content, TDocumentDefinitions, ContentText } from 'pdfmake/interfaces';
 import type { SavedSearch } from '@/types/search';
 import type { TimeSlot } from '@/types/calendar';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+
+if (pdfFonts.pdfMake) {
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+} else {
+  pdfMake.vfs = pdfFonts;
+}
 
 interface AnalysisData {
   main_content: string;

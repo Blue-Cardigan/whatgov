@@ -42,9 +42,17 @@ export async function saveSearch(
     
     if (params.searchType === 'hansard') {
       queryState = {
-        searchTerm: params.query,
         house: params.queryState?.house,
-        parts: [params.query] // Store original query for exact matching
+        member: params.queryState?.member,
+        party: params.queryState?.party,
+        date_from: params.queryState?.date_from,
+        date_to: params.queryState?.date_to,
+      };
+    }
+
+    if (params.searchType === 'mp') {
+      queryState = {
+        mp: params.queryState?.mp,
       };
     }
 

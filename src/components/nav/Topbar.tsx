@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useSupabase } from '@/components/providers/SupabaseProvider';
+import { useEffect, useState } from "react";
 
 interface TopbarProps {
   className?: string;
@@ -25,6 +27,47 @@ export function Topbar({ className }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut, subscription } = useAuth();
+  const supabase = useSupabase();
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    async function checkUnread() {
+      if (!user?.id) return;
+      
+      const { count, error } = await supabase
+        .from('saved_searches')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_unread', true);
+        
+      if (error) {
+        console.error('Error checking unread status:', error);
+        return;
+      }
+      
+      setHasUnread((count || 0) > 0);
+    }
+    
+    checkUnread();
+    
+    const channel = supabase
+      .channel('saved_searches_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'saved_searches',
+          filter: `user_id=eq.${user?.id}`
+        },
+        () => checkUnread()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase]);
 
   const handleSignOut = async () => {
     try {
@@ -56,7 +99,8 @@ export function Topbar({ className }: TopbarProps) {
     {
       title: "Saved",
       href: "/saved",
-      icon: Bookmark
+      icon: Bookmark,
+      hasNotification: hasUnread
     }
   ];
 
@@ -77,7 +121,7 @@ export function Topbar({ className }: TopbarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
+                "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary relative",
                 pathname === item.href
                   ? "text-primary"
                   : "text-muted-foreground"
@@ -85,6 +129,9 @@ export function Topbar({ className }: TopbarProps) {
             >
               <item.icon className="h-4 w-4" />
               <span>{item.title}</span>
+              {item.hasNotification && (
+                <span className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-primary" />
+              )}
             </Link>
           ))}
         </nav>
@@ -147,9 +194,12 @@ export function Topbar({ className }: TopbarProps) {
             <DropdownMenuContent align="end" className="w-56 md:hidden">
               {navItems.map((item) => (
                 <DropdownMenuItem key={item.href} asChild>
-                  <Link href={item.href} className="flex items-center">
+                  <Link href={item.href} className="flex items-center relative">
                     <item.icon className="mr-2 h-4 w-4" />
                     <span>{item.title}</span>
+                    {item.hasNotification && (
+                      <span className="absolute top-1/2 -translate-y-1/2 right-2 h-2 w-2 rounded-full bg-primary" />
+                    )}
                   </Link>
                 </DropdownMenuItem>
               ))}
@@ -159,4 +209,4 @@ export function Topbar({ className }: TopbarProps) {
       </div>
     </header>
   );
-} 
+}

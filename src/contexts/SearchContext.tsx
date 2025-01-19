@@ -2,17 +2,13 @@
 
 import { createContext, useContext, useReducer, useEffect, Dispatch, ReactNode } from 'react';
 import type { Citation, SearchParams, SearchResponse } from '@/types/search';
+import { MPData } from '@/types';
 
 
 interface MPSearchState {
   query: string;
   mpIds?: string[];
-  results: Array<{
-    member_id: number;
-    display_as: string;
-    party: string;
-    constituency: string;
-  }>;
+  results: MPData[];
   keywords: string[];
 }
 
@@ -214,7 +210,7 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         mpSearch: {
           ...state.mpSearch,
           ...action.payload,
-          results: action.payload.results || state.mpSearch.results
+          results: action.payload.results as MPData[] || state.mpSearch.results
         }
       };
     case 'CLEAR_MP_SEARCH':

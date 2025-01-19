@@ -2,30 +2,9 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import { DebateItem } from '@/types';
 import { HansardDebateResponse } from '@/types/hansard';
 import { format } from 'date-fns';
-import type { ParsedAnalysisData, SpeakerPoint } from '@/components/debates/AnalysisData';
 import { TDocumentDefinitions, Content } from 'pdfmake/interfaces';
-
-const COLORS = {
-  primary: '#449441',        // Parliamentary Green
-  primaryForeground: '#fafafa',
-  secondary: '#f0fdf4',
-  muted: '#71717a',
-  border: '#e4e4e7',
-  background: '#ffffff',
-  destructive: '#B50938',    // Red
-  success: '#16a34a',        // Same as primary
-  accent: '#22c55e',
-};
-
-const SYMBOLS = {
-  calendar: '•',      // Standard bullet
-  location: '›',      // Right-pointing arrow
-  type: '»',          // Double right-pointing arrow
-  analysis: '—',      // Em dash
-  person: '·',        // Middle dot
-  reference: '†',     // Dagger
-  stat: '∙',          // Bullet operator
-};
+import { ParsedAnalysisData, SpeakerPoint } from '@/types';
+import { COLORS, SYMBOLS } from '@/lib/pdf-utilities';
 
 interface ExportDebateProps {
   debate: DebateItem & {
@@ -34,11 +13,50 @@ interface ExportDebateProps {
   hansardData?: HansardDebateResponse;
 }
 
-export async function exportDebateToPDF({ debate }: ExportDebateProps) {
+interface Contribution {
+  content: string;
+  references?: Array<{ text: string }>;
+}
 
+function processContribution(contribution: string | Contribution): Contribution {
+  if (typeof contribution === 'string') {
+    try {
+      return JSON.parse(contribution) as Contribution;
+    } catch {
+      return { content: contribution };
+    }
+  }
+  return contribution;
+}
+
+function processSpeakerPoints(points: SpeakerPoint[] | string[] | string): SpeakerPoint[] {
+  if (typeof points === 'string') {
+    try {
+      return JSON.parse(points);
+    } catch {
+      return [];
+    }
+  }
+  if (Array.isArray(points) && points.length > 0) {
+    if (typeof points[0] === 'string') {
+      return points.map(point => ({
+        name: 'Unknown',
+        role: 'Member',
+        party: '',
+        constituency: '',
+        contributions: [{ content: point as string }]
+      }));
+    }
+    return points as SpeakerPoint[];
+  }
+  return [];
+}
+
+export async function exportDebateToPDF({ debate }: ExportDebateProps) {
   const PAGE_WIDTH = 595.28;
   const CONTENT_WIDTH = PAGE_WIDTH - 80;
   let parsedAnalysis: ParsedAnalysisData;
+
   try {
     parsedAnalysis = typeof debate.analysis === 'string' 
       ? JSON.parse(debate.analysis) 
@@ -53,24 +71,99 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
     };
   }
 
+  const analysisSections: Content[] = [
+    // Main Analysis Section
+    {
+      fillColor: COLORS.secondary,
+      margin: [0, 0, 0, 30],
+      layout: 'noBorders',
+      table: {
+        widths: [CONTENT_WIDTH],
+        body: [[{
+          stack: [
+            {
+              text: [
+                { text: 'Key Analysis', style: 'sectionHeader' }
+              ],
+              margin: [0, 0, 0, 10]
+            },
+            {
+              text: parsedAnalysis.main_content,
+              style: 'bodyText'
+            }
+          ]
+        }]]
+      }
+    }
+  ];
+
+  // Add Statistics Section if present
+  if (parsedAnalysis.statistics && parsedAnalysis.statistics.length > 0) {
+    analysisSections.push({
+      margin: [0, 0, 0, 30],
+      columns: parsedAnalysis.statistics.map(stat => ({
+        width: '*',
+        stack: [
+          {
+            text: stat.value,
+            style: 'statValue',
+            alignment: 'center'
+          },
+          {
+            text: stat.context,
+            style: 'statContext',
+            alignment: 'center',
+            margin: [10, 5, 10, 0]
+          }
+        ],
+        margin: [10, 0]
+      }))
+    });
+  }
+
+  // Add Outcome Section if present
+  if (parsedAnalysis.outcome) {
+    analysisSections.push({
+      margin: [0, 0, 0, 30],
+      table: {
+        widths: [CONTENT_WIDTH],
+        body: [[{
+          stack: [
+            {
+              text: [
+                { text: `${SYMBOLS.analysis} `, color: COLORS.muted },
+                { text: 'Outcome', style: 'sectionHeader' }
+              ],
+              margin: [0, 0, 0, 10]
+            },
+            {
+              text: parsedAnalysis.outcome,
+              style: 'outcomeText'
+            }
+          ]
+        }]]
+      },
+      layout: 'noBorders'
+    });
+  }
+
   const date = format(new Date(debate.date), 'dd MMMM yyyy');
   const debateType = debate.type;
+  const speakerPoints = processSpeakerPoints(debate.speaker_points || []);
 
   const docDefinition: TDocumentDefinitions = {
     pageMargins: [40, 80, 40, 60] as [number, number, number, number],
     header: {
       stack: [
         {
-          canvas: [
-            {
-              type: 'rect',
-              x: 0,
-              y: 0,
-              w: PAGE_WIDTH,
-              h: 60,
-              color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary,
-            }
-          ]
+          canvas: [{
+            type: 'rect',
+            x: 0,
+            y: 0,
+            w: PAGE_WIDTH,
+            h: 60,
+            color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary,
+          }]
         },
         {
           columns: [
@@ -99,17 +192,15 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       return {
         stack: [
           {
-            canvas: [
-              {
-                type: 'line',
-                x1: 40,
-                y1: 0,
-                x2: PAGE_WIDTH - 40,
-                y2: 0,
-                lineWidth: 1,
-                lineColor: COLORS.border
-              }
-            ]
+            canvas: [{
+              type: 'line',
+              x1: 40,
+              y1: 0,
+              x2: PAGE_WIDTH - 40,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: COLORS.border
+            }]
           },
           {
             columns: [
@@ -139,6 +230,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
         style: 'header',
         margin: [0, 0, 0, 10] as [number, number, number, number]
       },
+      // Metadata Section
       {
         columns: [
           {
@@ -163,152 +255,52 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
         ],
         margin: [0, 0, 0, 30] as [number, number, number, number]
       },
-
-      // Analysis Section
-      {
-        fillColor: COLORS.secondary,
-        margin: [0, 0, 0, 30],
+      // Analysis Sections
+      ...analysisSections,
+      // Speaker Points Section
+      ...speakerPoints.map(speaker => ({
+        margin: [0, 0, 0, 20],
         padding: 20,
-        layout: 'noBorders',
+        fillColor: COLORS.background,
         table: {
           widths: [CONTENT_WIDTH],
-          body: [[
-            {
-              stack: [
-                {
-                  text: [
-                    { text: 'Key Analysis', style: 'sectionHeader' }
-                  ],
-                  margin: [0, 0, 0, 10]
-                },
-                {
-                  text: parsedAnalysis.main_content,
-                  style: 'bodyText'
-                }
-              ]
-            }
-          ]]
-        }
-      },
-
-      // Policy Terms
-      ...(parsedAnalysis.policy_terms?.length ? [{
-        columns: parsedAnalysis.policy_terms.map(term => ({
-          width: 'auto',
-          text: term,
-          style: 'pill',
-          margin: [5, 0, 5, 0],
-          padding: [10, 5],
-          borderRadius: 12
-        })),
-        columnGap: 10,
-        margin: [0, 0, 0, 30]
-      }] : []),
-
-      // Statistics
-      ...(parsedAnalysis.data?.length ? [{
-        columns: parsedAnalysis.data.map(stat => ({
-          width: 'auto',
-          stack: [
-            {
-              text: stat.value,
-              style: 'statValue',
-              alignment: 'center'
-            },
-            {
-              text: stat.context,
-              style: 'statContext',
-              alignment: 'center'
-            }
-          ],
-          margin: [5, 0],
-          padding: [10, 10],
-          borderRadius: 4
-        })),
-        columnGap: 10,
-        margin: [0, 0, 0, 30]
-      }] : []),
-
-      // Speaker Points
-      ...(debate.speaker_points ? 
-        (typeof debate.speaker_points === 'string' 
-          ? JSON.parse(debate.speaker_points)
-          : Array.isArray(debate.speaker_points) 
-            ? debate.speaker_points 
-            : []
-        )
-          .filter((point: unknown): point is SpeakerPoint => {
-            // First check if it's a string
-            if (typeof point === 'string') return false;
-            
-            // Then check if it's a valid SpeakerPoint object
-            return point !== null && 
-                   typeof point === 'object' &&
-                   'name' in point &&
-                   'party' in point &&
-                   'role' in point &&
-                   'constituency' in point &&
-                   'contributions' in point && 
-                   Array.isArray((point as SpeakerPoint).contributions);
-          })
-          .map((speaker: SpeakerPoint) => ({
-            margin: [0, 0, 0, 20],
-            padding: 20,
-            fillColor: COLORS.background,
-            table: {
-              widths: [CONTENT_WIDTH],
-              body: [[{
-                stack: [
-                  // Speaker Header - Updated to handle optional fields
+          body: [[{
+            stack: [
+              {
+                columns: [
                   {
-                    columns: [
+                    stack: [
                       {
-                        stack: [
-                          {
-                            text: [
-                              { text: `${SYMBOLS.person} `, color: COLORS.muted },
-                              { text: speaker.name, style: 'speakerName' }
-                            ]
-                          },
-                          {
-                            text: `${speaker.party || 'Unknown Party'} ${SYMBOLS.calendar} ${speaker.constituency || speaker.role || ''}`,
-                            style: 'speakerMeta'
-                          }
+                        text: [
+                          { text: `${SYMBOLS.person} `, color: COLORS.muted },
+                          { text: speaker.name, style: 'speakerName' }
                         ]
+                      },
+                      {
+                        text: `${speaker.party || 'Unknown Party'} ${SYMBOLS.calendar} ${speaker.constituency || speaker.role || ''}`,
+                        style: 'speakerMeta'
                       }
                     ]
-                  },
-                  // Contributions
-                  ...speaker.contributions.map(contribution => ({
-                    stack: [
-                      contribution.type ? {
-                        text: [
-                          { text: `${SYMBOLS.type} `, color: COLORS.muted },
-                          { text: contribution.type.charAt(0).toUpperCase() + contribution.type.slice(1), style: 'contributionType' }
-                        ],
-                        margin: [0, 10, 0, 5]
-                      } : {},
-                      {
-                        text: contribution.content,
-                        style: 'bodyText',
-                        margin: [0, 0, 0, 5]
-                      },
-                      contribution.references?.length ? {
-                        text: [
-                          { text: `${SYMBOLS.reference} `, color: COLORS.muted },
-                          { text: contribution.references.map((ref: { value: string }) => ref.value).join(' • '), style: 'references' }
-                        ],
-                        margin: [0, 0, 0, 10]
-                      } : {}
-                    ]
-                  }))
+                  }
                 ]
-              }]]
-            },
-            layout: 'noBorders'
-          }))
-        : []),
-
+              },
+              ...speaker.contributions.map(contribution => {
+                const processed = processContribution(contribution);
+                return {
+                  stack: [
+                    {
+                      text: processed.content,
+                      style: 'bodyText',
+                      margin: [0, 0, 0, 5]
+                    }
+                  ]
+                };
+              })
+            ]
+          }]]
+        },
+        layout: 'noBorders'
+      })),
       // Footer Links
       {
         stack: [
@@ -322,18 +314,6 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
             text: `https://whatgov.uk/debate/${debate.ext_id}`,
             link: `https://whatgov.uk/debate/${debate.ext_id}`,
             style: 'footerLink'
-          },
-          {
-            text: [
-              { text: `${SYMBOLS.reference} `, color: COLORS.muted },
-              { text: 'Original Hansard record:', style: 'footerLabel' }
-            ],
-            margin: [0, 10, 0, 0]
-          },
-          {
-            text: `https://hansard.parliament.uk/House/${debate.date}/debates/${debate.ext_id}`,
-            link: `https://hansard.parliament.uk/House/${debate.date}/debates/${debate.ext_id}`,
-            style: 'footerLink'
           }
         ],
         margin: [0, 30, 0, 0]
@@ -343,7 +323,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       header: {
         fontSize: 24,
         bold: true,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary
       },
       metadata: {
         fontSize: 10,
@@ -352,7 +332,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       sectionHeader: {
         fontSize: 16,
         bold: true,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary
       },
       bodyText: {
         fontSize: 11,
@@ -362,13 +342,13 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       },
       pill: {
         fontSize: 10,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary,
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary,
         bold: true
       },
       statValue: {
         fontSize: 18,
         bold: true,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary
       },
       statContext: {
         fontSize: 10,
@@ -377,7 +357,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       speakerName: {
         fontSize: 14,
         bold: true,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary
       },
       speakerMeta: {
         fontSize: 10,
@@ -385,7 +365,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       },
       contributionType: {
         fontSize: 10,
-        color: COLORS.success,
+        color: COLORS.primary,
         bold: true
       },
       references: {
@@ -399,7 +379,7 @@ export async function exportDebateToPDF({ debate }: ExportDebateProps) {
       },
       footerLink: {
         fontSize: 9,
-        color: debate.house === 'Lords' ? COLORS.destructive : COLORS.primary,
+        color: debate.house === 'Lords' ? COLORS.warning : COLORS.primary,
         decoration: 'underline'
       }
     },

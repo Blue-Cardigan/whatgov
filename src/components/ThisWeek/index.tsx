@@ -224,7 +224,7 @@ export function ThisWeek() {
       </div>
 
       {/* Main 3-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_1fr] gap-4">
         {/* Left Column */}
         <div className="space-y-6">
           {[0, 1].map((index) => (

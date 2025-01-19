@@ -8,13 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { CalendarCard } from './CalendarCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Users } from 'lucide-react';
 import { CardHeader, CardTitle } from '@/components/ui/card';
-import { exportCalendarItemToPDF, exportAllToPDF } from '@/lib/pdf-utilities';
-import { fetchSavedSearches, deleteSavedSearch, markSearchesAsRead } from '@/lib/supabase/saved-searches';
+import { exportCalendarItemToPDF, exportSearchToPDF } from '@/lib/pdf-utilities';
+import { exportAllToPDF } from '@/lib/pdf-bulk';
+import { fetchSavedSearches, deleteSavedSearch, markSearchesAsRead, updateSearchSchedule } from '@/lib/supabase/saved-searches';
 import { fetchSavedCalendarItems, deleteCalendarItem, markCalendarItemsAsRead } from '@/lib/supabase/saved-calendar-items';
 import { AISearchCard } from './AISearchCard';
-import { HansardSearchCard } from './HansardSearchCard';
+import HansardSearchCard from './HansardSearchCard';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { Search, Brain, Calendar } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { RSSFeed } from './RSSFeed';
 import Link from 'next/link';
+import { MPSearchCard } from './MPSearchCard';
 
 
 interface SavedCalendarItem {
@@ -35,7 +37,7 @@ interface SavedCalendarItem {
   debate_ids?: string[];
 }
 
-type FilterType = 'all' | 'ai' | 'hansard' | 'calendar';
+type FilterType = 'all' | 'ai' | 'hansard' | 'calendar' | 'mp';
 
 export function SavedSearches() {
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -163,6 +165,7 @@ export function SavedSearches() {
     ai: searches.filter(s => s.search_type === 'ai').length,
     hansard: searches.filter(s => s.search_type === 'hansard').length,
     calendar: calendarItems.length,
+    mp: searches.filter(s => s.search_type === 'mp').length,
     unread: [
       ...searches.filter(s => s.is_unread),
       ...calendarItems.filter(i => i.is_unread)
@@ -246,30 +249,50 @@ export function SavedSearches() {
   };
 
   const renderSearchCard = (search: SavedSearch, relatedSearches: SavedSearch[]) => {
-
-    if (search.search_type === 'ai') {
-      return (
-        <AISearchCard
-          key={search.id}
-          search={search}
-          relatedSearches={relatedSearches}
-          onDelete={() => deleteSavedSearch(search.id, user!.id)}
-          user={user}
-        />
-      );
-    } else if (search.search_type === 'hansard') {
-      return (
-        <HansardSearchCard
-          key={search.id}
-          search={search}
-          onDelete={() => deleteSavedSearch(search.id, user!.id)}
-          user={user}
-          relatedSearches={relatedSearches}
-          compact={relatedSearches.length > 0}
-        />
-      );
+    switch (search.search_type) {
+      case 'ai':
+        return (
+          <AISearchCard
+            key={search.id}
+            search={search}
+            relatedSearches={relatedSearches}
+            onDelete={() => deleteSavedSearch(search.id, user!.id)}
+            user={user}
+          />
+        );
+      case 'hansard':
+        return (
+          <HansardSearchCard
+            key={search.id}
+            search={search}
+            onDelete={() => deleteSavedSearch(search.id, user!.id)}
+            onScheduleUpdate={async (enabled, day) => {
+              await updateSearchSchedule(search.id, user!.id, {
+                is_active: enabled,
+                repeat_on: enabled ? {
+                  frequency: 'weekly',
+                  dayOfWeek: parseInt(day)
+                } : null
+              });
+            }}
+            onExport={async () => {
+              await exportSearchToPDF(search);
+            }}
+            isProfessional={isProfessional}
+          />
+        );
+      case 'mp':
+        return (
+          <MPSearchCard
+            key={search.id}
+            search={search}
+            onDelete={() => deleteSavedSearch(search.id, user!.id)}
+            user={user}
+          />
+        );
+      default:
+        return null;
     }
-    return null;
   };
 
   if (!user) {
@@ -339,7 +362,7 @@ export function SavedSearches() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">AI Searches</CardTitle>
@@ -367,6 +390,15 @@ export function SavedSearches() {
               <div className="text-2xl font-bold">{stats.calendar}</div>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">MP Searches</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.mp}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filter Tabs */}
@@ -375,7 +407,7 @@ export function SavedSearches() {
           onValueChange={(value) => setFilterType(value as FilterType)}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="all" className="relative">
               All
               {stats.unread > 0 && (
@@ -390,6 +422,7 @@ export function SavedSearches() {
             <TabsTrigger value="ai">AI Searches</TabsTrigger>
             <TabsTrigger value="hansard">Hansard</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="mp">MPs</TabsTrigger>
           </TabsList>
         </Tabs>
 

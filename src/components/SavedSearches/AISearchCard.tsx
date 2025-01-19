@@ -7,14 +7,13 @@ import { ChevronDown, ChevronUp, Download, Trash2, BellRing, ChevronLeft, Chevro
 import { useState, useMemo } from 'react';
 import { FormattedMarkdown } from '@/lib/utils';
 import { DebateHeader } from '@/components/debates/DebateHeader';
-import { exportSearchToPDF } from '@/lib/pdf-utilities';
+import { exportToPDF } from '@/lib/pdf-export';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { User } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
 import { updateSearchSchedule } from '@/lib/supabase/saved-searches';
 import { useRouter } from 'next/navigation';
+import { User } from '@supabase/supabase-js';
 
 interface AISearchCardProps {
   search: SavedSearch & { 
@@ -64,7 +64,6 @@ export function AISearchCard({ search, relatedSearches, onDelete, user }: AISear
   const { isProfessional } = useAuth();
   const router = useRouter();
 
-  // Sort all searches by date (most recent first)
   const allSearches = useMemo(() => 
     [search, ...relatedSearches].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -77,7 +76,16 @@ export function AISearchCard({ search, relatedSearches, onDelete, user }: AISear
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      await exportSearchToPDF(search);
+      
+      await exportToPDF({
+        title: currentSearch.query,
+        content: currentSearch.response,
+        date: new Date(currentSearch.created_at),
+        citations: currentSearch.citations || [],
+        searchType: 'ai',
+        markdown: true // Enable markdown processing for AI search results
+      });
+
     } catch (error) {
       console.error('Error exporting search:', error);
       toast({
@@ -89,6 +97,7 @@ export function AISearchCard({ search, relatedSearches, onDelete, user }: AISear
       setIsExporting(false);
     }
   };
+
 
   const handleScheduleChange = async () => {
     if (!user || !isProfessional) {
@@ -128,7 +137,7 @@ export function AISearchCard({ search, relatedSearches, onDelete, user }: AISear
 
   // Process citations if they exist
   const processedCitations = search.citations || [];
-  const groupedCitations = processedCitations.map((debate_id, index) => ({
+  const groupedCitations = processedCitations.map((debate_id: string, index: number) => ({
     debate_id,
     citation_index: index + 1
   }));

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { MPLinks } from './MPLinks';
+import MPActions from './MPActions';
 import { SubscriptionCTA } from '@/components/ui/subscription-cta';
-import type { MPData } from "@/types";
 import { useState } from 'react';
 import { Clock, Search, ChevronDown, User, Calendar, Building, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,32 +17,9 @@ import { locationColors, partyColours } from '@/lib/utils';
 import { cn } from "@/lib/utils";
 import createClient from '@/lib/supabase/client';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-
-interface MPSearchResultsProps {
-  results: MPData[];
-  isLoading: boolean;
-  isProfessional: boolean;
-  searchTerm: string;
-}
-
-interface MPDebate {
-  debate_id: string;
-  debate_title: string;
-  debate_type: string;
-  debate_house: string;
-  debate_date: string;
-  member_name: string;
-  member_party: string;
-  member_constituency: string;
-  member_role: string;
-  member_contributions: string[];
-}
-
-interface ProfileDetailProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | React.ReactNode;
-}
+import NextLink from 'next/link';
+import type { MPDebate, ProfileDetailProps, MPSearchResultsProps } from '@/types/search';
+import Image from 'next/image';
 
 function ProfileDetail({ icon, label, value }: ProfileDetailProps) {
   return (
@@ -65,38 +42,14 @@ function parseContribution(contribution: string): string {
   }
 }
 
-const MINISTERIAL_RANKINGS = {
-  "Cabinet": "Most senior level of government, comprising the Prime Minister and senior ministers",
-  "Minister of State": "Senior ministers below cabinet level",
-  "Parliamentary Under-Secretary": "Junior ministerial position",
-  "Lords Minister": "Minister in the House of Lords",
-} as const;
-
-type MinisterialRank = keyof typeof MINISTERIAL_RANKINGS;
-
 function MinisterialBadge({ rank }: { rank: string }) {
-  const getRankStyle = (rank: string) => {
-    switch(rank) {
-      case 'Cabinet':
-        return 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200';
-      case 'Minister of State':
-        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200';
-      case 'Parliamentary Under-Secretary':
-        return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
-      case 'Lords Minister':
-        return 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
-    }
-  };
-
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge 
             variant="outline" 
-            className={`${getRankStyle(rank)} cursor-help touch-action-none`}
+            className={`bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 cursor-help touch-action-none`}
             role="button"
             tabIndex={0}
           >
@@ -109,14 +62,14 @@ function MinisterialBadge({ rank }: { rank: string }) {
           sideOffset={5}
           className="max-w-[280px] text-sm text-center"
         >
-          <p>{MINISTERIAL_RANKINGS[rank as MinisterialRank] || 'Your MP is in the Cabinet. This is their place in the "pecking order"'}</p>
+          <p>Your MP is in the Cabinet. This is their place in the &quot;pecking order&quot;</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 }
 
-export function MPSearchResults({ results, isLoading, isProfessional, searchTerm }: MPSearchResultsProps) {
+export function MPSearchResults({ results, isProfessional, searchTerm }: MPSearchResultsProps) {
   const [selectedMPId, setSelectedMPId] = useState<number | null>(null);
   const [debates, setDebates] = useState<MPDebate[]>([]);
   const [loadingDebates, setLoadingDebates] = useState(false);
@@ -174,9 +127,9 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
   const selectedMP = results.find(mp => mp.member_id === selectedMPId);
   
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-6">
       {/* Left column - MP List and Details */}
-      <ScrollArea className="h-[calc(100vh-12rem)]">
+      <ScrollArea className="h-[calc(65vh)]">
         <div className="space-y-4 pr-2">
           <h2 className="font-semibold text-lg">
             Found {results.length} MPs
@@ -186,7 +139,7 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
             <Card 
               key={mp.member_id}
               className={cn(
-                "transition-all duration-200 max-w-[350px]",
+                "transition-all duration-200 max-w-[350px] ml-1",
                 selectedMPId === mp.member_id 
                   ? 'ring-2 ring-primary shadow-md' 
                   : 'hover:bg-accent/50 hover:shadow-sm cursor-pointer'
@@ -201,16 +154,26 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
                 <div className="flex items-center gap-2">
                   <div className="relative flex-shrink-0">
                     {mp.member_id && (
-                      <img 
-                        src={`https://members-api.parliament.uk/api/Members/${mp.member_id}/Portrait?cropType=ThreeFour`}
-                        alt={mp.display_as}
-                        className={cn(
-                          "object-cover ring-1 ring-black/5 transition-all duration-200",
-                          selectedMPId === mp.member_id 
-                            ? "w-16 h-16 rounded-lg" 
-                            : "w-10 h-10 rounded-full"
-                        )}
-                      />
+                      <div className={cn(
+                        "relative",
+                        selectedMPId === mp.member_id 
+                          ? "w-16 h-16" 
+                          : "w-10 h-10"
+                      )}>
+                        <Image 
+                          src={`https://members-api.parliament.uk/api/Members/${mp.member_id}/Portrait?cropType=OneOne`}
+                          alt={mp.display_as}
+                          fill
+                          className={cn(
+                            "object-cover ring-1 ring-black/5 transition-all duration-200",
+                            selectedMPId === mp.member_id 
+                              ? "rounded-lg" 
+                              : "rounded-full"
+                          )}
+                          sizes={selectedMPId === mp.member_id ? "64px" : "40px"}
+                          priority={selectedMPId === mp.member_id}
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="flex-grow min-w-0">
@@ -226,9 +189,6 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
                       >
                         {mp.party}
                       </Badge>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {mp.constituency}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -293,6 +253,10 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
                         )}
                       </div>
                     </div>
+
+                    <div className="pt-3 border-t">
+                      <MPActions mp={mp} debates={debates} />
+                    </div>
           
                     {/* Links Section */}
                     <div className="pt-3 border-t">
@@ -307,8 +271,8 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
       </ScrollArea>
 
       {/* Right column - Contributions */}
-      <ScrollArea className="h-[calc(100vh-12rem)]">
-        <div className="space-y-4 lg:pl-4">
+      <ScrollArea className="h-[calc(65vh)]">
+        <div className="space-y-4 lg:pl-1">
           {selectedMP ? (
             <>
               <h2 className="font-semibold text-lg">Recent Contributions</h2>
@@ -348,6 +312,17 @@ export function MPSearchResults({ results, isLoading, isProfessional, searchTerm
                                   <Badge variant="secondary" className="text-xs">
                                     {debate.debate_type}
                                   </Badge>
+                                  <NextLink 
+                                    href={`/debate/${debate.debate_id}`} 
+                                    onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      window.location.href = `/debate/${debate.debate_id}`;
+                                    }}
+                                    className="text-primary hover:underline whitespace-nowrap text-xs inline-flex items-center gap-1"
+                                  >
+                                      View in debate →
+                                  </NextLink>
                                 </div>
                                 <h3 className="font-medium">{debate.debate_title}</h3>
                               </div>

@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { MPData, AiTopic } from '@/types';
 import type { MPKeyPointDetails } from '@/lib/supabase/mpsearch';
-import type { Citation, Contribution } from '@/types/search';
+import type { Citation, QueryState } from '@/types/search';
 
 interface SaveSearchButtonProps {
   searchType: 'ai' | 'hansard' | 'mp';
@@ -33,22 +33,11 @@ interface SaveSearchButtonProps {
   hansardSearch?: {
     query: string;
     response: {
-      TotalMembers: number;
-      TotalContributions: number;
-      TotalWrittenStatements: number;
-      TotalWrittenAnswers: number;
-      TotalCorrections: number;
-      TotalPetitions: number;
-      TotalDebates: number;
-      TotalCommittees: number;
-      TotalDivisions: number;
-      SearchTerms: string[];
-      Contributions: Contribution[];
+      Debates: {
+        debate_id: string;
+      }[];
     };
-    queryState?: {
-      searchTerm: string;
-      house?: 'Commons' | 'Lords';
-    };
+    queryState?: QueryState;
   };
   mpSearch?: {
     query: string;
@@ -96,9 +85,7 @@ export function SaveSearchButton({
             response: aiSearch.streamingText,
             citations: aiSearch.citations.map(c => c.debate_id),
             searchType: 'ai',
-            queryState: {
-              searchTerm: aiSearch.query
-            },
+            queryState: {},
             repeat_on
           }, toast);
           break;
@@ -108,29 +95,17 @@ export function SaveSearchButton({
             throw new Error('Search query cannot be empty');
           }
 
-          // Format the response to include only summary and first result
-          const formattedResponse = {
-            summary: {
-              TotalMembers: hansardSearch.response.TotalMembers,
-              TotalContributions: hansardSearch.response.TotalContributions,
-              TotalWrittenStatements: hansardSearch.response.TotalWrittenStatements,
-              TotalWrittenAnswers: hansardSearch.response.TotalWrittenAnswers,
-              TotalCorrections: hansardSearch.response.TotalCorrections,
-              TotalPetitions: hansardSearch.response.TotalPetitions,
-              TotalDebates: hansardSearch.response.TotalDebates,
-              TotalCommittees: hansardSearch.response.TotalCommittees,
-              TotalDivisions: hansardSearch.response.TotalDivisions,
-            },
-            searchTerms: hansardSearch.response.SearchTerms,
-            firstResult: hansardSearch.response.Contributions?.[0] || null,
-            date: new Date().toISOString().split('T')[0],
-          };
-
           await saveSearch({
             query: hansardSearch.query,
-            response: JSON.stringify(formattedResponse),
-            citations: [formattedResponse.firstResult?.ContributionExtId].filter(Boolean),
-            queryState: hansardSearch.queryState,
+            response: JSON.stringify(hansardSearch.response.Debates.map(debate => debate.debate_id)),
+            citations: [].filter(Boolean),
+            queryState: {
+              house: hansardSearch.queryState?.house || undefined,
+              member: hansardSearch.queryState?.member || undefined,
+              party: hansardSearch.queryState?.party || undefined,
+              date_from: hansardSearch.queryState?.date_from || undefined,
+              date_to: hansardSearch.queryState?.date_to || undefined,
+            },
             searchType: 'hansard',
             repeat_on
           }, toast);

@@ -7,44 +7,48 @@ import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { locationColors, partyColours } from '@/lib/utils';
 import { FormattedMarkdown } from "@/lib/utils";
-import type { SearchParams } from '@/types/search';
+import type { Debate } from '@/types/search';
 import { Button } from "@/components/ui/button";
-
-interface Debate {
-  ext_id: string;
-  title: string;
-  type: string;
-  house: string;
-  date: string;
-  analysis: {
-    outcome: string;
-    statistics: Array<{
-      value: string;
-      context: string;
-    }>;
-    main_content: string;
-  };
-  speaker_points: Array<{
-    name: string;
-    role: string;
-    party: string;
-    contributions: Array<{
-      type: string;
-      content: string;
-      references: string[];
-    }>;
-  }>;
-  relevance: number;
-}
 
 interface SearchResultsProps {
   results: {
-    Debates: Debate[];
+    Debates: {
+      ext_id: string;
+      title: string;
+      type: string;
+      house: string;
+      date: string;
+      analysis?: {
+        outcome?: string;
+        statistics?: Array<{
+          value: string;
+          context: string;
+        }>;
+        main_content?: string;
+      };
+      speaker_points?: Array<{
+        name: string;
+        role: string;
+        party: string;
+        contributions: string[];
+      }>;
+      debate_id?: string;
+      DebateSection?: string;
+      SittingDate?: string;
+      House?: string;
+      Title?: string;
+      DebateSectionExtId?: string;
+      Value?: string;
+    }[];
     TotalDebates: number;
   };
   isLoading: boolean;
   totalResults: number;
-  searchParams: SearchParams;
+  searchParams: {
+    searchTerm?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  };
 }
 
 const constructHansardUrl = (debateExtId: string, title: string, date: string) => {
@@ -56,14 +60,14 @@ const constructHansardUrl = (debateExtId: string, title: string, date: string) =
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 };
 
-export function SearchResults({ results, isLoading, totalResults, searchParams }: SearchResultsProps) {
+export function SearchResults({ results, isLoading, searchParams }: SearchResultsProps) {
   const [selectedDebate, setSelectedDebate] = useState<Debate | null>(null);
 
   if (isLoading) {
     return <LoadingAnimation />;
   }
 
-  if (!results.Debates?.length) {
+  if (!results?.Debates?.length) {
     return <EmptyState searchTerm={searchParams.searchTerm} />;
   }
 
@@ -113,10 +117,10 @@ export function SearchResults({ results, isLoading, totalResults, searchParams }
           {selectedDebate.analysis && (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <div className="text-muted-foreground">
-                <FormattedMarkdown content={selectedDebate.analysis.main_content} />
+                <FormattedMarkdown content={selectedDebate.analysis.main_content || ''} />
               </div>
 
-              {selectedDebate.analysis.statistics?.length > 0 && (
+              {selectedDebate.analysis.statistics && selectedDebate.analysis.statistics.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 my-6">
                   {selectedDebate.analysis.statistics.map((stat, i) => (
                     <div key={i} className="group p-6 bg-muted/5 rounded-lg border hover:border-primary/50 transition-colors">
@@ -140,7 +144,7 @@ export function SearchResults({ results, isLoading, totalResults, searchParams }
             </div>
           )}
 
-          {selectedDebate.speaker_points?.length > 0 && (
+          {selectedDebate.speaker_points && selectedDebate.speaker_points.length > 0 && (
             <div className="mt-8 space-y-4">
               <h4 className="font-medium">Key Contributions</h4>
               <div className="space-y-4">
@@ -161,7 +165,7 @@ export function SearchResults({ results, isLoading, totalResults, searchParams }
                     <div className="flex-grow bg-muted/5 rounded-lg p-4 border">
                       {speaker.contributions.map((contribution, idx) => (
                         <div key={idx} className="text-sm text-muted-foreground">
-                          <FormattedMarkdown content={contribution.content} />
+                          <FormattedMarkdown content={contribution} />
                         </div>
                       ))}
                     </div>
@@ -182,16 +186,15 @@ export function SearchResults({ results, isLoading, totalResults, searchParams }
           Found {results.TotalDebates} debates
         </h2>
         <div className="flex gap-2 text-sm text-muted-foreground">
-          {searchParams.house && (
-            <Badge variant="outline">House: {searchParams.house}</Badge>
-          )}
-          {searchParams.type && (
-            <Badge variant="outline">Type: {searchParams.type}</Badge>
+          {searchParams.dateFrom && searchParams.dateTo && (
+            <Badge variant="outline">
+              {format(new Date(searchParams.dateFrom), 'dd MMM yyyy')} - {format(new Date(searchParams.dateTo), 'dd MMM yyyy')}
+            </Badge>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr] gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-4">
           {results.Debates.map((debate) => (
             <Card 
@@ -204,7 +207,7 @@ export function SearchResults({ results, isLoading, totalResults, searchParams }
                 borderLeftColor: locationColors[debate.house] || '#2b2b2b',
                 backgroundImage: `linear-gradient(to right, ${locationColors[debate.house]}08, transparent 15%)`,
               }}
-              onClick={() => setSelectedDebate(debate)}
+              onClick={() => setSelectedDebate(debate as Debate)}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-2">

@@ -1,5 +1,4 @@
 #Next
-
 [/] Discount Link
       [/] Check Stripe payments work
 
@@ -8,10 +7,10 @@ UI
 [/] Fix Calendar scroll
 [ ] More compact citations
       [ ] Fix dodgy markdown replacement
-[ ] Identify images and force the same, different ones on diff days of the week
+[-] Identify images and force the same, different ones on diff days of the week
 [ ] Less stark light/dark theme background colors
 [ ] Debate Types listed in home/top bar
-[ ] Responsive design of homepage and calendar
+[-] Responsive design of homepage and calendar
 
 Users
 [/] Wall debate downloads
@@ -23,18 +22,30 @@ Summary Generation
 [ ] Update prompts based on feedback
 [ ] Implement prompt test script
 [ ] Format questions (child debates) into single array
+[ ] Translate to British English
 
 Features
 [/] Calendar search (department etc.)
+[/] Update to process new Hansard schedules
+[/] Update to process mp searches
 [/] Search my database with keywords (better than Hansard!)
-      [ ] Filter by department (Use presence of minister of dep.)
-[ ] MP data in search results
+      [/] Filter by department (Use presence of minister of dep.)
+[/] MP data in search results
+      [/] Ensure 'Keir Starmer' matches 'Prime Minister' speaker
+      [/] Include link to original debate
+      [/] Save and manage mp searches
+            [/] MPs added to saved_searches
+            [/] MP tab in /saved
+            [/] Scheduler updates
+      [/] Link from mp results (contributions)
       [/] Multiple results for MP partial match
-      [ ] Keyword search within an MP's contributions
+      [x] Keyword search within an MP's contributions
       [/] Recent points
-      [ ] Votes 
-      [ ] Save and update mp searches
-      [ ] MP filter in Hansard search
+      [/] MP filter in Hansard search
+[/] Fix & update pdf generation
+      [/] Hansard search results display debateHeader for response extids
+      [/] Use DebateHeader for calendar and MP saved searches
+      [/] Export header details with urls
 
 [ ] Give assistant full debate access using functions
 [ ] Implement web search
@@ -43,9 +54,9 @@ Features
    [ ] 'This week' + searches
 
 Bugs
-[ ] Address processing failure rate
+[-] Address processing failure rate
       [ ] Process whole questions sessions (child debates)
-      [-] Update prompt
+      [/] Update prompt
 [/] Generate daily and weekly highlights of relevant debates
 [-] Ensure whole questions session processing captures all questions
 [ ] Some debates have only an opening snippet of the transcript

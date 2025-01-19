@@ -2,10 +2,14 @@ const STORAGE_KEY = 'parliament_images';
 const NUM_IMAGES = 8;
 const MIN_ID = 15;
 const MAX_ID = 99;
+const AFTERNOON_REFRESH_HOUR = 12;
+const AFTERNOON_REFRESH_MINUTE = 30;
 
 interface CacheData {
   urls: string[];
   timestamp: number;
+  lastUpdateDay: string;
+  lastUpdatePeriod: 'morning' | 'afternoon';
 }
 
 class ParliamentImageManager {
@@ -25,15 +29,30 @@ class ParliamentImageManager {
     return this.instance;
   }
 
-  private isCacheValid(timestamp: number): boolean {
+  private getCurrentPeriod(): 'morning' | 'afternoon' {
     const now = new Date();
-    const cacheDate = new Date(timestamp);
+    const afternoonStart = new Date(now);
+    afternoonStart.setHours(AFTERNOON_REFRESH_HOUR, AFTERNOON_REFRESH_MINUTE, 0, 0);
+    
+    return now >= afternoonStart ? 'afternoon' : 'morning';
+  }
+
+  private isCacheValid(lastUpdateDay: string, lastUpdatePeriod: 'morning' | 'afternoon'): boolean {
+    const now = new Date();
+    const today = now.toDateString();
+    const currentPeriod = this.getCurrentPeriod();
     const cachedData = localStorage.getItem(STORAGE_KEY);
     
     if (cachedData) {
       const { urls } = JSON.parse(cachedData);
-      // Cache is invalid if we have no valid URLs or if it's from a different day
-      return urls.length > 0 && now.toDateString() === cacheDate.toDateString();
+      
+      // Cache is invalid if:
+      // 1. We have no valid URLs
+      // 2. It's from a different day
+      // 3. It's from a different period (morning/afternoon) of the same day
+      return urls.length > 0 && 
+             lastUpdateDay === today && 
+             lastUpdatePeriod === currentPeriod;
     }
     
     return false;
@@ -74,11 +93,13 @@ class ParliamentImageManager {
       this.currentIndex = 0;
       this.preloadedImages.clear();
 
+      const today = new Date().toDateString();
+      const currentPeriod = this.getCurrentPeriod();
       const cachedData = localStorage.getItem(STORAGE_KEY);
       
       if (cachedData) {
-        const { urls, timestamp }: CacheData = JSON.parse(cachedData);
-        if (this.isCacheValid(timestamp)) {
+        const { urls, lastUpdateDay, lastUpdatePeriod }: CacheData = JSON.parse(cachedData);
+        if (this.isCacheValid(lastUpdateDay, lastUpdatePeriod)) {
           // Verify cached URLs are still valid
           const validationPromises = urls.map(url => this.validateImageUrl(url));
           const validResults = await Promise.all(validationPromises);
@@ -133,10 +154,12 @@ class ParliamentImageManager {
       if (this.validUrls.length === 0) {
         console.error('No valid parliament images found');
       } else {
-        // Save valid URLs to cache
+        // Save valid URLs to cache with current day and period
         const cacheData: CacheData = {
           urls: this.validUrls,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          lastUpdateDay: today,
+          lastUpdatePeriod: currentPeriod
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
       }
@@ -147,7 +170,23 @@ class ParliamentImageManager {
     return this.initPromise;
   }
 
+  public async checkAndUpdateCache(): Promise<void> {
+    const cachedData = localStorage.getItem(STORAGE_KEY);
+    if (cachedData) {
+      const { lastUpdateDay, lastUpdatePeriod }: CacheData = JSON.parse(cachedData);
+      const today = new Date().toDateString();
+      const currentPeriod = this.getCurrentPeriod();
+      
+      if (lastUpdateDay !== today || lastUpdatePeriod !== currentPeriod) {
+        // Force a cache refresh if it's a new day or new period
+        this.clearCache();
+        await this.initialize();
+      }
+    }
+  }
+
   async getNextImage(): Promise<string> {
+    await this.checkAndUpdateCache();
     await this.initialize();
     
     if (this.validUrls.length === 0) {

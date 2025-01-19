@@ -1,3 +1,5 @@
+import { MPData } from ".";
+
 export interface Citation {
     citation_index: number;
     debate_id: string;
@@ -22,8 +24,8 @@ export type SearchType = 'ai' | 'hansard' | 'mp' | 'question' | 'bill' | 'edm';
 export interface BillQueryState {
   billId: number;
   title: string;
-  currentHouse: 'commons' | 'lords';
-  originatingHouse: 'commons' | 'lords';
+  currentHouse: 'Commons' | 'Lords';
+  originatingHouse: 'Commons' | 'Lords';
   date: string;
   stage?: string;
 }
@@ -39,14 +41,7 @@ export interface SaveSearchParams {
   query: string;
   response: string;
   citations: string[];
-  queryState?: {
-    searchTerm: string;
-    house?: 'commons' | 'lords';
-    dateRange?: string;
-    parts?: string[];
-    skip?: number;
-    take?: number;
-  };
+  queryState?: QueryState;
   searchType: 'ai' | 'hansard' | 'mp';
   repeat_on?: {
     frequency: 'weekly';
@@ -84,17 +79,23 @@ export interface SavedSearch {
   search_type: 'ai' | 'hansard' | 'mp' | 'question';
   is_unread: boolean;
   has_changed: boolean;
-  query_state?: {
-    parts?: string;
-    startDate?: string;
-    endDate?: string;
-    house?: 'commons' | 'lords';
-    enableAI?: boolean;
-  };
+  query_state?: QueryState;
   metadata?: SavedSearchMetadata;
   mp_data?: MPSearchData;
   saved_search_schedules?: SavedSearchSchedule[];
 }
+
+export interface QueryState {
+  house?: 'Commons' | 'Lords';
+  dateRange?: string;
+  date_from?: string;
+  date_to?: string;
+  member?: string;
+  party?: string;
+  mp?: string;
+  firstDebate?: string;
+}
+
 
 
 export interface SearchDirectives {
@@ -107,7 +108,7 @@ export interface SearchDirectives {
 
 export interface HansardApiConfig {
     format: 'json';
-    house: 'commons' | 'lords';
+    house: 'Commons' | 'Lords';
     date?: string;
     section?: string;
 }
@@ -115,6 +116,8 @@ export interface HansardApiConfig {
 export interface SearchParams {
     searchTerm: string;
     house?: 'Commons' | 'Lords';
+    party?: string;
+    member?: string;
     dateFrom?: string;
     dateTo?: string;
     skip?: number;
@@ -125,25 +128,12 @@ export interface SearchParams {
 }
   
 export interface SearchResponse {
-    TotalMembers: number;
-    TotalContributions: number;
-    TotalWrittenStatements: number;
-    TotalWrittenAnswers: number;
-    TotalCorrections: number;
-    TotalPetitions: number;
     TotalDebates: number;
-    TotalCommittees: number;
-    TotalDivisions: number;
-    SearchTerms: string[];
-    Members: Member[];
-    Contributions: Contribution[];
-    WrittenStatements: Contribution[];
-    WrittenAnswers: Contribution[];
-    Corrections: Contribution[];
-    Petitions: SearchDebateItem[];
-    Debates: SearchDebateItem[];
-    Divisions: SearchDebateItem[];
-    Committees: SearchDebateItem[];
+    Debates: Debate[];
+    TotalMembers?: number;
+    TotalContributions?: number;
+    Members?: Member[];
+    Contributions?: Contribution[];
 }
   
 export interface Member {
@@ -236,6 +226,7 @@ export interface SearchDebateItem {
     Title: string;
     DebateSectionExtId: string;
     Value: string;
+    debate_id?: string;
 }
 
 export interface SearchCommitteeItem {
@@ -246,8 +237,9 @@ export interface SearchCommitteeItem {
 
 export interface MPSearchData {
   query: string;
-  mpId?: string;
+  mpIds?: string[];
   keywords: string[];
+  results: MPData[];
 }
 
 export interface SavedQuestionData {
@@ -275,4 +267,73 @@ export interface SavedQuestionData {
   };
   type: 'oral-question';
   savedAt: string;
+}
+
+// Core debate interface that can be reused
+export interface BaseDebate {
+  ext_id: string;
+  title: string;
+  type: string;
+  house: string;
+  date: string;
+  debate_id?: string;
+  Value?: string;
+  DebateSection?: string;
+  SittingDate?: string;
+  House?: string;
+  Title?: string;
+  DebateSectionExtId?: string;
+}
+
+// Extended debate interface with analysis
+export interface Debate extends BaseDebate {
+  analysis?: {
+    outcome?: string;
+    statistics?: Array<{
+      value: string;
+      context: string;
+    }>;
+    main_content?: string;
+  };
+  speaker_points?: Array<{
+    name: string;
+    role: string;
+    party: string;
+    contributions: string[];
+  }>;
+  relevance?: number;
+}
+
+// Component Props interfaces
+export interface SearchResultsProps {
+  results: SearchResponse;
+  isLoading: boolean;
+  searchParams: SearchParams;
+  totalResults?: number;
+}
+
+export interface MPSearchResultsProps {
+  results: MPData[];
+  isLoading: boolean;
+  isProfessional: boolean;
+  searchTerm: string;
+}
+
+export interface MPDebate {
+  debate_id: string;
+  debate_title: string;
+  debate_type: string;
+  debate_house: string;
+  debate_date: string;
+  member_name: string;
+  member_party: string;
+  member_constituency: string;
+  member_role: string;
+  member_contributions: string[];
+}
+
+export interface ProfileDetailProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | React.ReactNode;
 }

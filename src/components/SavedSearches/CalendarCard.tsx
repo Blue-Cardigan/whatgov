@@ -2,31 +2,15 @@ import { format } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Calendar, Users, Clock, MapPin, FileText, Download, ExternalLink } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, 
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { TimeSlot } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { exportCalendarItemToPDF } from '@/lib/pdf-utilities';
 import { useToast } from "@/hooks/use-toast";
 import { useState } from 'react';
-import createClient from '@/lib/supabase/client';
-import type { SpeakerPoint } from '../debates/AnalysisData';
+import { exportToPDF } from '@/lib/pdf-export';
 
 interface CalendarCardProps {
   item: {
@@ -45,30 +29,69 @@ export function CalendarCard({ item, onDelete }: CalendarCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
+  const formatSearchContent = () => {
+    const eventData = item.event_data;
+    let content = '';
+
+    if (eventData.type === 'edm' && eventData.edm) {
+      const { edm } = eventData;
+      content = `# Early Day Motion ${edm.id}
+## Title
+**${edm.title}**
+
+## Details
+- **Date Tabled:** ${format(new Date(edm.dateTabled), 'PPP')}
+${edm.primarySponsor ? `- **Primary Sponsor:** ${edm.primarySponsor.name} (${edm.primarySponsor.party})` : ''}
+
+## Motion Text
+${edm.text}`;
+    } 
+    else if (eventData.type === 'oral-questions') {
+      content = `# Oral Questions Session
+## Department
+**${eventData.department}**
+
+## Details
+- **Date:** ${format(new Date(item.date), 'PPP')}
+${eventData.ministerTitle ? `- **Minister:** ${eventData.ministerTitle}` : ''}`;
+    }
+    else if (eventData.type === 'event' && eventData.event) {
+      const { event } = eventData;
+      content = `
+## Event Details
+- **Type:** ${event.type}
+${event.category ? `- **Category:** ${event.category}` : ''}
+${event.startTime ? `- **Date and Time:** ${format(new Date(event.startTime), 'PPP p')}` : ''}
+${event.location ? `- **Location:** ${event.location}` : ''}
+
+${event.description ? `## Description\n${event.description}` : ''}`;
+    }
+
+    // Add related debates section if any exist
+    if (item.debate_ids?.length) {
+      content += `\n\n## Related Debates
+${item.debate_ids.map((id, index) => `[${index + 1}] Debate: https://whatgov.co.uk/debate/${id}`).join('\n')}`;
+    }
+
+    return content;
+  };
+
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      let debateData: { analysis: string; speaker_points: string | SpeakerPoint[] } | undefined;
-        
-      if (item.debate_ids?.[0]) {
-        const supabase = createClient();
       
-        const { data, error } = await supabase
-          .from('debates_new')
-          .select('analysis, speaker_points')
-          .eq('ext_id', item.debate_ids[0])
-          .single();
+      const title = item.event_data.edm?.title || 
+                   (item.event_data.type === 'oral-questions' ? `Oral Questions: ${item.event_data.department}` : 
+                   item.event_data.event?.title || 'Calendar Event');
 
-        if (data && !error) {
-          // Ensure the data matches the expected type for exportCalendarItemToPDF
-          debateData = {
-            analysis: data.analysis || '',
-            speaker_points: data.speaker_points || []
-          };
-        }
-      }
-      
-      await exportCalendarItemToPDF(item, debateData);
+      await exportToPDF({
+        title,
+        content: formatSearchContent(),
+        date: new Date(item.created_at),
+        citations: item.debate_ids || [],
+        searchType: 'calendar',
+        markdown: true
+      });
     } catch (error) {
       console.error('Error exporting calendar item:', error);
       toast({
