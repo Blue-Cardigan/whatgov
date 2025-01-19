@@ -69,7 +69,6 @@ export function useAssistant() {
             const { done, value } = await reader.read();
             
             if (done) {
-              console.log('[Assistant] Stream complete');
               onComplete?.();
               break;
             }

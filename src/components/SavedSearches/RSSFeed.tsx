@@ -235,13 +235,6 @@ export function RSSFeed() {
     }
   }, [feeds, refreshFeed, feedData]);
 
-  useEffect(() => {
-    if (profile) {
-      console.log('RSS feeds from profile:', profile.rss_feeds);
-      console.log('Parsed feeds:', feeds);
-    }
-  }, [profile, feeds]);
-
   const displayedItems = selectedFeed === 'all'
     ? Object.entries(feedData)
         .flatMap(([url, feed]) => 

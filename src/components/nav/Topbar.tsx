@@ -66,7 +66,7 @@ export function Topbar({ className }: TopbarProps) {
         {/* Logo and Brand */}
         <div className="flex items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="font-bold text-xl">WhatGov</span>
+            <span className="font-bold text-xl logo-font">WhatGov</span>
           </Link>
         </div>
 

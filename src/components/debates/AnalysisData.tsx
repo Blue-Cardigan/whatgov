@@ -3,46 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, InfoIcon, UserIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { FormattedMarkdown } from '@/lib/utils';
-
-interface AnalysisDataPoint {
-  value: string;
-  context: string;
-}
-
-interface KeyDate {
-  date: string;
-  significance: string;
-}
-
-interface KeyStatistic {
-  value: string;
-  context: string;
-}
-
-export interface ParsedAnalysisData {
-  main_content?: string;
-  outcome?: string;
-  policy_terms?: string[];
-  dates?: string[] | KeyDate[];
-  data?: AnalysisDataPoint[];
-  key_statistics?: KeyStatistic[];
-}
-
-export interface SpeakerPoint {
-  name: string;
-  role: string;
-  party: string;
-  constituency: string;
-  contributions: Array<{
-    type: string;
-    content: string;
-    references: Array<{
-      text: string;
-      value: string;
-      source?: string;
-    }>;
-  }>;
-}
+import { ParsedAnalysisData } from '@/types';
+import { SpeakerPoint } from '@/types';
 
 interface AnalysisDataProps {
   data: string | ParsedAnalysisData;
@@ -118,27 +80,9 @@ export function AnalysisData({ data, speakerPoints }: AnalysisDataProps) {
               <CardContent className="pt-3">
                 {point.contributions.map((contribution, cIndex) => (
                   <div key={cIndex} className="text-sm space-y-2 mb-3 last:mb-0">
-                    {contribution.type && (
-                      <Badge variant="secondary" className="mb-2">
-                        {contribution.type}
-                      </Badge>
-                    )}
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <FormattedMarkdown content={contribution.content} />
+                      <FormattedMarkdown content={contribution} />
                     </div>
-                    {contribution.references?.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {contribution.references.map((ref, rIndex) => (
-                          <Badge 
-                            key={rIndex}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {ref.value}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </CardContent>

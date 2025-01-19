@@ -80,7 +80,6 @@ export async function saveCalendarItem(session: TimeSlot, questionId?: number) {
         };
       } else {
         // Saving whole session - only store first 3 questions
-        console.log('Saving whole session', session);
         eventId = `oq-${session.departmentId}-${format(new Date(questionDate), 'yyyy-MM-dd')}`;
         eventData = {
           type: 'oral-questions',

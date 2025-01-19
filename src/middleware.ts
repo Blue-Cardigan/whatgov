@@ -77,13 +77,6 @@ const handlePageAuth = async (req: NextRequest, res: NextResponse) => {
   return session;
 };
 
-// Add API key validation
-const isValidApiKey = (apiKey: string | null) => {
-  console.log('Checking API key:', apiKey);
-  console.log('Expected API key:', process.env.SCHEDULER_API_KEY);
-  return apiKey === process.env.SCHEDULER_API_KEY;
-};
-
 export async function middleware(req: NextRequest) {
   try {
     const pathname = req.nextUrl.pathname;
@@ -95,20 +88,6 @@ export async function middleware(req: NextRequest) {
       const response = NextResponse.redirect(new URL('/intro', req.url));
       response.cookies.set('visited', 'true', { path: '/', maxAge: 60 * 60 * 24 * 365 });
       return response;
-    }
-
-    // Special handling for scheduler endpoints
-    if (pathname.startsWith('/api/scheduler/')) {
-      console.log('Processing scheduler endpoint');
-      const apiKey = req.headers.get('x-api-key');
-      console.log('Received API key:', apiKey);
-      
-      if (isValidApiKey(apiKey)) {
-        console.log('API key is valid');
-        return NextResponse.next();
-      }
-      console.log('API key is invalid');
-      throw new AuthError('Invalid API key');
     }
 
     // Regular API routes
@@ -157,12 +136,13 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Be more specific about which routes need auth
+    // Protected API routes
     '/api/stripe/:path*',
     '/api/premium/:path*',
     '/api/assistant/:path*',
-    // Exclude scheduler from auth
-    '/((?!api/scheduler)api/:path*)',
+    // Protected pages
     '/settings/:path*',
+    // Exclude scheduler endpoints completely
+    '/((?!api/scheduler)api/:path*)',
   ],
 } 

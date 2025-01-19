@@ -1,3 +1,57 @@
+#Next
+
+[/] Discount Link
+      [/] Check Stripe payments work
+
+UI
+[/] Update logo font
+[/] Fix Calendar scroll
+[ ] More compact citations
+      [ ] Fix dodgy markdown replacement
+[ ] Identify images and force the same, different ones on diff days of the week
+[ ] Less stark light/dark theme background colors
+[ ] Debate Types listed in home/top bar
+[ ] Responsive design of homepage and calendar
+
+Users
+[/] Wall debate downloads
+[/] Single vdb which removes and adds files every day
+[-] Email people in the database
+[ ] Post on SM
+
+Summary Generation
+[ ] Update prompts based on feedback
+[ ] Implement prompt test script
+[ ] Format questions (child debates) into single array
+
+Features
+[/] Calendar search (department etc.)
+[/] Search my database with keywords (better than Hansard!)
+      [ ] Filter by department (Use presence of minister of dep.)
+[ ] MP data in search results
+      [/] Multiple results for MP partial match
+      [ ] Keyword search within an MP's contributions
+      [/] Recent points
+      [ ] Votes 
+      [ ] Save and update mp searches
+      [ ] MP filter in Hansard search
+
+[ ] Give assistant full debate access using functions
+[ ] Implement web search
+[ ] Email reminders
+[ ] Newsletter
+   [ ] 'This week' + searches
+
+Bugs
+[ ] Address processing failure rate
+      [ ] Process whole questions sessions (child debates)
+      [-] Update prompt
+[/] Generate daily and weekly highlights of relevant debates
+[-] Ensure whole questions session processing captures all questions
+[ ] Some debates have only an opening snippet of the transcript
+
+
+
 First Launch:
 [/] Remove voting and feed functionality
 [-] Update the assistant vector store daily. 
@@ -38,39 +92,8 @@ First Launch:
 [/] Update whatgov and whatgov-backend to point to main then push
 [/] "This week in parliament" landing page
 
-#Next
 
-[/] Discount Link
-      [/] Check Stripe payments work
-
-UI
-[ ] Update logo font
-[ ] More compact citations
-      [ ] Fix dodgy markdown replacement
-[ ] Fix Calendar scroll
-[ ] Debate Types listed in home/top bar
-[ ] Responsive design of homepage and calendar
-
-[ ] Wall debate downloads
-[ ] Email people in the database
-[ ] Post on SM
-
-[ ] Update prompts based on feedback
-      [ ] Implement prompt test script
-[ ] Address processing failure rate
-      [ ] Implement retry
-      [ ] Update prompt
-[/] Generate daily and weekly highlights of relevant debates
-[-] Better structure for questions processing
-[ ] MP data in search results
-      [ ] Recent points
-      [ ] Votes 
-      [ ] Save and update mp searches
-[ ] Email reminders
-
-
-[ ] Add keyword search within an MP's contributions
-
+###OLD
 Professionals
 [/] Member profile search 
 [/] Make search page wider (on desktop)
@@ -94,32 +117,7 @@ Professionals
 [/] Show multiple divisions in postcard/debateview if present
 [ ] Term frequency tracking in hansard search
 
-[ ] Newsletter sending from backend
-   1) Generate a 'this week' intro from summaries
-[ ] More detailed 'upcoming' using bills api
 
-Next
-[ ] Align key points and topics with individual contributions
-[ ] Enhanced search using precomputed context from embeddings
-
-Engaged Citizen
-Update PostCard to implement full summary view
-1) Bookmark debates
-2) pgvector search in debate transcript
-3) MP voting record
-4) Restructure Voter Stats for clarity
-5) Commons/Lords/Both toggle for auth unsubscribed
-6) Hover hints for first time users
-
-#Optimizations
-- 'Upgrade for unlimited' popover shows when deselecting AI Enhanced in search, even for paid users
-- Identify speakerlist process - some lords debates have empty but key points have real names
-- Use key points names for images
-- Generate Nameid to avoid ugly /debate urls
-- Add speaker metadata to mp profile view
-- Reduce middleware build size for edge runtime
-- Callback to previous url when user signs in
-- Restrict state updates to feed only when filters change
 
 ### Political Monitoring:
 ## Search
@@ -130,8 +128,6 @@ Update PostCard to implement full summary view
 [/] Unique page for each debate
 [ ] MP position tracking
 
-Add RSS feed links
-
 MP Office data (stakeholder mapping)
 "Register of interests of members' secretaries and research assistants"
 + spending
@@ -141,44 +137,3 @@ API to request ai content for a debate
 Daily (live) whatsapp channel - every bill reading. Results of debate on X
 
 Generate a daily/ weekly report tailored to demographics:
-
-Collect relevant data with questions like:
-Where did you grow up?
-Go to uni?
-State or private education?
-Free school meals?
-
-
-## Feature tiers
-Free Features for Signed in Users
-- Feed and unlimited votes
-- My Mp and divisions filter
-- View upcoming Parliamentary questions
-- Basic MP Profile view
-- Basic voting record view
-- Basic constituency voting record view
-- Basic search
-- View debate comments
-
-Engaged Citizen Features
-- Advanced Feed filters
-- Track Your MP's key points
-- Track your constituency's votes
-- View your voting analytics
-- Advanced search
-
-Professional Features
-- View Key points, voting records, and office spending of any MP
-- AI Hansard search/research assistant
-- Track Bill progress
-- Subscribe to Hansard searches via email, RSS, API
-- Site integrations
-- Analysis with coverage
-- Access parliamentary documents
-- View gender and age normalized across ONS data
-
-Enterprise Features
-- Add custom question cards to your website
-- Analyze voting trends by constituency
-- Generate reports for your team
-- Share research

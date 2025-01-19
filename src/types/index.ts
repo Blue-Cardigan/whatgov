@@ -35,7 +35,6 @@ export type MPData = {
   constituency: string;
   house_start_date: string;
   constituency_country: string | null;
-  twfy_image_url: string | null;
   email: string | null;
   age: number | null;
   department: string | null;
@@ -214,3 +213,60 @@ export interface BooleanFilterItem extends BaseFilterItem {
 
 // Union type for all filter items
 export type FilterItem = ArrayFilterItem | BooleanFilterItem;
+
+
+
+interface AnalysisDataPoint {
+  value: string;
+  context: string;
+}
+
+interface KeyDate {
+  date: string;
+  significance: string;
+}
+
+interface KeyStatistic {
+  value: string;
+  context: string;
+}
+
+export interface ParsedAnalysisData {
+  main_content?: string;
+  outcome?: string;
+  policy_terms?: string[];
+  dates?: string[] | KeyDate[];
+  data?: AnalysisDataPoint[];
+  key_statistics?: KeyStatistic[];
+}
+
+export interface SpeakerPoint {
+  name: string;
+  role: string;
+  party: string;
+  constituency: string;
+  contributions: string[];
+}
+
+export interface DebateWithSpeakerPoints {
+  debate_id: string;
+  debate_title: string;
+  debate_date: string;
+  speaker_points: SpeakerPoint[];
+}
+
+export type RawMPData = {
+  member_id: number
+  display_as: string
+  full_title: string
+  gender: string
+  party: string
+  constituency: string
+  house_start_date: string
+  constituency_country: string
+  email: string | null
+  age: number | null
+  department: string | null
+  ministerial_ranking: number | null
+  media: string | Record<string, unknown> | null
+}

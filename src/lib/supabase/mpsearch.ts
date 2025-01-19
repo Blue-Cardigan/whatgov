@@ -1,38 +1,7 @@
 'use client'
 
 import createClient from './client'
-import type { MPData } from '@/types'
-
-type RawMPData = {
-  member_id: number
-  display_as: string
-  full_title: string
-  gender: string
-  party: string
-  constituency: string
-  house_start_date: string
-  constituency_country: string
-  twfy_image_url: string | null
-  email: string | null
-  age: number | null
-  department: string | null
-  ministerial_ranking: number | null
-  media: string | Record<string, unknown> | null
-  ai_topics: Array<{
-    name: string;
-    speakers: Array<{
-      name: string;
-      party: string;
-      memberId: string;
-      frequency: number;
-      subtopics: string[];
-      constituency: string;
-    }>;
-    frequency: number;
-  }>;
-  ai_summary: string | null;
-  interest_score: number;
-}
+import type { MPData, RawMPData, SpeakerPoint } from '@/types'
 
 export async function searchMembers(query: string): Promise<{
   member_id: number;
@@ -68,27 +37,7 @@ export async function searchMembers(query: string): Promise<{
   return data || [];
 }
 
-export async function lookupPostcode(postcode: string) {
-  const supabase = createClient();
-  const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
-  
-  const { data, error } = await supabase
-    .from('postcode_lookup')
-    .select('mp, constituency')
-    .eq('postcode', cleanPostcode)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    throw error;
-  }
-  
-  return data;
-}
-
-export async function getMPData(identifier: string | number): Promise<MPData | null> {
+export async function getMPData(identifier: string | number): Promise<MPData[] | null> {
   const supabase = createClient();
   
   let query = supabase
@@ -96,10 +45,6 @@ export async function getMPData(identifier: string | number): Promise<MPData | n
     .select('*')
     .is('house_end_date', null);
 
-  // If identifier is a number or looks like a number, treat as member_id
-  if (typeof identifier === 'number' || /^\d+$/.test(identifier.toString())) {
-    query = query.eq('member_id', identifier);
-  } else {
     // Clean and normalize the name search
     const cleanName = identifier
       .toString()
@@ -116,7 +61,9 @@ export async function getMPData(identifier: string | number): Promise<MPData | n
       // Search for combinations of name parts
       const searchConditions = [
         `display_as.ilike.%${cleanName}%`,
-        `full_title.ilike.%${cleanName}%`
+        `full_title.ilike.%${cleanName}%`,
+        `constituency.ilike.%${cleanName}%`,
+        `department.ilike.%${cleanName}%`
       ];
 
       // Handle titles (Sir, Dame, Dr, etc.)
@@ -138,12 +85,13 @@ export async function getMPData(identifier: string | number): Promise<MPData | n
 
       query = query.or(searchConditions.join(','));
     } else {
-      query = query.or(`display_as.ilike.%${cleanName}%,full_title.ilike.%${cleanName}%`);
-    }
+      query = query.or(`display_as.ilike.%${cleanName}%,full_title.ilike.%${cleanName}%,constituency.ilike.%${cleanName}%,department.ilike.%${cleanName}%`);
   }
 
   // Get all matching results
   const { data, error } = await query;
+
+  console.log(data);
 
   if (error) {
     console.error('Error fetching MP data:', error);
@@ -154,30 +102,8 @@ export async function getMPData(identifier: string | number): Promise<MPData | n
     return null;
   }
 
-  // Sort and select the best match
-  const sortedData = data.sort((a, b) => {
-    // Prefer Commons members over Lords
-    if (a.house === 'Commons' && b.house !== 'Commons') return -1;
-    if (b.house === 'Commons' && a.house !== 'Commons') return 1;
-
-    // If searching by name, prefer exact matches
-    if (typeof identifier === 'string') {
-      const cleanName = identifier.toLowerCase();
-      const aNameMatch = a.display_as.toLowerCase().includes(cleanName);
-      const bNameMatch = b.display_as.toLowerCase().includes(cleanName);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-    }
-
-    // Prefer ministers
-    if (a.ministerial_ranking && !b.ministerial_ranking) return -1;
-    if (!a.ministerial_ranking && b.ministerial_ranking) return 1;
-
-    // Sort by most recently joined
-    return new Date(b.house_start_date).getTime() - new Date(a.house_start_date).getTime();
-  });
-
-  return transformMPData(sortedData[0]);
+  // Transform and return all matching results
+  return data.map(transformMPData);
 }
 
 // The shape of the speaker object in the JSONB
@@ -259,6 +185,7 @@ export interface MPKeyPointDetails {
   }>;
   ai_summary: string | null;
   interest_score: number;
+  speaker_points: SpeakerPoint[];
 }
 
 export async function getMPKeyPointsById(
@@ -416,7 +343,7 @@ export async function getMPKeyPointsByName(
 
   let query = supabase
     .from('mp_key_points')
-    .select('*', { count: 'exact' })
+    .select('*, speaker_points')
     .order('debate_date', { ascending: false });
 
   // If identifier is a number or looks like a number, treat as member_id

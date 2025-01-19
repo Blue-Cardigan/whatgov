@@ -15,10 +15,16 @@ import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { HansardDebateResponse, HansardContribution } from "@/types/hansard";
-import { ParsedAnalysisData, SpeakerPoint } from "./AnalysisData";
+import { ParsedAnalysisData, SpeakerPoint } from "@/types";
 import { exportDebateToPDF } from './debate-export';
 import { toast } from "@/hooks/use-toast";
 import { FormattedMarkdown } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DebateViewProps {
   debate: DebateItem;
@@ -34,10 +40,11 @@ const constructHansardUrl = (debateExtId: string, title: string, date: string) =
   return `https://hansard.parliament.uk/House/${date}/debates/${debateExtId}/${formattedTitle}`;
 };
 
-function DebateActions({ debate, onShare, onExport }: { 
+function DebateActions({ debate, onShare, onExport, isProfessional }: { 
   debate: DebateItem; 
   onShare: () => void;
   onExport: () => void;
+  isProfessional: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -61,15 +68,46 @@ function DebateActions({ debate, onShare, onExport }: {
         <Share2 className="h-4 w-4" />
         <span className="hidden sm:inline">Share</span>
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onExport}
-        className="gap-2"
-      >
-        <Download className="h-4 w-4" />
-        <span className="hidden sm:inline">Export</span>
-      </Button>
+      
+      {isProfessional ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExport}
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+      ) : (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-4" align="end">
+            <div className="space-y-3">
+              <h4 className="font-medium leading-none">Professional Feature</h4>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to Professional to export debates as PDF documents.
+              </p>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={onExport} // This will trigger the upgrade dialog
+              >
+                Upgrade Now
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }
@@ -336,7 +374,7 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <FormattedMarkdown content={point.contributions[0].content} />
+                  <FormattedMarkdown content={point.contributions[0]} />
                 </div>
               </div>
             ))}
@@ -349,9 +387,15 @@ function AnalysisWithSpeakerPoints({ analysis, speakerPoints }: {
 
 export function DebateView({ debate, hansardData }: DebateViewProps) {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const { isProfessional } = useAuth();
 
   // Handle export
   const handleExport = async () => {
+    if (!isProfessional) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     try {
       toast({
         title: "Generating PDF",
@@ -614,6 +658,7 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
               debate={debate} 
               onShare={handleShare}
               onExport={handleExport}
+              isProfessional={isProfessional}
             />
           </div>
         </CardHeader>
@@ -643,7 +688,7 @@ export function DebateView({ debate, hansardData }: DebateViewProps) {
         open={showUpgradeDialog} 
         onOpenChange={setShowUpgradeDialog}
         title="Unlock Full Analysis"
-        description="Get instant access to complete debate analyses with an Engaged Citizen subscription."
+        description="Export complete debate analyses with a Professional subscription."
       />
     </div>
   );

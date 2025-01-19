@@ -63,6 +63,17 @@ interface DepartmentDebate {
 }
 
 export async function POST(request: Request) {
+  // Add CORS headers
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+      },
+    });
+  }
+  
   console.log('[Scheduler] Starting scheduled search processing');
   
   // Check API key

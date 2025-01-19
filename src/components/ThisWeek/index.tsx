@@ -43,7 +43,6 @@ function matchHighlightsWithCitations(
   return highlights.map(highlight => {
     // First try to extract citation from the remarks
     const remarkMatch = highlight.remarks.match(/【[^】]*debate-([A-F0-9-]+)\.txt】/);
-    console.log(remarkMatch?.[1]);
     
     if (remarkMatch) {
       // If we found a citation in remarks, use it and clean the remarks
@@ -103,17 +102,13 @@ export function ThisWeek() {
         .limit(1)
         .single();
 
-      // If no data found, try the previous time slot
+      // If no data found, try the last updated time slot
       if (!weeklySummary) {
-        const prevTimeOfDay = isPM ? 'am' : 'pm';
-        const prevDay = isPM ? currentDay : days[(now.getDay() - 1 + 7) % 7];
-        const prevWeekday = `${prevDay}_${prevTimeOfDay}`;
 
         ({ data: weeklySummary, error: summaryError } = await supabase
           .from('frontpage_weekly')
           .select('*')
           .eq('is_published', true)
-          .eq('weekday', prevWeekday)
           .order('updated_at', { ascending: false })
           .limit(1)
           .single());

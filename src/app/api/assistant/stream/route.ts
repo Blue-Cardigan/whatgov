@@ -10,8 +10,6 @@ export const runtime = 'edge';
 export async function POST(request: Request) {
   try {
     const { query, useRecentFiles, threadId } = await request.json();
-    console.log('[Assistant Stream] Starting with query:', query);
-    console.log('[Assistant Stream] Using recent files:', useRecentFiles);
 
     let thread;
     if (threadId) {
@@ -123,7 +121,6 @@ export async function POST(request: Request) {
                 const { text } = part.data.content[0];
                 const { annotations = [] } = text;
                 let finalText = text.value;
-                console.log('[Assistant Stream] Completed text:', finalText);
 
                 // Reset citations array for final version
                 citations = [];

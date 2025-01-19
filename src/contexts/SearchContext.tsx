@@ -6,7 +6,13 @@ import type { Citation, SearchParams, SearchResponse } from '@/types/search';
 
 interface MPSearchState {
   query: string;
-  mpId?: string;
+  mpIds?: string[];
+  results: Array<{
+    member_id: number;
+    display_as: string;
+    party: string;
+    constituency: string;
+  }>;
   keywords: string[];
 }
 
@@ -34,7 +40,12 @@ type SearchAction =
   | { type: 'SET_AI_SEARCH'; payload: { query: string; streamingText: string; citations: Citation[]; isFinal?: boolean } }
   | { type: 'CLEAR_AI_SEARCH' }
   | { type: 'SET_SEARCH_TYPE'; payload: 'ai' | 'hansard' | 'mp' }
-  | { type: 'SET_MP_SEARCH'; payload: { query: string; mpId?: string; keywords: string[] } }
+  | { type: 'SET_MP_SEARCH'; payload: { query: string; mpIds?: string[]; keywords: string[]; results: Array<{
+    member_id: number;
+    display_as: string;
+    party: string;
+    constituency: string;
+  }> } } 
   | { type: 'CLEAR_MP_SEARCH' };
 
 const initialState: SearchState = {
@@ -57,7 +68,8 @@ const initialState: SearchState = {
   searchType: undefined,
   mpSearch: {
     query: '',
-    mpId: undefined,
+    mpIds: undefined,
+    results: [],
     keywords: []
   },
 };
@@ -201,7 +213,8 @@ function searchReducer(state: SearchState, action: SearchAction): SearchState {
         ...state,
         mpSearch: {
           ...state.mpSearch,
-          ...action.payload
+          ...action.payload,
+          results: action.payload.results || state.mpSearch.results
         }
       };
     case 'CLEAR_MP_SEARCH':

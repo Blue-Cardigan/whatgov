@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Crown, Check } from 'lucide-react';
+import { Check, Briefcase } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -19,16 +19,13 @@ interface UpgradeDialogProps {
 export function UpgradeDialog({ 
   open, 
   onOpenChange,
-  title = "Upgrade to Engaged Citizen",
-  description = "Access advanced features with an Engaged Citizen subscription.",
+  title = "Upgrade to Professional",
+  description = "Access advanced research and analysis tools for policy professionals",
   features = [
-    "Filter debates by speaker, type, and topic",
-    "See key points made by MPs (+ comments section)",
-    "Advanced Hansard search capabilities",
-    "Track your MP's votes and speeches",
-    "Access the upcoming Parliamentary schedule",
-    "See how others voted on key issues",
-    "Access your voting analytics",
+    "Everything in Citizen, plus:",
+    "Unlimited access to AI Search for instant briefings on any topic",
+    "Track upcoming parliamentary events",
+    "Subscribe to searches to get personalised briefings on topics",
   ]
 }: UpgradeDialogProps) {
   const { user, getAuthHeader } = useAuth();
@@ -93,18 +90,18 @@ export function UpgradeDialog({
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className={cn(
                     "p-1.5 sm:p-2 rounded-lg",
-                    "bg-purple-50 dark:bg-purple-500/10",
-                    "text-purple-500"
+                    "bg-emerald-50 dark:bg-emerald-500/10",
+                    "text-emerald-500"
                   )}>
-                    <Crown className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <Briefcase className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg sm:text-xl">Engaged Citizen</CardTitle>
-                    <CardDescription className="text-sm">For engaged citizens who want deeper insights</CardDescription>
+                    <CardTitle className="text-lg sm:text-xl">Professional</CardTitle>
+                    <CardDescription className="text-sm">Advanced research and analysis tools</CardDescription>
                   </div>
                 </div>
                 <div className="flex items-baseline">
-                  <span className="text-2xl sm:text-3xl font-bold">£2.49</span>
+                  <span className="text-2xl sm:text-3xl font-bold">£12.99</span>
                   <span className="text-sm sm:text-base text-muted-foreground ml-2">/month</span>
                 </div>
               </CardHeader>

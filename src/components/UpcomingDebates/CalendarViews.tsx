@@ -21,7 +21,7 @@ export function WeekView({ currentDate, schedule }: {
 
   // Generate array of hours for the day
   const hours = useMemo(() => {
-    return Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+    return Array.from({ length: 17 }, (_, i) => i + 8); // 8 AM to 12 AM (midnight)
   }, []);
 
   // Updated function to process events and handle overlaps
@@ -88,9 +88,9 @@ export function WeekView({ currentDate, schedule }: {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] border rounded-xl overflow-hidden bg-card shadow-sm">
+    <div className="border rounded-xl bg-card shadow-sm">
       {/* Time column headers */}
-      <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b bg-card flex-none">
+      <div className="grid grid-cols-[60px_repeat(5,1fr)] border-b bg-card">
         <div className="border-r" />
         {Array.from({ length: 5 }, (_, i) => {
           const day = new Date(weekStart);
@@ -103,7 +103,7 @@ export function WeekView({ currentDate, schedule }: {
               className={cn(
                 "py-2 px-4 text-center border-r last:border-r-0",
                 isToday(day) && "bg-blue-50/50",
-                isPast && "text-gray-400" // Gray out past days
+                isPast && "text-gray-400"
               )}
             >
               <div className="font-medium">
@@ -112,7 +112,7 @@ export function WeekView({ currentDate, schedule }: {
               <div className={cn(
                 "inline-flex items-center justify-center w-8 h-8 rounded-full",
                 isToday(day) && "bg-blue-600 text-white",
-                isPast && "bg-gray-200" // Gray out past days
+                isPast && "bg-gray-200"
               )}>
                 {format(day, 'd')}
               </div>
@@ -121,9 +121,9 @@ export function WeekView({ currentDate, schedule }: {
         })}
       </div>
 
-      {/* Time grid */}
-      <div className="flex-1 overflow-y-auto bg-card">
-        <div className="grid grid-cols-[60px_repeat(5,1fr)] relative h-full">
+      {/* Time grid - removed overflow and height constraints */}
+      <div>
+        <div className="grid grid-cols-[60px_repeat(5,1fr)]">
           {/* Time labels */}
           <div className="relative">
             {hours.map((hour) => (
@@ -139,7 +139,7 @@ export function WeekView({ currentDate, schedule }: {
             ))}
           </div>
 
-          {/* Day columns with improved overlap handling */}
+          {/* Day columns */}
           {Array.from({ length: 5 }, (_, dayIndex) => {
             const currentDay = new Date(weekStart);
             currentDay.setDate(weekStart.getDate() + dayIndex);
@@ -150,11 +150,9 @@ export function WeekView({ currentDate, schedule }: {
 
             const eventGroups = daySchedule ? processEventsWithOverlap(daySchedule) : [];
             const untimedSessions = daySchedule?.timeSlots.filter(s => {
-              // Include sessions without timing information
               if (!s.time?.substantive && !s.time?.topical) {
                 return true;
               }
-              // Exclude oral questions without timing (they should be handled by timed sessions)
               if (s.type === 'oral-questions') {
                 return false;
               }
@@ -165,11 +163,10 @@ export function WeekView({ currentDate, schedule }: {
               <div 
                 key={dayIndex} 
                 className={cn(
-                  "relative border-l flex flex-col",
+                  "relative border-l",
                   isToday(currentDay) && "bg-primary/5",
-                  isPast && "pointer-events-none opacity-50" // Disable past events
+                  isPast && "pointer-events-none opacity-50"
                 )}
-                style={{ minHeight: '720px' }}
               >
                 {/* Current time indicator */}
                 {isToday(currentDay) && (
@@ -198,7 +195,7 @@ export function WeekView({ currentDate, schedule }: {
                   <UntimedItems items={untimedSessions} />
                 )}
 
-                {/* Timed Events with overlap handling */}
+                {/* Timed Events */}
                 <div className="flex-1 relative">
                   {eventGroups.map((group, groupIndex) => {
                     const groupWidth = 100 / group.length;

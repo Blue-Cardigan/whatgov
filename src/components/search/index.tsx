@@ -16,7 +16,6 @@ import { useAssistant } from '@/hooks/useAssistant';
 import type { Citation } from '@/types/search';
 import { SaveSearchButton } from './SaveSearchButton';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
 import { exportToPDF } from '@/lib/pdf-export';
 import {
   Tooltip,
@@ -27,8 +26,9 @@ import {
 import type { SearchParams } from '@/types/search';
 import { LoadingAnimation } from '@/components/ui/loading-animation';
 import { Card } from "@/components/ui/card";
-import { Clock } from "lucide-react";
-import { Check } from "lucide-react";
+import { Clock, Check, Download } from "lucide-react";
+import createClient from '@/lib/supabase/client';
+import { MPSearchResults } from './MPProfile/MPSearchResults';
 
 export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 'mp' }) {
   const { state: searchState, dispatch } = useSearch();
@@ -38,12 +38,13 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   } = useAssistant();
   
   // MP Search state
-  const [mpData, setMPData] = useState<MPData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Active search type
   const [activeSearchType, setActiveSearchType] = useState<'ai' | 'hansard' | 'mp'>(initialTab);
+
+  const supabase = createClient();
 
   const handleStreamingUpdate = useCallback((text: string, citations: Citation[], isFinal: boolean) => {
     dispatch({ 
@@ -75,10 +76,10 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
         title: searchState.searchParams.searchTerm || '',
         content: activeSearchType === 'ai' 
           ? searchState.aiSearch.streamingText 
-          : JSON.stringify(searchState.results, null, 2),
+          : JSON.stringify(searchState.results?.Debates, null, 2) || '',
         citations: activeSearchType === 'ai'
           ? searchState.aiSearch.citations.map(c => c.debate_id)
-          : searchState.results?.Contributions.map(c => c.DebateSectionExtId) || [],
+          : searchState.results?.Debates.map(d => d.debate_id) || [],
         date: new Date(),
         searchType: activeSearchType as 'ai' | 'hansard' | 'calendar',
       });
@@ -98,17 +99,18 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
       
       switch (activeSearchType) {
         case 'mp':
-          const mpData = await getMPData(searchParams.searchTerm);
-          if (mpData) {
+          const mpResults = await getMPData(searchParams.searchTerm);
+          console.log(mpResults);
+          if (mpResults && mpResults.length > 0) {
             dispatch({ 
               type: 'SET_MP_SEARCH', 
               payload: { 
                 query: searchParams.searchTerm,
-                mpId: mpData.member_id.toString(),
-                keywords: []
+                mpIds: mpResults.map(mp => mp.member_id.toString()),
+                keywords: [],
+                results: mpResults
               }
             });
-            setMPData(mpData);
           } else {
             setError(`No MP found matching "${searchParams.searchTerm}"`);
           }
@@ -136,16 +138,36 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           );
           break;
           
-        case 'hansard':          
+          case 'hansard':          
+
           const params: SearchParams = {
             ...searchParams,
             searchTerm: searchParams.searchTerm || '',
             house: searchParams.house || 'Commons',
+            type: searchParams.type,
+            dateFrom: searchParams.dateFrom,
+            dateTo: searchParams.dateTo
           };
           
           dispatch({ type: 'SET_PARAMS', payload: params });
           
-          const results = await HansardAPI.search(params);
+          const { data: debates, error: dbError } = await supabase
+            .rpc('search_debates', { 
+              search_term: params.searchTerm,
+              house_filter: params.house || null,
+              type_filter: params.type || null,
+              date_from: params.dateFrom || null,
+              date_to: params.dateTo || null
+            });
+        
+          if (dbError) throw dbError;
+        
+          const results: typeof SearchResults = {
+            TotalDebates: debates?.length || 0,
+            Debates: debates || [],
+            SearchTerms: [params.searchTerm]
+          };
+        
           dispatch({ type: 'SET_RESULTS', payload: results });
           break;
       }
@@ -160,7 +182,6 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
   const handleSearchTypeChange = (type: 'ai' | 'hansard' | 'mp') => {
     setActiveSearchType(type);
     dispatch({ type: 'CLEAR_RESULTS' });
-    setMPData(null);
     setError(null);
   };
 
@@ -190,17 +211,9 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
             hansardSearch={activeSearchType === 'hansard' ? {
               query: searchState.searchParams.searchTerm || '',
               response: {
-                TotalMembers: searchState.results?.Members?.length || 0,
-                TotalContributions: searchState.results?.Contributions?.length || 0,
-                TotalWrittenStatements: searchState.results?.WrittenStatements?.length || 0,
-                TotalWrittenAnswers: searchState.results?.WrittenAnswers?.length || 0,
-                TotalCorrections: searchState.results?.Corrections?.length || 0,
-                TotalPetitions: searchState.results?.Petitions?.length || 0,
-                TotalDebates: searchState.results?.Debates?.length || 0,
-                TotalCommittees: searchState.results?.Committees?.length || 0,
-                TotalDivisions: searchState.results?.Divisions?.length || 0,
-                SearchTerms: searchState.results?.SearchTerms || [],
-                Contributions: searchState.results?.Contributions || [],
+                TotalDebates: searchState.results?.TotalDebates || 0,
+                Debates: searchState.results?.Debates || [],
+                SearchTerms: searchState.results?.SearchTerms || []
               },
               queryState: {
                 searchTerm: searchState.searchParams.searchTerm || '',
@@ -276,50 +289,18 @@ export function Search({ initialTab = 'ai' }: { initialTab?: 'ai' | 'hansard' | 
           </div>
         );
         
-      case 'mp':
-        return mpData && (
-          <div className="space-y-6">
-            <MPProfileCard mpData={mpData} />
-            <MPLinks mpData={mpData} />
-            {isProfessional ? (
-              <Card className="p-6 bg-muted/50">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold">Coming Soon</h3>
-                  </div>
-                  <p className="text-muted-foreground">
-                    We&apos;re working on analyzing parliamentary data to provide detailed insights into MP activities and positions. Check back soon!
-                  </p>
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-primary" />
-                      <span className="text-sm">Track MP voting patterns</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-primary" />
-                      <span className="text-sm">View key debate contributions</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-primary" />
-                      <span className="text-sm">Analyze position changes over time</span>
-                    </li>
-                  </ul>
-                </div>
-              </Card>
-            ) : (
-              <SubscriptionCTA
-                title="Upgrade to track MP activity"
-                description="Get detailed insights into MPs' parliamentary contributions and positions."
-                features={[
-                  "View key points for any MP",
-                  "Track MP activities and votes",
-                  "Compare MPs' positions on issues"
-                ]}
-              />
-            )}
+        case 'mp':
+          return searchState.mpSearch.results.length > 0 && (
+            <div>
+            {renderActionButtons()}
+            <MPSearchResults 
+              results={searchState.mpSearch.results}
+              isLoading={loading}
+              isProfessional={isProfessional}
+              searchTerm={searchState.searchParams.searchTerm}
+            />
           </div>
-        );
+          );
 
       default:
         return null;

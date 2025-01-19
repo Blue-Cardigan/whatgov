@@ -22,8 +22,8 @@ export type SearchType = 'ai' | 'hansard' | 'mp' | 'question' | 'bill' | 'edm';
 export interface BillQueryState {
   billId: number;
   title: string;
-  currentHouse: 'Commons' | 'Lords';
-  originatingHouse: 'Commons' | 'Lords';
+  currentHouse: 'commons' | 'lords';
+  originatingHouse: 'commons' | 'lords';
   date: string;
   stage?: string;
 }
@@ -41,7 +41,7 @@ export interface SaveSearchParams {
   citations: string[];
   queryState?: {
     searchTerm: string;
-    house?: 'Commons' | 'Lords';
+    house?: 'commons' | 'lords';
     dateRange?: string;
     parts?: string[];
     skip?: number;
@@ -88,7 +88,7 @@ export interface SavedSearch {
     parts?: string;
     startDate?: string;
     endDate?: string;
-    house?: 'Commons' | 'Lords';
+    house?: 'commons' | 'lords';
     enableAI?: boolean;
   };
   metadata?: SavedSearchMetadata;
@@ -107,7 +107,7 @@ export interface SearchDirectives {
 
 export interface HansardApiConfig {
     format: 'json';
-    house: 'Commons' | 'Lords';
+    house: 'commons' | 'lords';
     date?: string;
     section?: string;
 }
@@ -115,9 +115,12 @@ export interface HansardApiConfig {
 export interface SearchParams {
     searchTerm: string;
     house?: 'Commons' | 'Lords';
+    dateFrom?: string;
+    dateTo?: string;
     skip?: number;
     take?: number;
     orderBy?: 'SittingDateAsc' | 'SittingDateDesc';
+    type?: string;
     resultType?: 'all' | 'debates' | 'written-statements' | 'written-answers' | 'corrections' | 'divisions' | 'members';
 }
   

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { 
@@ -14,6 +14,15 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useEngagement } from '@/hooks/useEngagement';
 import { Card } from "@/components/ui/card";
+import { eventTypeColors } from '@/lib/utils';
+import { format } from 'date-fns';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 
 const searchTypes = [
   { 
@@ -48,11 +57,15 @@ const searchTypes = [
   }
 ] as const;
 
-type AdvancedSearchParams = {
+
+interface AdvancedSearchParams {
   text?: string;
   debate?: string;
   spokenBy?: string;
-};
+  type?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
 
 interface QueryBuilderProps {
   searchParams: {
@@ -88,31 +101,18 @@ export function QueryBuilder({
   const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || '');
   const [selectedHouse, setSelectedHouse] = useState<HouseType>(searchParams.house || null);
   
-  const [localParams] = useState({
-    house: searchParams.house
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined
   });
 
   // Add advanced search state
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [advancedParams, setAdvancedParams] = useState<AdvancedSearchParams>(advancedSearch);
-
-  const handleAdvancedParamChange = (key: keyof AdvancedSearchParams, value: string) => {
-    const newParams = { ...advancedParams, [key]: value };
-    setAdvancedParams(newParams);
-    onAdvancedSearchChange(newParams);
-  };
-
-  const constructSearchQuery = () => {
-    if (searchType !== 'hansard' || !showAdvanced) {
-      return searchTerm;
-    }
-
-    const parts: string[] = [];
-    if (advancedParams.text) parts.push(`words:${advancedParams.text}`);
-    if (advancedParams.debate) parts.push(`debate:${advancedParams.debate}`);
-    if (advancedParams.spokenBy) parts.push(`spokenby:${advancedParams.spokenBy}`);
-    return parts.join(' AND ');
-  };
 
   const handleSubmit = () => {
     if (hasReachedAISearchLimit()) {
@@ -120,14 +120,13 @@ export function QueryBuilder({
       return;
     }
 
-    const query = constructSearchQuery();
-    if (query.trim()) {
+    if (searchTerm.trim()) {
       const params = {
-        searchTerm: query.trim(),
-        ...localParams,
-        house: selectedHouse
+        searchTerm: searchTerm.trim(),
+        house: selectedHouse,
+        ...advancedParams // Include all advanced search params
       };
-      onSearch(params as { searchTerm: string; house?: 'commons' | 'lords' | null | undefined; });
+      onSearch(params as { searchTerm: string; house?: 'commons' | 'lords' | null; });
     }
   };
 
@@ -147,8 +146,45 @@ export function QueryBuilder({
     }
   };
 
+  const handleDateRangeChange = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setDateRange(range);
+    const newParams = {
+      ...advancedParams,
+      dateFrom: range.from,
+      dateTo: range.to
+    };
+    setAdvancedParams(newParams);
+    onAdvancedSearchChange(newParams);
+  };
+
+  // Update advanced params when filters change
+  const handleTypeSelection = (type: string) => {
+    setSelectedTypes(prev => {
+      const newTypes = prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [type];
+      
+      // Update advanced search params
+      const newParams = {
+        ...advancedParams,
+        type: newTypes.length === 1 ? newTypes[0] : undefined
+      };
+      setAdvancedParams(newParams);
+      onAdvancedSearchChange(newParams);
+      
+      return newTypes;
+    });
+  };
+
+
   const isHouseSelected = (house: 'commons' | 'lords') => {
     return selectedHouse === house || selectedHouse === 'both';
+  };
+
+  const handleAdvancedParamChange = (key: keyof AdvancedSearchParams, value: string) => {
+    const newParams = { ...advancedParams, [key]: value };
+    setAdvancedParams(newParams);
+    onAdvancedSearchChange(newParams);
   };
 
   // Get remaining searches count
@@ -277,7 +313,7 @@ export function QueryBuilder({
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Enable advanced search options to narrow your search by debate title and speaker.
+                Enable advanced search options to narrow your search.
               </p>
             </div>
           </div>
@@ -285,27 +321,86 @@ export function QueryBuilder({
 
         {/* Advanced Search Fields */}
         {searchType === 'hansard' && showAdvanced && (
-          <div className="space-y-6 p-6 border-2 rounded-lg bg-muted/5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6 p-6 border-2 rounded-lg bg-muted/5">
+          <div className="grid grid-cols-1 gap-6">
+
+            {/* New Advanced Search Fields */}
+            <div className="space-y-4">
+              {/* Type Selection */}
               <div className="space-y-2">
-                <Label htmlFor="debate-search" className="font-medium">Debate Title</Label>
-                <Input
-                  id="debate-search"
-                  placeholder="Enter debate title..."
-                  value={advancedParams.debate || ''}
-                  onChange={(e) => handleAdvancedParamChange('debate', e.target.value)}
-                  className="border-2"
-                />
+                <Label className="font-medium">Debate Type</Label>
+                <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto">
+                  {Object.keys(eventTypeColors).map((type) => (
+                    <Badge
+                      key={type}
+                      variant={selectedTypes.includes(type) ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer hover:opacity-80 transition-all",
+                        selectedTypes.includes(type) ? "bg-primary" : "hover:bg-muted"
+                      )}
+                      onClick={() => handleTypeSelection(type)}
+                    >
+                      {type}
+                    </Badge>
+                  ))}
+                </div>
               </div>
+
+              {/* Date Range */}
               <div className="space-y-2">
-                <Label htmlFor="speaker-search" className="font-medium">Speaker</Label>
-                <Input
-                  id="speaker-search"
-                  placeholder="Enter speaker name..."
-                  value={advancedParams.spokenBy || ''}
-                  onChange={(e) => handleAdvancedParamChange('spokenBy', e.target.value)}
-                  className="border-2"
-                />
+                <Label className="font-medium">Date Range</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
+                      ) : (
+                        "Pick a date range"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange.from}
+                      selected={{ 
+                        from: dateRange.from,
+                        to: dateRange.to
+                      }}
+                      onSelect={(range) => handleDateRangeChange({
+                        from: range?.from,
+                        to: range?.to
+                      })}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {(dateRange.from || dateRange.to) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDateRangeChange({ from: undefined, to: undefined })}
+                    className="text-sm text-muted-foreground"
+                  >
+                    Clear dates
+                  </Button>
+                )}
+              </div>
               </div>
             </div>
           </div>

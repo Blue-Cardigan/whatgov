@@ -85,7 +85,6 @@ class ParliamentImageManager {
           this.validUrls = urls.filter((_, index) => validResults[index]);
           
           if (this.validUrls.length > 0) {
-            console.log(`Found ${this.validUrls.length} valid cached images`);
             resolve();
             return;
           }
@@ -94,7 +93,6 @@ class ParliamentImageManager {
 
       // If we get here, either cache was invalid or we had no valid URLs
       localStorage.removeItem(STORAGE_KEY);
-      console.log('Cache invalid or empty, checking for new images...');
       
       // Check all IDs from MIN_ID to MAX_ID
       const allIds = Array.from(
@@ -112,7 +110,6 @@ class ParliamentImageManager {
           const url = this.generateUrl(id);
           const isValid = await this.validateImageUrl(url);
           if (isValid) {
-            console.log(`Found valid image: ${url}`);
             this.validUrls.push(url);
           }
           return isValid;
@@ -136,7 +133,6 @@ class ParliamentImageManager {
       if (this.validUrls.length === 0) {
         console.error('No valid parliament images found');
       } else {
-        console.log(`Found ${this.validUrls.length} valid images, saving to cache`);
         // Save valid URLs to cache
         const cacheData: CacheData = {
           urls: this.validUrls,
@@ -152,7 +148,6 @@ class ParliamentImageManager {
   }
 
   async getNextImage(): Promise<string> {
-    console.log('getNextImage')
     await this.initialize();
     
     if (this.validUrls.length === 0) {

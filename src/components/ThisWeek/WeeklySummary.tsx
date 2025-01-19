@@ -95,7 +95,6 @@ function FeaturedDebate({ highlight }: { highlight: WeeklyHighlight }) {
             : data.analysis
         };
         setDebateData(transformedData);
-        console.log(transformedData);
       }
       setIsLoading(false);
     }

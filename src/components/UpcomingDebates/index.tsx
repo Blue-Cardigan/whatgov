@@ -3,7 +3,7 @@
 import { useState, useMemo, createContext } from "react";
 import { format, addWeeks, startOfWeek, addDays, differenceInWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Search } from "lucide-react";
 import { WeekView } from "./CalendarViews";
 import { CalendarApi } from '@/lib/calendar-api';
 import { getSavedCalendarItems } from "@/lib/supabase/saved-calendar-items";
@@ -13,6 +13,7 @@ import { CalendarFilters, type EventFilters } from './CalendarFilters';
 import { useQuery } from '@tanstack/react-query';
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { Bookmark } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 // Add context for saved questions
 interface SavedQuestionsContextType {
@@ -43,6 +44,7 @@ function UpcomingDebatesContent() {
     'Ministerial Statement': true,
     'Backbench Business': true,
   });
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Get start of week for consistent querying
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -145,55 +147,108 @@ function UpcomingDebatesContent() {
   const filteredSchedule = useMemo(() => {
     if (!schedule.length) return [];
 
+    const searchLower = searchTerm.toLowerCase();
+
     return schedule.map(day => ({
       ...day,
       timeSlots: day.timeSlots.filter(slot => {
+        // First apply category filters
+        let passesFilters = true;
         if (slot.type === 'oral-questions') {
-          return filters['Oral Questions'];
+          passesFilters = filters['Oral Questions'];
         }
         if (slot.type === 'edm') {
-          return filters['EDMs'];
+          passesFilters = filters['EDMs'];
         }
         if (slot.type === 'event') {
           // Check category first
           const category = slot.event?.category?.toLowerCase();
           
           if (category === 'oral evidence') {
-            return filters['Oral evidence'];
+            passesFilters = filters['Oral evidence'];
           }
           if (category === 'private meeting') {
-            return filters['Private Meeting'];
+            passesFilters = filters['Private Meeting'];
           }
           if (category === 'debate') {
-            return filters['Main Chamber'];
+            passesFilters = filters['Main Chamber'];
           }
           if (category === 'ministerial statement') {
-            return filters['Ministerial Statement'];
+            passesFilters = filters['Ministerial Statement'];
           }
           if (category === 'backbench business') {
-            return filters['Backbench Business'];
+            passesFilters = filters['Backbench Business'];
           }
           if (category?.includes('introduction')) {
-            return filters['Introduction(s)'];
+            passesFilters = filters['Introduction(s)'];
           }
           if (category?.includes('orders and regulations')) {
-            return filters['Orders and Regulations'];
+            passesFilters = filters['Orders and Regulations'];
           }
           if (category?.includes('private members\' bills')) {
-            return filters['Private Members\' Bills'];
+            passesFilters = filters['Private Members\' Bills'];
           }
           if (category?.includes('legislation')) {
-            return filters['Legislation'];
+            passesFilters = filters['Legislation'];
           }
           if (slot.event?.type?.toLowerCase().includes('westminster hall')) {
-            return filters['Westminster Hall'];
+            passesFilters = filters['Westminster Hall'];
           }
-          return true;
         }
+
+        // If it doesn't pass filters, no need to check search
+        if (!passesFilters) return false;
+
+        // If no search term, return the filter result
+        if (!searchTerm) return true;
+
+        // Search logic for different slot types
+        if (slot.type === 'oral-questions') {
+          return (
+            slot.department?.toLowerCase().includes(searchLower) ||
+            slot.questions?.some(q => 
+              q.text.toLowerCase().includes(searchLower) ||
+              q.askingMembers.some(m => 
+                m.Name.toLowerCase().includes(searchLower) ||
+                m.Party.toLowerCase().includes(searchLower) ||
+                m.Constituency.toLowerCase().includes(searchLower)
+              )
+            ) ||
+            slot.minister?.Name.toLowerCase().includes(searchLower) ||
+            slot.minister?.Party.toLowerCase().includes(searchLower) ||
+            slot.ministerTitle?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        if (slot.type === 'event') {
+          return (
+            slot.event?.title.toLowerCase().includes(searchLower) ||
+            slot.event?.description?.toLowerCase().includes(searchLower) ||
+            slot.event?.category?.toLowerCase().includes(searchLower) ||
+            slot.event?.type?.toLowerCase().includes(searchLower) ||
+            slot.event?.house?.toLowerCase().includes(searchLower) ||
+            slot.event?.location?.toLowerCase().includes(searchLower) ||
+            slot.event?.members?.some(m => 
+              m.name.toLowerCase().includes(searchLower) ||
+              m.party.toLowerCase().includes(searchLower) ||
+              m.constituency.toLowerCase().includes(searchLower)
+            )
+          );
+        }
+
+        if (slot.type === 'edm') {
+          return (
+            slot.edm?.title.toLowerCase().includes(searchLower) ||
+            slot.edm?.text.toLowerCase().includes(searchLower) ||
+            slot.edm?.primarySponsor.name.toLowerCase().includes(searchLower) ||
+            slot.edm?.primarySponsor.party?.toLowerCase().includes(searchLower)
+          );
+        }
+
         return true;
       })
     }));
-  }, [schedule, filters]);
+  }, [schedule, filters, searchTerm]);
 
   return (
     <SavedQuestionsContext.Provider value={{ savedQuestions, setSavedQuestions }}>
@@ -233,6 +288,16 @@ function UpcomingDebatesContent() {
           </h2>
 
           <div className="flex items-center gap-2 ml-auto">
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
                 <Bookmark className="h-4 w-4" />
