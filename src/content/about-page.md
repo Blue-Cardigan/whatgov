@@ -1,13 +1,13 @@
 # About WhatGov
 
 ## Our Mission
-To make parliamentary democracy more accessible, understandable, and engaging for everyone in the UK.
+To make parliamentary democracy more accessible, understandable, and actionable for organisations in the UK.
 
 ## Who We Are
 
-WhatGov was founded in 2024 by a team of democracy advocates and technologists who believed that understanding Parliament shouldn't require specialist knowledge.
+WhatGov was founded in 2024 by a single person passionate about democratic advocacy and its intersection with technology. I believe that understanding Parliament shouldn't require specialist knowledge.
 
-We're an independent organisation, not affiliated with any political party or government body. Our commitment is to transparent, non-partisan information that helps the British public engage with their democracy.
+WhatGov is an independent organisation, not affiliated with any political party or government body. My commitment is to transparent, non-partisan information that helps British organisations engage our democracy.
 
 ## What We Do
 

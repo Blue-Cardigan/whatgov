@@ -44,7 +44,7 @@ function processSpeakerPoints(points: SpeakerPoint[] | string[] | string): Speak
         role: 'Member',
         party: '',
         constituency: '',
-        contributions: [{ content: point as string }]
+        contributions: [point as string]
       }));
     }
     return points as SpeakerPoint[];
