@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
 import { useState } from 'react';
 import { exportToPDF } from '@/lib/pdf-export';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CalendarCardProps {
   item: {
@@ -28,6 +29,7 @@ interface CalendarCardProps {
 export function CalendarCard({ item, onDelete }: CalendarCardProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+  const { isProfessional } = useAuth();
 
   const formatSearchContent = () => {
     const eventData = item.event_data;
@@ -154,12 +156,12 @@ ${item.debate_ids.map((id, index) => `[${index + 1}] Debate: https://whatgov.co.
               <div className="flex items-center gap-2">
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger asChild>
+                  <TooltipTrigger asChild>
                       <Button 
                         variant="outline" 
                         size="icon"
                         onClick={handleExport}
-                        disabled={isExporting}
+                        disabled={isExporting || !isProfessional}
                       >
                         <Download className="h-4 w-4" />
                       </Button>

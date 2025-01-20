@@ -242,7 +242,7 @@ ${debateIds.map((id, index) => `[${index + 1}] Debate: https://whatgov.co.uk/deb
                     variant="ghost"
                     size="icon"
                     onClick={handleExport}
-                    disabled={isExporting}
+                    disabled={isExporting || !isProfessional}
                   >
                     <Download className="h-4 w-4" />
                   </Button>

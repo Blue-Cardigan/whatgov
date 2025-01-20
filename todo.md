@@ -11,6 +11,8 @@ UI
 [ ] Less stark light/dark theme background colors
 [ ] Debate Types listed in home/top bar
 [-] Responsive design of homepage and calendar
+      [ ] homepage
+      [ ] calendar
 
 Users
 [/] Wall debate downloads
@@ -42,10 +44,11 @@ Features
       [x] Keyword search within an MP's contributions
       [/] Recent points
       [/] MP filter in Hansard search
-[/] Fix & update pdf generation
+[-] Fix & update pdf generation
       [/] Hansard search results display debateHeader for response extids
       [/] Use DebateHeader for calendar and MP saved searches
       [/] Export header details with urls
+      [ ] Move it all server-side to allow browser downloads
 
 [ ] Give assistant full debate access using functions
 [ ] Implement web search

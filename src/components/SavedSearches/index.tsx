@@ -335,8 +335,8 @@ export function SavedSearches() {
           </div>
         )}
 
-        {/* Header Section */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+         {/* Header Section */}
+         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Saved Items</h1>
             <p className="text-muted-foreground mt-1">
@@ -350,14 +350,16 @@ export function SavedSearches() {
                 {stats.unread} unread
               </Badge>
             )}
-            <Button 
-              variant="outline"
-              onClick={handleBulkExport}
-              disabled={isExporting || (searches.length === 0 && calendarItems.length === 0)}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {isExporting ? 'Exporting...' : 'Export All'}
-            </Button>
+            {isProfessional && (
+              <Button 
+                variant="outline"
+                onClick={handleBulkExport}
+                disabled={isExporting || (searches.length === 0 && calendarItems.length === 0)}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isExporting ? 'Exporting...' : 'Export All'}
+              </Button>
+            )}
           </div>
         </div>
 

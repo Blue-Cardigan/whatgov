@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { User } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
 import { handleSavedMPExport } from '../search/MPProfile/MPExport';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MPSearchCardProps {
   search: SavedSearch;
@@ -52,7 +53,8 @@ export function MPSearchCard({ search, onDelete }: MPSearchCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
-
+  const { isProfessional } = useAuth();
+  
   // Parse the response JSON
   const responseData: ResponseData = JSON.parse(search.response);
   const firstDebate = responseData.Debates[0];
@@ -106,13 +108,13 @@ export function MPSearchCard({ search, onDelete }: MPSearchCardProps) {
                       size="sm"
                       className="h-8 w-8 p-0"
                       onClick={handleExport}
-                      disabled={isExporting}
+                      disabled={isExporting || !isProfessional}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Export data
+                    Export to PDF
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
