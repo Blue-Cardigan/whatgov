@@ -23,47 +23,10 @@ export async function POST(request: Request) {
     }
 
     // Get the weekly assistant ID if useRecentFiles is true
-    let assistantId = process.env.DEFAULT_OPENAI_ASSISTANT_ID!;
+    let assistantId = process.env.ALLTIME_OPENAI_ASSISTANT_ID!;
 
     if (useRecentFiles) {
-      // Get current date
-      const currentDate = new Date();
-      // Get Monday of current week (0 = Sunday, 1 = Monday, etc)
-      const diff = currentDate.getDate() - currentDate.getDay() + (currentDate.getDay() === 0 ? -6 : 1);
-      const monday = new Date(currentDate.setDate(diff));
-      const mondayString = monday.toISOString().split('T')[0];
-
-      const supabase = await createServerSupabaseClient();
-      let { data: vectorStore, error } = await supabase
-        .from('vector_stores')
-        .select('assistant_id')
-        .eq('store_name', `Weekly Debates ${mondayString}`)
-        .single();
-
-      if (error || !vectorStore?.assistant_id) {
-        console.error('[Assistant Stream] Error fetching current weekly assistant or none found:', error);
-
-        // Fallback to previous week
-        const previousMonday = new Date(monday);
-        previousMonday.setDate(monday.getDate() - 7);
-        const previousMondayString = previousMonday.toISOString().split('T')[0];
-
-        ({ data: vectorStore, error } = await supabase
-          .from('vector_stores')
-          .select('assistant_id')
-          .eq('store_name', `Weekly Debates ${previousMondayString}`)
-          .single());
-
-        if (error) {
-          console.error('[Assistant Stream] Error fetching previous weekly assistant:', error);
-        } else if (vectorStore?.assistant_id) {
-          console.log('[Assistant Stream] Using previous weekly assistant:', vectorStore.assistant_id);
-          assistantId = vectorStore.assistant_id;
-        }
-      } else {
-        console.log('[Assistant Stream] Using weekly assistant:', vectorStore.assistant_id);
-        assistantId = vectorStore.assistant_id;
-      }
+      assistantId = process.env.WEEKLY_OPENAI_ASSISTANT_ID!;
     }
 
     const encoder = new TextEncoder();
