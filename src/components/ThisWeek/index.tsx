@@ -98,7 +98,7 @@ export function ThisWeek() {
         .select('*')
         .eq('is_published', true)
         .eq('weekday', weekday)
-        .order('created_at', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(1)
         .single();
 
